@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { 
   insertUserSchema, 
@@ -246,5 +247,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   const httpServer = createServer(app);
+  
+  // Add WebSocket support for real-time communication
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    // Add specific WS configuration to handle connection issues
+    clientTracking: true,
+    perMessageDeflate: {
+      zlibDeflateOptions: {
+        chunkSize: 1024,
+        memLevel: 7,
+        level: 3
+      },
+      zlibInflateOptions: {
+        chunkSize: 10 * 1024
+      },
+      concurrencyLimit: 10,
+      threshold: 1024
+    }
+  });
+  
+  // Handle WebSocket connections
+  wss.on('connection', (ws: WebSocket) => {
+    console.log('WebSocket client connected');
+    
+    // Send a heartbeat every 30 seconds to keep connections alive
+    const interval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
+      }
+    }, 30000);
+    
+    ws.on('message', (message: string) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('Received message:', data);
+        
+        // Echo back the message to confirm receipt
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ 
+            type: 'echo', 
+            received: data,
+            timestamp: Date.now()
+          }));
+        }
+      } catch (error) {
+        console.error('Error processing message:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+      clearInterval(interval);
+    });
+    
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      clearInterval(interval);
+    });
+    
+    // Send initial connection confirmation
+    ws.send(JSON.stringify({ 
+      type: 'connected', 
+      message: 'Connected to AI Prioritization Tool WebSocket',
+      timestamp: Date.now()
+    }));
+  });
+  
   return httpServer;
 }

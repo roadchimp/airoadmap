@@ -55,7 +55,12 @@ export async function calculatePrioritization(stepData: WizardStepData) {
   for (let i = 0; i < roleRankings.length; i++) {
     const roleId = roleRankings[i];
     // Use actual role data or create placeholder
-    const role = {
+    const role: { 
+      id: number, 
+      title: string, 
+      department: string, 
+      departmentId: number
+    } = {
       id: roleId,
       title: `Role ${roleId}`,
       department: "General",

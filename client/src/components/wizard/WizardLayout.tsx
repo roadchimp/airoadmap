@@ -67,11 +67,12 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
       {/* Navigation Buttons */}
       <div className="flex justify-between mt-6">
         <Button
-          variant="outline"
+          variant={isFirstStep ? "outline" : "secondary"}
           onClick={onPrevious}
-          disabled={isFirstStep || isSubmitting}
+          disabled={isSubmitting}
+          className={isFirstStep ? "border-gray-300 text-gray-700" : ""}
         >
-          {isFirstStep ? 'Cancel' : `Previous: ${steps[currentStepIndex - 1]?.title || 'Back'}`}
+          {isFirstStep ? 'Cancel' : 'Previous'}
         </Button>
         
         {isLastStep ? (
@@ -86,9 +87,9 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
           <Button
             onClick={onNext}
             disabled={isSubmitting}
-            className="bg-primary-600 hover:bg-primary-700"
+            className="bg-primary-600 hover:bg-primary-700 font-semibold px-6"
           >
-            {`Next: ${steps[currentStepIndex + 1]?.title || 'Continue'}`}
+            Next
           </Button>
         )}
       </div>

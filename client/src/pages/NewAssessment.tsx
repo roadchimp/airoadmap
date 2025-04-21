@@ -226,13 +226,13 @@ const NewAssessment: React.FC = () => {
     }
   };
   
-  // Navigate to previous step
+  // Navigate to previous step or cancel
   const handlePrevious = () => {
     if (currentStepIndex > 0) {
       const prevStep = wizardSteps[currentStepIndex - 1].id;
       navigate(`/assessment/${prevStep}`);
     } else {
-      // First step, cancel assessment
+      // First step, cancel assessment and return to dashboard
       navigate("/");
     }
   };
@@ -312,8 +312,10 @@ const NewAssessment: React.FC = () => {
             { id: "manufacturing", label: "Manufacturing", value: "Manufacturing" },
             { id: "financial", label: "Financial Services", value: "Financial Services" },
             { id: "retail", label: "Retail", value: "Retail" },
-            { id: "generic", label: "Generic", value: "Generic" },
-            { id: "nonprofit", label: "Non-profit", value: "Non-profit" }
+            { id: "healthcare", label: "Healthcare", value: "Healthcare" },
+            { id: "education", label: "Education", value: "Education" },
+            { id: "nonprofit", label: "Non-profit", value: "Non-profit" },
+            { id: "other", label: "Other", value: "Other" }
           ]}
           value={basicsData.industry || ""}
           onChange={(value) => handleInputChange("industry", value)}

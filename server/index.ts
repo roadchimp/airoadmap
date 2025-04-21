@@ -60,7 +60,8 @@ app.use((req, res, next) => {
 
   // Get port from environment variable or use default
   const port = process.env.PORT ? parseInt(process.env.PORT) : 5000;
-  const host = process.env.HOST || '127.0.0.1';
+  // Use 0.0.0.0 on Replit, 127.0.0.1 locally
+  const host = process.env.REPL_ID ? '0.0.0.0' : (process.env.HOST || '127.0.0.1');
 
   // Create HTTP server
   const httpServer = createServer(app);

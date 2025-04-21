@@ -54,7 +54,9 @@ export async function generateEnhancedExecutiveSummary(
       messages: [{ role: 'user', content: prompt }],
     });
 
-    return message.content[0].text;
+    // Safely extract text content
+    const content = message.content[0];
+    return typeof content === 'object' && 'text' in content ? content.text : String(content);
   } catch (error) {
     console.error('Error generating executive summary with Anthropic:', error);
     // Fallback to basic summary generation
@@ -103,7 +105,8 @@ export async function generateAICapabilityRecommendations(
       response_format: { type: "json_object" }
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    const result = JSON.parse(content || '[]');
     return result;
   } catch (error) {
     console.error('Error generating AI capability recommendations with OpenAI:', error);
@@ -148,7 +151,8 @@ export async function generatePerformanceImpact(
       response_format: { type: "json_object" }
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    const result = JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
     return result;
   } catch (error) {
     console.error('Error generating performance impact predictions with OpenAI:', error);
@@ -163,11 +167,19 @@ export async function generatePerformanceImpact(
 function fallbackExecutiveSummary(stepData: WizardStepData, prioritizedRoles: any[]): string {
   const companyName = stepData.basics?.companyName || "your company";
   const topRoles = prioritizedRoles.slice(0, 2);
-  const departments = [...new Set(topRoles.map(item => item.department))];
+  
+  // Extract unique departments safely
+  const departmentSet = new Set<string>();
+  topRoles.forEach(item => {
+    if (item && item.department) {
+      departmentSet.add(item.department);
+    }
+  });
+  const departments = Array.from(departmentSet);
   
   return `Based on our analysis of ${companyName}'s current processes and roles, we've identified significant opportunities for AI transformation that could lead to efficiency gains and cost savings.
 
-The assessment reveals that ${departments.join(" and ")} functions have the highest potential for immediate AI impact with relatively low implementation barriers. We estimate potential time savings of 15-20 hours per week per agent in ${topRoles[0]?.title || "key roles"} through AI-assisted processes and automation.
+The assessment reveals that ${departments.join(" and ") || "key functional"} functions have the highest potential for immediate AI impact with relatively low implementation barriers. We estimate potential time savings of 15-20 hours per week per agent in ${topRoles[0]?.title || "key roles"} through AI-assisted processes and automation.
 
 Our recommended approach is a phased implementation starting with these high-impact, low-effort areas to demonstrate quick wins and build organizational momentum for broader AI adoption.`;
 }

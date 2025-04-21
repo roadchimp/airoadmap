@@ -223,8 +223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Assessment has no step data" });
       }
       
-      // Calculate prioritization
-      const results = calculatePrioritization(stepData);
+      // Calculate prioritization (now async with AI integration)
+      const results = await calculatePrioritization(stepData);
       
       // Create a report with the results
       const report = await storage.createReport({

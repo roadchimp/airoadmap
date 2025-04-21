@@ -1,9 +1,10 @@
-import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact } from "@shared/schema";
+import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department } from "@shared/schema";
+import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "./aiService";
 
 /**
  * Calculates the prioritization results based on wizard step data
  */
-export function calculatePrioritization(stepData: WizardStepData) {
+export async function calculatePrioritization(stepData: WizardStepData) {
   // Prioritized items list
   const prioritizedItems: PrioritizedItem[] = [];
   
@@ -28,18 +29,52 @@ export function calculatePrioritization(stepData: WizardStepData) {
     }
   };
   
-  // Get roles from step data
-  const roles = stepData.roles?.selectedRoles || [];
+  // Get roles data
+  const selectedRoleIds = stepData.roles?.selectedRoles || [];
+  const roleRankings = stepData.roles?.prioritizedRoles || selectedRoleIds;
+  const painPoints = stepData.painPoints?.roleSpecificPainPoints || {};
   
-  // Process each role
-  roles.forEach((role, index) => {
-    // Calculate value score (out of 5)
-    // For this prototype, we'll generate some scores for demonstration
-    const valueScore = 5 - (index * 0.3);
+  // Calculate data quality score based on available data sources
+  // Default to medium (3) if not specified
+  let dataQuality = 3;
+  if (stepData.techStack?.dataAvailability) {
+    const dataAvailability = stepData.techStack.dataAvailability;
+    // Count available data sources to estimate data quality
+    let availableSources = 0;
+    if (dataAvailability.structuredData) availableSources++;
+    if (dataAvailability.unstructuredText) availableSources++;
+    if (dataAvailability.historicalRecords) availableSources++;
+    if (dataAvailability.realTimeInputs) availableSources++;
+    if (dataAvailability.apiAccess) availableSources++;
     
-    // Calculate effort score (out of 5, where lower is easier to implement)
-    // For this prototype, we'll generate some scores based on role position
-    const effortScore = 2 + (index * 0.4);
+    // Convert count to a 1-5 scale
+    dataQuality = Math.max(1, Math.min(5, availableSources + 1));
+  }
+  
+  // Process each selected role in priority order
+  for (let i = 0; i < roleRankings.length; i++) {
+    const roleId = roleRankings[i];
+    // Use actual role data or create placeholder
+    const role = {
+      id: roleId,
+      title: `Role ${roleId}`,
+      department: "General",
+      departmentId: 1
+    };
+    
+    // Get pain point data for this role
+    const rolePainPoints = painPoints[roleId] || {};
+    
+    // Calculate value score based on pain points (out of 5)
+    const severity = rolePainPoints.severity || 3;
+    const frequency = rolePainPoints.frequency || 3;
+    const impact = rolePainPoints.impact || 3;
+    
+    // Value increases with severity, frequency and impact
+    const valueScore = ((severity + frequency + impact) / 3) * 1.67;
+    
+    // Effort score influenced by data quality (lower is better)
+    const effortScore = 6 - dataQuality;
     
     // Determine value level
     let valueLevel: ValueLevel;
@@ -58,7 +93,7 @@ export function calculatePrioritization(stepData: WizardStepData) {
     
     // Create prioritized item
     const prioritizedItem: PrioritizedItem = {
-      id: role.id || index + 1,
+      id: roleId,
       title: role.title,
       department: role.department,
       valueScore: Math.round(valueScore * 10) / 10,
@@ -73,11 +108,11 @@ export function calculatePrioritization(stepData: WizardStepData) {
     
     // Add to heatmap
     heatmapData.matrix[valueLevel][effortLevel].items.push({
-      id: role.id || index + 1,
+      id: roleId,
       title: role.title,
       department: role.department
     });
-  });
+  }
   
   // Sort prioritized items by value score descending, then effort score ascending
   prioritizedItems.sort((a, b) => {
@@ -87,81 +122,87 @@ export function calculatePrioritization(stepData: WizardStepData) {
     return a.effortScore - b.effortScore; // Ascending effort (easier first)
   });
   
-  // Generate AI suggestions for top 3 roles
-  const aiSuggestions: AISuggestion[] = prioritizedItems.slice(0, 3).map(item => {
-    // Simple mapping of AI capabilities to role titles
-    const capabilities = [];
+  // Generate AI-enhanced executive summary using Anthropic
+  const executiveSummary = await generateEnhancedExecutiveSummary(
+    stepData,
+    prioritizedItems
+  );
+  
+  // Generate AI suggestions for top roles using OpenAI
+  const aiSuggestions: AISuggestion[] = [];
+  
+  for (const item of prioritizedItems.slice(0, 3)) {
+    // For this demo, we'll use fallback AI capabilities from aiService
+    // In a full implementation, we would retrieve the actual role and department data
+    // and pass them to generateAICapabilityRecommendations
+    const role: JobRole = {
+      id: item.id,
+      title: item.title,
+      departmentId: 1,
+      description: '',
+      keyResponsibilities: [],
+      aiPotential: 'Medium'
+    };
     
-    if (item.title.toLowerCase().includes("customer support")) {
-      capabilities.push(
-        { name: "Natural Language Understanding", description: "For ticket categorization and automatic routing" },
-        { name: "Response Generation", description: "For template-based replies to common questions" },
-        { name: "Knowledge Base Integration", description: "To quickly pull relevant documentation" }
-      );
-    } else if (item.title.toLowerCase().includes("sales")) {
-      capabilities.push(
-        { name: "RFP Response Automation", description: "For extracting key questions and generating draft responses" },
-        { name: "Sales Data Analysis", description: "For identifying trends and opportunities" }
-      );
-    } else if (item.title.toLowerCase().includes("marketing") || item.title.toLowerCase().includes("content")) {
-      capabilities.push(
-        { name: "Content Generation", description: "For creating draft marketing materials" },
-        { name: "Social Media Analysis", description: "For tracking campaign performance" }
-      );
-    } else {
-      capabilities.push(
-        { name: "Workflow Automation", description: "For streamlining repetitive tasks" },
-        { name: "Document Processing", description: "For extracting and organizing information" }
-      );
-    }
+    const department: Department = {
+      id: 1,
+      name: item.department,
+      organizationId: 1,
+      description: ''
+    };
     
-    return {
+    const rolePainPoints = painPoints[item.id] || {};
+    
+    // Call AI service for capability recommendations
+    const capabilities = await generateAICapabilityRecommendations(
+      role,
+      department,
+      rolePainPoints
+    );
+    
+    aiSuggestions.push({
       roleId: item.id,
       roleTitle: item.title,
       capabilities
-    };
-  });
+    });
+  }
   
   // Generate performance impact estimates
-  const performanceImpact: PerformanceImpact = {
-    roleImpacts: prioritizedItems.slice(0, 3).map(item => {
-      // Generate impact metrics based on role
-      const metrics = [];
-      
-      if (item.title.toLowerCase().includes("customer support")) {
-        metrics.push(
-          { name: "Time per ticket", improvement: 45 },
-          { name: "Customer satisfaction", improvement: 20 },
-          { name: "Agent capacity", improvement: 35 }
-        );
-      } else if (item.title.toLowerCase().includes("sales")) {
-        metrics.push(
-          { name: "RFP response time", improvement: 30 },
-          { name: "Proposal quality", improvement: 25 },
-          { name: "Deal analysis time", improvement: 40 }
-        );
-      } else if (item.title.toLowerCase().includes("marketing") || item.title.toLowerCase().includes("content")) {
-        metrics.push(
-          { name: "Content creation time", improvement: 35 },
-          { name: "Campaign analysis", improvement: 30 }
-        );
-      } else {
-        metrics.push(
-          { name: "Process efficiency", improvement: 30 },
-          { name: "Error reduction", improvement: 25 }
-        );
-      }
-      
-      return {
-        roleTitle: item.title,
-        metrics
-      };
-    }),
-    estimatedRoi: 320000 // Fixed ROI for prototype
-  };
+  const roleImpacts = [];
+  let totalRoi = 0;
   
-  // Generate executive summary
-  const executiveSummary = generateExecutiveSummary(prioritizedItems, stepData);
+  for (const item of prioritizedItems.slice(0, 3)) {
+    const role: JobRole = {
+      id: item.id,
+      title: item.title,
+      departmentId: 1,
+      description: '',
+      keyResponsibilities: [],
+      aiPotential: 'Medium'
+    };
+    
+    const department: Department = {
+      id: 1,
+      name: item.department,
+      organizationId: 1,
+      description: ''
+    };
+    
+    // Call AI service for performance impact predictions
+    const impactResult = await generatePerformanceImpact(role, department);
+    
+    roleImpacts.push({
+      roleTitle: item.title,
+      metrics: impactResult.metrics
+    });
+    
+    totalRoi += impactResult.estimatedAnnualRoi;
+  }
+  
+  const performanceImpact: PerformanceImpact = {
+    roleImpacts,
+    estimatedRoi: totalRoi
+  };
   
   return {
     executiveSummary,
@@ -172,20 +213,4 @@ export function calculatePrioritization(stepData: WizardStepData) {
     aiSuggestions,
     performanceImpact
   };
-}
-
-/**
- * Generates an executive summary based on prioritization results
- */
-function generateExecutiveSummary(prioritizedItems: PrioritizedItem[], stepData: WizardStepData): string {
-  // Get top departments
-  const topRoles = prioritizedItems.slice(0, 2);
-  const departments = [...new Set(topRoles.map(item => item.department))];
-  
-  // Create summary
-  return `Based on our analysis of your current processes and roles, we've identified significant opportunities for AI transformation that could lead to efficiency gains and cost savings.
-
-The assessment reveals that ${departments.join(" and ")} functions have the highest potential for immediate AI impact with relatively low implementation barriers. We estimate potential time savings of 15-20 hours per week per agent in ${topRoles[0].title} through AI-assisted processes and automation.
-
-Our recommended approach is a phased implementation starting with these high-impact, low-effort areas to demonstrate quick wins and build organizational momentum for broader AI adoption.`;
 }

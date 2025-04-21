@@ -1,0 +1,199 @@
+---
+title: AI Pilot Discovery Questionnaire
+tags:
+  - '#AIPilot'
+  - '#Automation'
+  - '#Questionnaire'
+  - '#AIImplementation'
+  - '#WorkflowOptimization'
+File Creation Date: N/A
+Last Modified: N/A
+---
+
+**Purpose & Approach**
+
+  
+
+This **questionnaire** is designed to help an organization systematically identify and evaluate potential roles or processes as candidates for an AI pilot. By answering these questions, business and IT stakeholders can pinpoint **which role or workflow is the best fit for a 90-day AI automation pilot**, considering factors like pain points, data availability, and impact. The questionnaire draws on insights from the ESI case study’s pain points and workflow challenges, ensuring we focus on areas with significant manual effort and clear automation potential. Each question is crafted to surface critical information about the task’s nature (repetitiveness, data-driven, etc.), the opportunity for AI, and readiness for implementation. A scoring methodology follows to rank the opportunities quantitatively.
+
+  
+
+**Questionnaire**
+
+  
+
+**1. What is the name of the role or process you are evaluating for AI automation?**
+
+_(e.g. “Customer Support Agent – handling FAQ inquiries”, “Sales Operations – RFP response process”, “Finance – monthly reporting compilation”)_
+
+  
+
+**2. What are the primary pain points or challenges in this role’s workflow?**
+
+_(Describe difficulties or inefficiencies: Is it time-consuming data entry? Long manual analysis? Repetitive copy-paste tasks? Frequent errors?)_
+
+  
+
+**3. How repetitive and manual are the tasks in this role?**
+
+_(On a scale of 1-5, 5 being highly repetitive and rule-based. Alternatively, describe the repetitiveness. AI excels at automating routine, repetitive work_ _.)_
+
+  
+
+**4. How data-driven is this role’s work?**
+
+_(Does the role heavily involve processing data or information? Yes/No and details. Tasks relying on processing lots of data or text are good AI candidates_ _.)_
+
+  
+
+**5. Does the role involve predictive or decision-making tasks based on patterns?**
+
+_(Yes/No. If yes, describe. E.g. forecasting sales, identifying trends. AI can add value if predictive analytics are needed_ _.)_
+
+  
+
+**6. Is there a need for generating content or answers in this role?**
+
+_(Yes/No. For example, drafting responses, creating reports, answering questions – indicating a fit for generative AI_ _.)_
+
+  
+
+**7. What is the volume of work?**
+
+_(e.g. “Each support agent handles 50 tickets/day”, “Team processes 200 invoices/month”. A higher volume of tasks may yield greater benefits from automation.)_
+
+  
+
+**8. Time spent: Approximately how many hours per week does the person/people in this role spend on the tasks that could be AI-assisted?**
+
+_(This helps quantify potential efficiency gains – e.g. if 20 hours/week are spent on a task, automating it has big upside.)_
+
+  
+
+**9. How complex are the decisions in this role?**
+
+_(Mostly simple and rules-based / requires moderate judgment / highly complex with nuanced judgment. AI performs well with well-defined or moderately complex decisions, but tasks needing very nuanced human judgment might be less suitable.)_
+
+  
+
+**10. What is the error risk or impact of these tasks?**
+
+_(Are manual errors common and what is their consequence? E.g. data entry mistakes causing reporting errors. If AI can reduce errors, that adds value. Also, low-risk tasks are easier to pilot – e.g. automating an internal report (low risk) vs. making medical decisions (high risk).)_
+
+  
+
+**11. Data availability: What data or knowledge does the role rely on?**
+
+_(Check all that apply: Structured data (spreadsheets, databases), Unstructured text (documents, emails), Historical records, Real-time inputs, etc. AI needs data to learn from; well-documented processes with data are better candidates.)_
+
+  
+
+**12. Data quality & access: Is the necessary data readily available and clean for AI use?**
+
+_(Yes/No. If no, what’s missing? e.g. “Answers are in employees’ heads, not documented” – that’s a challenge. High-quality, accessible data (or documents) make automation more feasible_ _.)_
+
+  
+
+**13. Existing solutions: Are there currently any automation or software tools in place for this role’s tasks?**
+
+_(Yes – list them (e.g. macros, RPA bots, chatbot etc.) / No. This gauges if AI would augment something existing or if it’s a greenfield. If something exists, how well is it working?)_
+
+  
+
+**14. How open is the team in this area to adopting new technology like AI?**
+
+_(Enthusiastic / Neutral / Resistant. Adoption will be smoother if the people involved are open to trying AI. If resistance is high, that’s a friction point to plan for (e.g. need training or change management).)_
+
+  
+
+**15. Skills readiness: Do you have or can you arrange subject matter experts to train or guide an AI solution?**
+
+_(Yes/No. For example, for an AI pilot, having an expert to validate outputs or provide training data is important. If the role’s experts are too busy or unavailable, pilot could struggle. Consider if you can get buy-in from those who know the task well to support the AI project.)_
+
+  
+
+**16. What would be the tangible benefit if this task is automated or AI-assisted?**
+
+_(Examples: “Save ~10 hours/week of sales reps’ time”, “Faster response to customers (from 24h to 1h) leading to better satisfaction”, “Improved consistency of outputs/reduced errors”, “Cost savings of $X per month in labor”). Try to quantify in time, cost, or quality terms.)_
+
+  
+
+**17. What are the success criteria for the AI pilot in this role?**
+
+_(How would you measure success after 90 days? E.g. “The AI handles 50% of tickets with >85% accuracy”, “Report generation time cut from 3 days to 3 hours”, “Proposal first drafts are 80% complete via AI”). Defining this helps in evaluating pilot results.)_
+
+  
+
+**18. Potential risks or concerns with automating this role’s tasks?**
+
+_(List any: e.g. “Risk of AI giving incorrect info to client”, “Compliance or data security concerns with AI handling this data”, “Employee job displacement fears”. This ensures we pick pilots where risk is manageable and we can plan mitigations.)_
+
+  
+
+**19. Necessary approvals or data access for this pilot?**
+
+_(Would an AI in this role need access to sensitive data? Do we need client consent, IT security approval, etc., to implement? A role that requires fewer hurdles might be easier to start with.)_
+
+  
+
+**20. Considering all factors above, how suitable does this role/process appear for an AI pilot?**
+
+_(Rate 1-5, or summarize pros/cons. This is a gut-check after going through the questions – does it feel like a strong candidate or are there red flags?)_
+
+  
+
+**Scoring Methodology**
+
+  
+
+After gathering answers, apply a **scoring system** to objectively compare candidates. Each role/process evaluated gets scored on two major dimensions: **Value Potential** and **Ease of Implementation** (mirroring “Efficiency/Performance lift” vs “Ability to automate” criteria ). We break it down into criteria as follows:
+
+  
+
+**Value Potential (0–5 points each, higher = more value if automated):**
+
+• **Time Savings:** How many hours (or dollars) could be saved? (0 = minimal, 5 = enormous savings, e.g. >20% of an FTE’s time).
+
+• **Quality/Performance Impact:** Will AI greatly improve output quality or consistency, or speed? (0 = negligible, 5 = major improvement or strategic impact). Consider the pain points: a high score if current pain is severe and AI can alleviate it (like long delays or high error rates).
+
+• **Strategic Alignment/ROI:** How does this pilot align with business goals? (0 = nice-to-have, 5 = directly tied to revenue, customer satisfaction, or a key strategic initiative). Also incorporate if success would pave way for broader AI adoption (since that has multiplier value).
+
+  
+
+**Ease of Implementation (0–5 points each, higher = easier):**
+
+• **Data Readiness:** Is the required data available, clean, and sufficient? (0 = data nonexistent or very dirty, 5 = abundant well-structured data or knowledge base). From Q11–12.
+
+• **Technical Feasibility:** Based on task complexity and current AI capability, how technically straightforward? (0 = needs cutting-edge AI or complex integration, 5 = can be done with out-of-box AI tools and minimal integration). For example, a repetitive text task with existing API solution is a 5, whereas something requiring complex vision + reasoning might be lower.
+
+• **Adoption Risk:** How likely will users accept and use the AI? (5 = team is eager and low risk of pushback, 0 = high resistance or sensitive task where mistakes aren’t tolerated). Incorporate Q14 (openness) and Q18 (risks). Also consider regulatory/approval barriers: if none, score higher.
+
+  
+
+Each role can thus get a **Value score (sum of those subcriteria)** and an **Ease score**. For instance, Role A might score Value = 12/15 and Ease = 10/15. We can plot these on a simple chart or just compare numerically. **Higher combined score = better pilot candidate.** Often we might prioritize high value over ease or vice versa, but ideally a pilot has **both high ease and high value** (those are the “quick wins”).
+
+  
+
+To illustrate scoring:
+
+• _Example:_ In the ESI case study, suppose “Order Processing Data Entry” was identified as a pain point (very repetitive, lots of manual entry). It might score Value: 4 (lots of time saved) + 3 (some quality improvement) + 3 (important but not customer-facing) = 10. Ease: 5 (data is digital and structured) + 5 (RPA/AI can do this easily) + 4 (users likely okay with it) = 14. Total 24 – strong candidate.
+
+• Meanwhile, “Pricing Strategy Optimization with AI” might have Value 5 (huge potential ROI) + 5 (big strategic deal) + 5 (high impact) = 15, but Ease maybe 1 (data scattered) + 2 (complex AI needed) + 2 (lots of skepticism) = 5, total 20 – potentially high reward but riskier. For a **90-day pilot**, we’d favor the first one (easier win), whereas the second might be a phase 2 project once we have momentum.
+
+  
+
+**Ranking:** After scoring all options, rank them by a combination of Value and Ease. One approach is to look at **Value vs Ease quadrant** – ideal pilots are high ease, high value (top-right). High value but low ease might be kept for later (ensure quick success first). Low value but high ease might not be worth doing at all (why spend effort for little return?). This ensures ROI on the pilot is maximized, which is crucial because early AI projects need to demonstrate success to overcome skepticism .
+
+  
+
+If multiple roles score similarly, consider additional tie-breakers:
+
+• **Time to Implement:** Even among “easy” ones, some might literally be deployable in 4 weeks vs others 8+ weeks. The 30-90 rule suggests activate quickly and test within 90 days , so shorter projects have an edge.
+
+• **Visibility:** A pilot that, if successful, will be very visible to leadership or a broad user base could be chosen to build organizational support for AI. E.g. an AI that directly helps executives (like the meeting summary assistant) might get brownie points even if its raw ROI score is similar to another less visible one.
+
+• **Foundation for Future:** Does this pilot build a foundation (data, infrastructure) that makes subsequent AI projects easier? If yes, that’s a plus. For instance, standing up a company Q&A bot might also create a centralized knowledge base that other AI apps can use.
+
+  
+
+By using this structured questionnaire and scoring, companies can move past the hype and **identify the AI pilot with the best chance of delivering value quickly**, just as ESI did by focusing on clear pain points and achievable automation targets. The goal is to start with a win – something that **in 90 days can show measurable improvement**, creating momentum for further AI initiatives.

@@ -30,4 +30,9 @@ export default defineConfig({
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
+  server: {
+    port: process.env.PORT ? parseInt(process.env.PORT) : 5000,
+    host: process.env.HOST || '127.0.0.1',
+    strictPort: false, // Allow port fallback if the specified port is in use
+  },
 });

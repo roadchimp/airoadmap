@@ -1,6 +1,21 @@
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { WizardStepData, JobRole, Department } from '@shared/schema';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file in local development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
+
+// Check for required environment variables
+const requiredEnvVars = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+  console.warn(`Warning: Missing environment variables: ${missingEnvVars.join(', ')}`);
+  console.warn('AI features will be disabled. Please set these variables in your .env file or Replit Secrets.');
+}
 
 // Initialize API clients
 // the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
@@ -8,9 +23,10 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client if API key is available
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 /**
  * Generate an enhanced executive summary with Anthropic Claude
@@ -257,4 +273,22 @@ function fallbackPerformanceImpact(role: JobRole): any {
     metrics,
     estimatedAnnualRoi: estimatedRoi
   };
+}
+
+export async function generateAIResponse(prompt: string): Promise<string> {
+  if (!openai) {
+    return 'AI features are currently disabled. Please configure the required API keys.';
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'gpt-3.5-turbo',
+    });
+
+    return completion.choices[0]?.message?.content || 'No response generated';
+  } catch (error) {
+    console.error('Error generating AI response:', error);
+    return 'Error generating AI response. Please try again later.';
+  }
 }

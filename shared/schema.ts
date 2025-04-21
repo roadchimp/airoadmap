@@ -144,37 +144,44 @@ export const wizardStepDataSchema = z.object({
       responsibilities: z.array(z.string()).optional(),
     })),
     prioritizedRoles: z.array(z.number()).optional(),
+    customDepartment: z.string().optional(),
   }).optional(),
   
   painPoints: z.object({
-    roleSpecificPainPoints: z.record(z.number(), z.array(z.object({
-      description: z.string(),
-      severity: z.number(),
-      frequency: z.number(),
-      impact: z.number(),
-    }))),
-    generalPainPoints: z.array(z.object({
-      description: z.string(),
-      severity: z.number(),
-      impact: z.number(),
-    })).optional(),
+    roleSpecificPainPoints: z.record(z.string(), z.object({
+      description: z.string().optional(),
+      severity: z.number().optional(),
+      frequency: z.number().optional(),
+      impact: z.number().optional(),
+    })),
+    generalPainPoints: z.string().optional(),
+  }).optional(),
+  
+  workVolume: z.object({
+    roleWorkVolume: z.record(z.string(), z.object({
+      volume: z.string().optional(),
+      timeSpent: z.string().optional(),
+      complexity: z.string().optional(),
+      errorRisk: z.string().optional(),
+    })),
   }).optional(),
   
   techStack: z.object({
-    currentSystems: z.array(z.object({
-      name: z.string(),
-      category: z.string(),
-      description: z.string().optional(),
-      satisfaction: z.number().optional(),
+    currentSystems: z.string().optional(),
+    dataAvailability: z.array(z.string()).optional(), 
+    existingAutomation: z.string().optional(),
+    dataQuality: z.number().optional(),
+  }).optional(),
+  
+  adoption: z.object({
+    roleAdoption: z.record(z.string(), z.object({
+      openness: z.string().optional(),
+      skillsReadiness: z.string().optional(),
+      benefits: z.string().optional(),
+      successCriteria: z.string().optional(),
+      risks: z.string().optional(),
+      suitability: z.number().optional(),
     })),
-    dataAvailability: z.object({
-      structuredData: z.boolean().optional(),
-      unstructuredText: z.boolean().optional(),
-      historicalRecords: z.boolean().optional(),
-      realTimeInputs: z.boolean().optional(),
-      apiAccess: z.boolean().optional(),
-    }).optional(),
-    existingAutomation: z.array(z.string()).optional(),
   }).optional(),
 });
 

@@ -14,31 +14,41 @@ interface WizardStep {
   description: string;
 }
 
-// Define steps for the wizard
+// Define steps for the wizard based on AI Pilot Discovery Questionnaire
 const wizardSteps: WizardStep[] = [
   {
     id: "basics",
-    title: "Basics",
-    description: "Tell us about your organization and its goals."
+    title: "Organization Info",
+    description: "Tell us about your organization and its goals for AI transformation."
   },
   {
     id: "roles",
-    title: "Roles",
+    title: "Role Selection",
     description: "Select and evaluate key roles in your organization that might benefit from AI transformation."
   },
   {
     id: "painPoints",
-    title: "Pain Points",
+    title: "Pain Points & Challenges",
     description: "Identify the main challenges and pain points for the selected roles."
   },
   {
+    id: "workVolume",
+    title: "Work Volume & Complexity",
+    description: "Assess the volume, time spent, and complexity of work in the selected roles."
+  },
+  {
     id: "techStack",
-    title: "Tech Stack",
-    description: "Tell us about your current technology ecosystem and data availability."
+    title: "Data & Systems",
+    description: "Tell us about your current technology, data availability, and quality."
+  },
+  {
+    id: "adoption",
+    title: "Readiness & Expectations",
+    description: "Evaluate team readiness, potential benefits, and success criteria."
   },
   {
     id: "review",
-    title: "Review",
+    title: "Review & Submit",
     description: "Review your assessment before generating your AI transformation roadmap."
   }
 ];
@@ -266,8 +276,12 @@ const NewAssessment: React.FC = () => {
         return renderRolesStep(stepData.roles || {});
       case "painPoints":
         return renderPainPointsStep(stepData.painPoints || {});
+      case "workVolume":
+        return renderWorkVolumeStep(stepData.workVolume || {});
       case "techStack":
         return renderTechStackStep(stepData.techStack || {});
+      case "adoption":
+        return renderAdoptionStep(stepData.adoption || {});
       case "review":
         return renderReviewStep();
       default:
@@ -564,6 +578,119 @@ const NewAssessment: React.FC = () => {
     );
   };
   
+  // Render Work Volume step - based on AI Pilot Discovery Questionnaire
+  const renderWorkVolumeStep = (workVolumeData: any) => {
+    // Get selected roles from previous step
+    const selectedRoles = assessment.stepData.roles?.selectedRoles || [];
+    const roleWorkVolume = workVolumeData.roleWorkVolume || {};
+    
+    return (
+      <>
+        {selectedRoles.map((roleId: number) => {
+          const role = jobRoles?.find((r: JobRole) => r.id === roleId);
+          if (!role) return null;
+          
+          // Current work volume data for this role
+          const currentWorkVolume = roleWorkVolume[roleId] || {};
+          
+          return (
+            <div key={roleId} className="mb-8 pb-8 border-b border-neutral-200 last:border-0">
+              <h3 className="text-lg font-medium mb-4">{role.title}</h3>
+              
+              <QuestionCard
+                questionId={`workVolume_${roleId}_volume`}
+                questionText="What is the volume of work for this role?"
+                guidanceText="Example: 'Each support agent handles 50 tickets/day', '200 invoices processed per month'. Higher volumes may yield greater benefits from automation."
+                inputType="textarea"
+                value={currentWorkVolume.volume || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleWorkVolume,
+                    [roleId]: {
+                      ...currentWorkVolume,
+                      volume: value
+                    }
+                  };
+                  handleInputChange("roleWorkVolume", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`workVolume_${roleId}_timeSpent`}
+                questionText="How many hours per week does this role spend on tasks that could be AI-assisted?"
+                guidanceText="This helps quantify potential efficiency gains. For example, if 20 hours/week are spent on a task, automating it has significant upside."
+                inputType="singleChoice"
+                options={[
+                  { id: "minimal", label: "Less than 5 hours", value: "minimal" },
+                  { id: "low", label: "5-10 hours", value: "low" },
+                  { id: "medium", label: "10-20 hours", value: "medium" },
+                  { id: "high", label: "20-30 hours", value: "high" },
+                  { id: "very_high", label: "More than 30 hours", value: "very_high" }
+                ]}
+                value={currentWorkVolume.timeSpent || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleWorkVolume,
+                    [roleId]: {
+                      ...currentWorkVolume,
+                      timeSpent: value
+                    }
+                  };
+                  handleInputChange("roleWorkVolume", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`workVolume_${roleId}_complexity`}
+                questionText="How complex are the decisions in this role?"
+                guidanceText="AI performs well with well-defined or moderately complex decisions, but tasks needing very nuanced human judgment might be less suitable."
+                inputType="singleChoice"
+                options={[
+                  { id: "simple", label: "Mostly simple and rules-based", value: "simple" },
+                  { id: "moderate", label: "Requires moderate judgment", value: "moderate" },
+                  { id: "complex", label: "Highly complex with nuanced judgment", value: "complex" }
+                ]}
+                value={currentWorkVolume.complexity || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleWorkVolume,
+                    [roleId]: {
+                      ...currentWorkVolume,
+                      complexity: value
+                    }
+                  };
+                  handleInputChange("roleWorkVolume", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`workVolume_${roleId}_errorRisk`}
+                questionText="What is the error risk or impact for this role's tasks?"
+                guidanceText="Are manual errors common and what are their consequences? If AI can reduce errors, that adds value. Low-risk tasks are easier to pilot."
+                inputType="textarea"
+                value={currentWorkVolume.errorRisk || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleWorkVolume,
+                    [roleId]: {
+                      ...currentWorkVolume,
+                      errorRisk: value
+                    }
+                  };
+                  handleInputChange("roleWorkVolume", updated);
+                }}
+                isRequired={true}
+              />
+            </div>
+          );
+        })}
+      </>
+    );
+  };
+
   // Render Tech Stack step
   const renderTechStackStep = (techStackData: any) => {
     const currentSystems = techStackData.currentSystems || [];
@@ -620,6 +747,155 @@ const NewAssessment: React.FC = () => {
     );
   };
   
+  // Render Adoption & Readiness step
+  const renderAdoptionStep = (adoptionData: any) => {
+    // Get selected roles from previous step
+    const selectedRoles = assessment.stepData.roles?.selectedRoles || [];
+    const roleAdoption = adoptionData.roleAdoption || {};
+    
+    return (
+      <>
+        {selectedRoles.map((roleId: number) => {
+          const role = jobRoles?.find((r: JobRole) => r.id === roleId);
+          if (!role) return null;
+          
+          // Current adoption data for this role
+          const currentAdoption = roleAdoption[roleId] || {};
+          
+          return (
+            <div key={roleId} className="mb-8 pb-8 border-b border-neutral-200 last:border-0">
+              <h3 className="text-lg font-medium mb-4">{role.title}</h3>
+              
+              <QuestionCard
+                questionId={`adoption_${roleId}_openness`}
+                questionText="How open is the team in this area to adopting new technology like AI?"
+                guidanceText="Adoption will be smoother if the people involved are open to trying AI. If resistance is high, more change management may be needed."
+                inputType="singleChoice"
+                options={[
+                  { id: "enthusiastic", label: "Enthusiastic", value: "enthusiastic" },
+                  { id: "neutral", label: "Neutral", value: "neutral" },
+                  { id: "resistant", label: "Resistant", value: "resistant" }
+                ]}
+                value={currentAdoption.openness || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleAdoption,
+                    [roleId]: {
+                      ...currentAdoption,
+                      openness: value
+                    }
+                  };
+                  handleInputChange("roleAdoption", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`adoption_${roleId}_skillsReadiness`}
+                questionText="Do you have or can you arrange subject matter experts to train or guide an AI solution?"
+                guidanceText="Having experts available to validate outputs or provide training data is important for a successful AI pilot."
+                inputType="singleChoice"
+                options={[
+                  { id: "yes", label: "Yes, we have experts available", value: "yes" },
+                  { id: "maybe", label: "Possibly, with some arrangement", value: "maybe" },
+                  { id: "no", label: "No, experts are unavailable or too busy", value: "no" }
+                ]}
+                value={currentAdoption.skillsReadiness || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleAdoption,
+                    [roleId]: {
+                      ...currentAdoption,
+                      skillsReadiness: value
+                    }
+                  };
+                  handleInputChange("roleAdoption", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`adoption_${roleId}_benefits`}
+                questionText="What would be the tangible benefit if tasks in this role are automated or AI-assisted?"
+                guidanceText="Examples: 'Save ~10 hours/week of sales reps' time', 'Faster response to customers', 'Improved consistency', 'Cost savings of $X per month'. Try to quantify in time, cost, or quality terms."
+                inputType="textarea"
+                value={currentAdoption.benefits || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleAdoption,
+                    [roleId]: {
+                      ...currentAdoption,
+                      benefits: value
+                    }
+                  };
+                  handleInputChange("roleAdoption", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`adoption_${roleId}_successCriteria`}
+                questionText="What are the success criteria for an AI pilot in this role?"
+                guidanceText="How would you measure success after 90 days? E.g. 'The AI handles 50% of tickets with >85% accuracy', 'Report generation time cut from 3 days to 3 hours'."
+                inputType="textarea"
+                value={currentAdoption.successCriteria || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleAdoption,
+                    [roleId]: {
+                      ...currentAdoption,
+                      successCriteria: value
+                    }
+                  };
+                  handleInputChange("roleAdoption", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`adoption_${roleId}_risks`}
+                questionText="What are the potential risks or concerns with automating this role's tasks?"
+                guidanceText="E.g. 'Risk of AI giving incorrect info to client', 'Compliance concerns', 'Employee job displacement fears'. This ensures risks are manageable."
+                inputType="textarea"
+                value={currentAdoption.risks || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleAdoption,
+                    [roleId]: {
+                      ...currentAdoption,
+                      risks: value
+                    }
+                  };
+                  handleInputChange("roleAdoption", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`adoption_${roleId}_suitability`}
+                questionText="Considering all factors, how suitable does this role appear for an AI pilot?"
+                guidanceText="This is a gut-check after answering the questions – does it feel like a strong candidate or are there red flags?"
+                inputType="rating"
+                value={currentAdoption.suitability || 3}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleAdoption,
+                    [roleId]: {
+                      ...currentAdoption,
+                      suitability: value
+                    }
+                  };
+                  handleInputChange("roleAdoption", updated);
+                }}
+                isRequired={true}
+              />
+            </div>
+          );
+        })}
+      </>
+    );
+  };
+  
   // Render Review step
   const renderReviewStep = () => {
     const stepData = assessment.stepData;
@@ -640,6 +916,10 @@ const NewAssessment: React.FC = () => {
             <div>
               <p className="font-medium">Size:</p>
               <p>{stepData.basics?.size || "Not provided"}</p>
+            </div>
+            <div>
+              <p className="font-medium">Goals:</p>
+              <p className="line-clamp-2">{stepData.basics?.goals || "Not provided"}</p>
             </div>
           </div>
         </div>
@@ -681,10 +961,74 @@ const NewAssessment: React.FC = () => {
         </div>
         
         <div className="bg-neutral-50 p-4 rounded-md border border-neutral-200">
+          <h3 className="text-lg font-medium mb-2">Work Volume & Complexity</h3>
+          {Object.entries(stepData.workVolume?.roleWorkVolume || {}).map(([roleId, workVolume]: [string, any]) => {
+            const role = jobRoles?.find((r: JobRole) => r.id === parseInt(roleId));
+            if (!role) return null;
+            
+            return (
+              <div key={roleId} className="mb-2">
+                <p className="font-medium">{role.title}</p>
+                <div className="grid grid-cols-2 gap-2 mt-1 text-sm">
+                  <div>
+                    <p className="font-medium text-xs">Volume:</p>
+                    <p className="text-xs">{workVolume.volume || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-xs">Time Spent:</p>
+                    <p className="text-xs">{workVolume.timeSpent || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-xs">Complexity:</p>
+                    <p className="text-xs">{workVolume.complexity || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-xs">Error Risk:</p>
+                    <p className="text-xs line-clamp-1">{workVolume.errorRisk || "Not specified"}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div className="bg-neutral-50 p-4 rounded-md border border-neutral-200">
           <h3 className="text-lg font-medium mb-2">Tech Stack</h3>
           <p className="mb-2"><span className="font-medium">Current Systems:</span> {stepData.techStack?.currentSystems || "None specified"}</p>
           <p className="mb-2"><span className="font-medium">Data Types:</span> {(stepData.techStack?.dataAvailability || []).join(", ") || "None specified"}</p>
           <p><span className="font-medium">Data Quality Rating:</span> {stepData.techStack?.dataQuality || "Not rated"}/5</p>
+        </div>
+        
+        <div className="bg-neutral-50 p-4 rounded-md border border-neutral-200">
+          <h3 className="text-lg font-medium mb-2">Readiness & Expectations</h3>
+          {Object.entries(stepData.adoption?.roleAdoption || {}).map(([roleId, adoption]: [string, any]) => {
+            const role = jobRoles?.find((r: JobRole) => r.id === parseInt(roleId));
+            if (!role) return null;
+            
+            return (
+              <div key={roleId} className="mb-2">
+                <p className="font-medium">{role.title}</p>
+                <div className="grid grid-cols-2 gap-2 mt-1 text-sm">
+                  <div>
+                    <p className="font-medium text-xs">Team Openness:</p>
+                    <p className="text-xs">{adoption.openness || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-xs">Expert Availability:</p>
+                    <p className="text-xs">{adoption.skillsReadiness || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-xs">Expected Benefits:</p>
+                    <p className="text-xs line-clamp-1">{adoption.benefits || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-xs">Overall Suitability:</p>
+                    <p className="text-xs">{adoption.suitability ? `${adoption.suitability}/5` : "Not rated"}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
         
         <div className="bg-primary-50 p-4 rounded-md border border-primary-100">

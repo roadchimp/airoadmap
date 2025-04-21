@@ -169,12 +169,12 @@ const Dashboard: React.FC = () => {
         <p className="text-primary-700 mb-4">
           Follow these steps to create your first AI transformation roadmap:
         </p>
-        <ol className="space-y-2 text-sm text-primary-700 list-decimal list-inside">
-          <li>Start a new assessment using the wizard</li>
-          <li>Input information about key roles and pain points</li>
-          <li>Review and confirm your assessment</li>
-          <li>Generate a prioritization report</li>
-          <li>Share and implement the roadmap with your team</li>
+        <ol className="list-decimal list-inside space-y-2 text-primary-700">
+          <li>Click "New Assessment" to start a new evaluation</li>
+          <li>Answer questions about your organization's current state</li>
+          <li>Identify key pain points and opportunities</li>
+          <li>Review the AI-generated recommendations</li>
+          <li>Get a prioritized roadmap for implementation</li>
         </ol>
       </div>
     </div>

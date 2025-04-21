@@ -53,7 +53,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   min = 1,
   max = 5,
   labels = []
-}) => {
+}: QuestionCardProps) => {
   const steps = Array.from({ length: max - min + 1 }, (_, i) => i + min);
   
   const renderRatingInput = () => {

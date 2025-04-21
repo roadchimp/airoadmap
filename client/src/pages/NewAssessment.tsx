@@ -496,96 +496,89 @@ const NewAssessment: React.FC = () => {
     const selectedRoles = assessment.stepData.roles?.selectedRoles || [];
     const roleSpecificPainPoints = painPointsData.roleSpecificPainPoints || {};
     
+    // For each selected role, render a pain point section
     return (
       <>
-        <div className="space-y-8">
-          <div className="p-4 bg-neutral-50 rounded-lg">
-            <h3 className="font-medium mb-2">Rating Scale Guide</h3>
-            <p className="text-sm text-neutral-600 mb-4">Use this 7-point scale to rate the efficiency of processes:</p>
-            <ul className="text-sm text-neutral-600 space-y-2">
-              <li><span className="font-medium">1 - Highly Efficient:</span> Process runs smoothly with minimal waste</li>
-              <li><span className="font-medium">2 - Very Efficient:</span> Minor improvements possible</li>
-              <li><span className="font-medium">3 - Moderately Efficient:</span> Some room for optimization</li>
-              <li><span className="font-medium">4 - Neutral:</span> Average efficiency</li>
-              <li><span className="font-medium">5 - Somewhat Inefficient:</span> Notable inefficiencies present</li>
-              <li><span className="font-medium">6 - Very Inefficient:</span> Major improvements needed</li>
-              <li><span className="font-medium">7 - Highly Inefficient:</span> Significant process issues</li>
-            </ul>
-          </div>
-
-          {selectedRoles.map((roleId: number) => {
-            const role = jobRoles?.find((r: JobRole) => r.id === roleId);
-            if (!role) return null;
-            
-            // Current pain points for this role
-            const currentPainPoints = roleSpecificPainPoints[roleId] || [];
-            
-            return (
-              <div key={roleId} className="mb-8 pb-8 border-b border-neutral-200 last:border-0">
-                <h3 className="text-lg font-medium mb-4">{role.title}</h3>
-                
-                <QuestionCard
-                  questionId={`painPoint_${roleId}_severity`}
-                  questionText="How would you rate the current efficiency of this role's processes?"
-                  guidanceText="Consider factors like time spent on manual tasks, error rates, and process bottlenecks."
-                  inputType="rating"
-                  value={currentPainPoints.severity || 4}
-                  onChange={(value) => {
-                    const updated = {
-                      ...roleSpecificPainPoints,
-                      [roleId]: {
-                        ...currentPainPoints,
-                        severity: value
-                      }
-                    };
-                    handleInputChange("roleSpecificPainPoints", updated);
-                  }}
-                  isRequired={true}
-                  min={1}
-                  max={7}
-                  labels={[
-                    "Highly\nEfficient",
-                    "Very\nEfficient",
-                    "Moderately\nEfficient",
-                    "Neutral",
-                    "Somewhat\nInefficient",
-                    "Very\nInefficient",
-                    "Highly\nInefficient"
-                  ]}
-                />
-                
-                <QuestionCard
-                  questionId={`painPoint_${roleId}_description`}
-                  questionText="What specific processes or tasks could be improved?"
-                  guidanceText="Describe areas where efficiency could be enhanced through automation or AI assistance."
-                  inputType="textarea"
-                  value={currentPainPoints.description || ""}
-                  onChange={(value) => {
-                    const updated = {
-                      ...roleSpecificPainPoints,
-                      [roleId]: {
-                        ...currentPainPoints,
-                        description: value
-                      }
-                    };
-                    handleInputChange("roleSpecificPainPoints", updated);
-                  }}
-                  isRequired={true}
-                />
-              </div>
-            );
-          })}
-
-          <QuestionCard
-            questionId="generalPainPoints"
-            questionText="Are there any organization-wide processes that could be improved?"
-            guidanceText="Describe any inefficiencies or challenges that affect multiple roles or departments."
-            inputType="textarea"
-            value={painPointsData.generalPainPoints || ""}
-            onChange={(value) => handleInputChange("generalPainPoints", value)}
-            isRequired={false}
-          />
-        </div>
+        {selectedRoles.map((roleId: number) => {
+          const role = jobRoles?.find((r: JobRole) => r.id === roleId);
+          if (!role) return null;
+          
+          // Current pain points for this role
+          const currentPainPoints = roleSpecificPainPoints[roleId] || [];
+          
+          return (
+            <div key={roleId} className="mb-8 pb-8 border-b border-neutral-200 last:border-0">
+              <h3 className="text-lg font-medium mb-4">{role.title}</h3>
+              
+              <QuestionCard
+                questionId={`painPoint_${roleId}_severity`}
+                questionText="How severe are the pain points for this role?"
+                guidanceText="On a scale of 1-5, where 5 is extremely severe."
+                inputType="rating"
+                value={currentPainPoints.severity || 3}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleSpecificPainPoints,
+                    [roleId]: {
+                      ...currentPainPoints,
+                      severity: value
+                    }
+                  };
+                  handleInputChange("roleSpecificPainPoints", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`painPoint_${roleId}_frequency`}
+                questionText="How frequently do these pain points occur?"
+                guidanceText="On a scale of 1-5, where 5 is constantly."
+                inputType="rating"
+                value={currentPainPoints.frequency || 3}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleSpecificPainPoints,
+                    [roleId]: {
+                      ...currentPainPoints,
+                      frequency: value
+                    }
+                  };
+                  handleInputChange("roleSpecificPainPoints", updated);
+                }}
+                isRequired={true}
+              />
+              
+              <QuestionCard
+                questionId={`painPoint_${roleId}_description`}
+                questionText="Describe the specific pain points for this role"
+                guidanceText="What inefficiencies or challenges does this role face that AI could potentially address?"
+                inputType="textarea"
+                value={currentPainPoints.description || ""}
+                onChange={(value) => {
+                  const updated = {
+                    ...roleSpecificPainPoints,
+                    [roleId]: {
+                      ...currentPainPoints,
+                      description: value
+                    }
+                  };
+                  handleInputChange("roleSpecificPainPoints", updated);
+                }}
+                isRequired={true}
+              />
+            </div>
+          );
+        })}
+        
+        <QuestionCard
+          questionId="generalPainPoints"
+          questionText="Are there any organization-wide pain points to consider?"
+          guidanceText="Describe any challenges that affect multiple roles or departments."
+          inputType="textarea"
+          value={painPointsData.generalPainPoints || ""}
+          onChange={(value) => handleInputChange("generalPainPoints", value)}
+          isRequired={false}
+        />
       </>
     );
   };

@@ -10,14 +10,15 @@ coverage/
 build/
 dist/
 out/
+server/public
 
-# Misc
-.DS_Store
+# Environment
+.env
 .env.local
+.env.*.local
 .env.development.local
 .env.test.local
 .env.production.local
-.env
 
 # Debug logs
 npm-debug.log*
@@ -31,4 +32,11 @@ yarn-error.log*
 *.swo
 
 # TypeScript
-*.tsbuildinfo 
+*.tsbuildinfo
+vite.config.ts.*
+
+# System
+.DS_Store
+
+# Archives
+*.tar.gz

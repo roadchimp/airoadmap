@@ -291,7 +291,16 @@ const NewAssessment: React.FC = () => {
         <QuestionCard
           questionId="industry"
           questionText="What industry is your organization in?"
-          inputType="text"
+          guidanceText="Select the industry that best matches your organization's primary business activities."
+          inputType="singleChoice"
+          options={[
+            { id: "software", label: "Software", value: "Software" },
+            { id: "manufacturing", label: "Manufacturing", value: "Manufacturing" },
+            { id: "financial", label: "Financial Services", value: "Financial Services" },
+            { id: "retail", label: "Retail", value: "Retail" },
+            { id: "generic", label: "Generic", value: "Generic" },
+            { id: "nonprofit", label: "Non-profit", value: "Non-profit" }
+          ]}
           value={basicsData.industry || ""}
           onChange={(value) => handleInputChange("industry", value)}
           isRequired={true}
@@ -325,8 +334,8 @@ const NewAssessment: React.FC = () => {
         
         <QuestionCard
           questionId="stakeholders"
-          questionText="Who are the key stakeholders for this initiative?"
-          guidanceText="Select all that apply."
+          questionText="Who are the key stakeholders interested in the outcome of this AI initiative?"
+          guidanceText="Select all departments that would be involved in approving or supporting this AI implementation. These are the people who have a vested interest in the success of your AI roadmap."
           inputType="multipleChoice"
           options={[
             { id: "executives", label: "Executive Leadership", value: "executives" },
@@ -338,7 +347,7 @@ const NewAssessment: React.FC = () => {
           ]}
           value={basicsData.stakeholders || []}
           onChange={(value) => handleInputChange("stakeholders", value)}
-          isRequired={false}
+          isRequired={true}
         />
       </>
     );
@@ -395,12 +404,44 @@ const NewAssessment: React.FC = () => {
         <QuestionCard
           questionId="selectedDepartments"
           questionText="Which department areas are you assessing?"
-          guidanceText="Select all relevant departments for this assessment."
+          guidanceText="Select all relevant departments for this assessment. You can add a custom department below if needed."
           inputType="multipleChoice"
-          options={departmentOptions}
+          options={[
+            ...(departmentOptions || []),
+            { id: "it", label: "IT", value: "IT" },
+            { id: "product", label: "Product Management", value: "Product Management" },
+            { id: "support", label: "Customer Support", value: "Customer Support" },
+            { id: "engineering", label: "Engineering", value: "Engineering" },
+            { id: "research", label: "Research & Development", value: "Research & Development" }
+          ]}
           value={rolesData.selectedDepartments || []}
           onChange={(value) => handleInputChange("selectedDepartments", value)}
           isRequired={true}
+        />
+        
+        <QuestionCard
+          questionId="customDepartment"
+          questionText="Add a custom department (optional)"
+          guidanceText="If you don't see your department listed above, you can add it here."
+          inputType="text"
+          value={rolesData.customDepartment || ""}
+          onChange={(value) => {
+            handleInputChange("customDepartment", value);
+            
+            // If a value is provided, add it to the selected departments
+            if (value && value.trim() !== "") {
+              const customDeptId = `custom_${value.replace(/\s+/g, '_').toLowerCase()}`;
+              
+              // Only add if not already in the selected departments
+              if (!rolesData.selectedDepartments?.includes(customDeptId)) {
+                handleInputChange("selectedDepartments", [
+                  ...(rolesData.selectedDepartments || []),
+                  customDeptId
+                ]);
+              }
+            }
+          }}
+          isRequired={false}
         />
         
         <QuestionCard

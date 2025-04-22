@@ -71,12 +71,16 @@ export default defineConfig({
   server: {
     port: process.env.PORT ? parseInt(process.env.PORT) : 5000,
     host: process.env.HOST || '127.0.0.1',
-    strictPort: false, // Allow port fallback if the specified port is in use
+    strictPort: false,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    port: process.env.PORT ? parseInt(process.env.PORT) : 5000,
+    host: process.env.HOST || '127.0.0.1',
   },
 });

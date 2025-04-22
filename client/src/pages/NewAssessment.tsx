@@ -14,43 +14,64 @@ interface WizardStep {
   description: string;
 }
 
-// Define steps for the wizard based on AI Pilot Discovery Questionnaire
-const wizardSteps: WizardStep[] = [
-  {
-    id: "basics",
-    title: "Organization Info",
-    description: "Tell us about your organization and its goals for AI transformation."
-  },
-  {
-    id: "roles",
-    title: "Role Selection",
-    description: "Select and evaluate key roles in your organization that might benefit from AI transformation."
-  },
-  {
-    id: "painPoints",
-    title: "Areas for Improvement",
-    description: "Let's identify areas where AI transformation could enhance efficiency and performance in your organization."
-  },
-  {
-    id: "workVolume",
-    title: "Work Volume & Complexity",
-    description: "Assess the volume, time spent, and complexity of work in the selected roles."
-  },
-  {
-    id: "techStack",
-    title: "Data & Systems",
-    description: "Tell us about your current technology, data availability, and quality."
-  },
-  {
-    id: "adoption",
-    title: "Readiness & Expectations",
-    description: "Evaluate team readiness, potential benefits, and success criteria."
-  },
-  {
-    id: "review",
-    title: "Review & Submit",
-    description: "Review your assessment before generating your AI transformation roadmap."
-  }
+interface AssessmentData {
+  id?: number;
+  title: string;
+  organizationId: number;
+  userId: number;
+  stepData: {
+    basics?: {
+      companyName?: string;
+      industry?: string;
+      size?: string;
+      goals?: string;
+      stakeholders?: string[];
+    };
+    roles?: {
+      selectedDepartments?: number[];
+      selectedRoles?: number[];
+      prioritizedRoles?: number[];
+    };
+    painPoints?: {
+      roleSpecificPainPoints?: Record<number, {
+        severity?: number;
+        frequency?: number;
+        description?: string;
+      }>;
+      generalPainPoints?: string;
+    };
+    workVolume?: {
+      roleWorkVolume?: Record<number, {
+        volume?: string;
+        timeSpent?: string;
+        complexity?: string;
+        errorRisk?: string;
+      }>;
+    };
+    techStack?: {
+      existingAutomation?: string;
+      dataQuality?: number;
+    };
+    adoption?: {
+      roleAdoption?: Record<number, {
+        openness?: string;
+        skillsReadiness?: string;
+        risks?: string;
+        suitability?: number;
+      }>;
+    };
+  };
+}
+
+// Define wizard steps at the top level
+const wizardSteps = [
+  { id: "basics", title: "Organization Info", description: "Basic organization information" },
+  { id: "roles", title: "Role Selection", description: "Select roles to evaluate" },
+  { id: "painPoints", title: "Areas for Improvement", description: "Identify pain points and challenges" },
+  { id: "workVolume", title: "Work Volume & Complexity", description: "Assess work patterns" },
+  { id: "techStack", title: "Data & Systems", description: "Evaluate technical readiness" },
+  { id: "adoption", title: "Readiness & Expectations", description: "Assess adoption readiness" },
+  { id: "review", title: "Review & Submit", description: "Review and generate report" }
 ];
 
 const NewAssessment: React.FC = () => {
@@ -62,17 +83,11 @@ const NewAssessment: React.FC = () => {
   const currentStepParam = params.step || "new";
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   
-  // Assessment state
-  const [assessment, setAssessment] = useState<{
-    id?: number;
-    title: string;
-    organizationId: number;
-    userId: number;
-    stepData: Partial<WizardStepData>;
-  }>({
+  // Assessment state with proper typing
+  const [assessment, setAssessment] = useState<AssessmentData>({
     title: "",
-    organizationId: 1, // Default for demo purposes
-    userId: 1, // Default for demo purposes
+    organizationId: 1,
+    userId: 1,
     stepData: {}
   });
   
@@ -158,7 +173,7 @@ const NewAssessment: React.FC = () => {
     }
   });
   
-  // Initialize assessment if starting a new one
+  // Update useEffect to handle step navigation
   useEffect(() => {
     if (currentStepParam === "new") {
       // Reset state and navigate to first step
@@ -177,6 +192,7 @@ const NewAssessment: React.FC = () => {
       } else {
         // Invalid step, navigate to first step
         navigate("/assessment/basics");
+        setCurrentStepIndex(0);
       }
     }
   }, [currentStepParam, navigate]);
@@ -217,26 +233,30 @@ const NewAssessment: React.FC = () => {
     }
   };
   
-  // Navigate to next step and save current step data
+  // Update handleNext to use wizardSteps
   const handleNext = async () => {
     // First, save the current step data
     await saveCurrentStep(assessment.stepData);
     
     // Then, navigate to the next step
     if (currentStepIndex < wizardSteps.length - 1) {
-      const nextStep = wizardSteps[currentStepIndex + 1].id;
+      const nextStepIndex = currentStepIndex + 1;
+      const nextStep = wizardSteps[nextStepIndex].id;
+      setCurrentStepIndex(nextStepIndex);
       navigate(`/assessment/${nextStep}`);
     }
   };
   
-  // Navigate to previous step or cancel
+  // Update handlePrevious to use wizardSteps
   const handlePrevious = () => {
     if (currentStepIndex > 0) {
-      const prevStep = wizardSteps[currentStepIndex - 1].id;
+      const prevStepIndex = currentStepIndex - 1;
+      const prevStep = wizardSteps[prevStepIndex].id;
+      setCurrentStepIndex(prevStepIndex);
       navigate(`/assessment/${prevStep}`);
     } else {
       // First step, cancel assessment and return to dashboard
-      navigate("/");
+      navigate("/dashboard");
     }
   };
   

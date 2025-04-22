@@ -1,181 +1,131 @@
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Assessment, Report } from "@shared/schema";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Dashboard: React.FC = () => {
-  const { data: assessments = [], isLoading } = useQuery<Assessment[]>({
-    queryKey: ["/api/assessments"],
-  });
-  
-  const { data: reports = [], isLoading: isLoadingReports } = useQuery<Report[]>({
-    queryKey: ["/api/reports"],
-  });
-
-  // Filter assessments by status
-  const inProgressAssessments = assessments.filter(a => a.status === "draft");
-  const completedAssessments = assessments.filter(a => a.status === "completed");
-  
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Welcome to AI Prioritize</h1>
-        <p className="text-neutral-600">
-          Develop an AI transformation roadmap for your organization by analyzing pain points and prioritizing opportunities.
-        </p>
-      </div>
+    <div className="container mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold text-foreground">Welcome to AI Prioritize</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* Getting Started Guide Card - Full Width */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Getting Started Guide</CardTitle>
+          <CardDescription>
+            Follow these steps to create your first AI transformation roadmap:
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-semibold">
+                1
+              </div>
+              <p className="text-lg">Click "New Assessment" to start a new evaluation</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-semibold">
+                2
+              </div>
+              <p className="text-lg">Answer questions about your organization's current state</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-semibold">
+                3
+              </div>
+              <p className="text-lg">Identify key pain points and opportunities</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-semibold">
+                4
+              </div>
+              <p className="text-lg">Review the AI-generated recommendations</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Three Cards in One Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Assessments Card */}
         <Card>
           <CardHeader>
             <CardTitle>Assessments</CardTitle>
-            <CardDescription>Create or continue an assessment</CardDescription>
+            <CardDescription>
+              Create or continue an assessment
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {isLoading ? "Loading..." : assessments.length}
-            </div>
-            <div className="space-y-1 mt-2">
-              <p className="text-sm text-neutral-500">
-                <span className="inline-block w-3 h-3 bg-amber-400 rounded-full mr-2"></span>
-                {inProgressAssessments.length} in progress
-              </p>
-              <p className="text-sm text-neutral-500">
-                <span className="inline-block w-3 h-3 bg-emerald-400 rounded-full mr-2"></span>
-                {completedAssessments.length} completed
-              </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-5xl font-bold">0</div>
+                <div className="flex flex-col text-sm text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-400"></span>
+                    0 in progress
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                    0 completed
+                  </span>
+                </div>
+              </div>
+              <Link to="/assessment/new">
+                <Button className="w-full bg-red-600 hover:bg-red-700">
+                  <span className="mr-2">+</span> New Assessment
+                </Button>
+              </Link>
             </div>
           </CardContent>
-          <CardFooter>
-            <Link href="/assessment/new">
-              <Button className="w-full">
-                <span className="material-icons text-sm mr-1">add</span>
-                New Assessment
-              </Button>
-            </Link>
-          </CardFooter>
         </Card>
-        
+
+        {/* Generated Reports Card */}
         <Card>
           <CardHeader>
             <CardTitle>Generated Reports</CardTitle>
-            <CardDescription>View your prioritization reports</CardDescription>
+            <CardDescription>
+              View your prioritization reports
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
-              {isLoadingReports ? "Loading..." : reports.length}
+            <div className="space-y-4">
+              <div>
+                <div className="text-5xl font-bold">0</div>
+                <div className="text-sm text-muted-foreground mt-2">
+                  Total reports
+                </div>
+              </div>
+              <Link to="/reports">
+                <Button variant="outline" className="w-full">
+                  <span className="mr-2">👁️</span> View Reports
+                </Button>
+              </Link>
             </div>
-            <p className="text-sm text-neutral-500 mt-1">Total reports</p>
           </CardContent>
-          <CardFooter>
-            <Link href="/reports">
-              <Button variant="outline" className="w-full">
-                <span className="material-icons text-sm mr-1">visibility</span>
-                View Reports
-              </Button>
-            </Link>
-          </CardFooter>
         </Card>
-        
+
+        {/* Libraries Card */}
         <Card>
           <CardHeader>
             <CardTitle>Libraries</CardTitle>
-            <CardDescription>Manage job roles and AI capabilities</CardDescription>
+            <CardDescription>
+              Manage job roles and AI capabilities
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-neutral-600">
-              Customize the role and AI capability libraries to better match your organization's needs.
-            </p>
+            <div className="space-y-4">
+              <p className="text-muted-foreground">
+                Customize the role and AI capability libraries to better match your organization's needs.
+              </p>
+              <Link to="/library">
+                <Button variant="outline" className="w-full">
+                  <span className="mr-2">📚</span> Browse Libraries
+                </Button>
+              </Link>
+            </div>
           </CardContent>
-          <CardFooter>
-            <Link href="/library">
-              <Button variant="outline" className="w-full">
-                <span className="material-icons text-sm mr-1">library_books</span>
-                Browse Libraries
-              </Button>
-            </Link>
-          </CardFooter>
         </Card>
-      </div>
-      
-      {/* In-progress Assessments */}
-      {inProgressAssessments.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">In-Progress Assessments</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {inProgressAssessments.map((assessment) => {
-              const lastStep = assessment.stepData ? 
-                Object.keys(assessment.stepData as Record<string, unknown>).pop() || "basics" : 
-                "basics";
-              
-              return (
-                <Card key={assessment.id} className="border-l-4 border-amber-400">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{assessment.title}</CardTitle>
-                    <CardDescription>
-                      Last modified {new Date(assessment.createdAt).toLocaleDateString()}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                    <div className="text-sm text-neutral-600">
-                      <span className="font-medium">Current step:</span> {" "}
-                      {lastStep.charAt(0).toUpperCase() + lastStep.slice(1)}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-2">
-                    <Link href={`/assessment/${lastStep}`}>
-                      <Button variant="secondary" size="sm">
-                        <span className="material-icons text-sm mr-1">play_arrow</span>
-                        Continue Assessment
-                      </Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      
-      {reports.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Recent Reports</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {reports.slice(0, 4).map((report: Report) => (
-              <Card key={report.id}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Assessment Report #{report.id}</CardTitle>
-                  <CardDescription>
-                    Generated on {new Date(report.generatedAt).toLocaleDateString()}
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter className="pt-2">
-                  <Link href={`/reports/${report.id}`}>
-                    <Button variant="ghost" size="sm">
-                      View Report
-                    </Button>
-                  </Link>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      <div className="bg-primary-50 border border-primary-100 rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-primary-800 mb-2">Getting Started Guide</h2>
-        <p className="text-primary-700 mb-4">
-          Follow these steps to create your first AI transformation roadmap:
-        </p>
-        <ol className="list-decimal list-inside space-y-2 text-primary-700">
-          <li>Click "New Assessment" to start a new evaluation</li>
-          <li>Answer questions about your organization's current state</li>
-          <li>Identify key pain points and opportunities</li>
-          <li>Review the AI-generated recommendations</li>
-          <li>Get a prioritized roadmap for implementation</li>
-        </ol>
       </div>
     </div>
   );

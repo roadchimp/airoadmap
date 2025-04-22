@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { HeatmapData, ValueLevel, EffortLevel } from "@shared/schema";
+import { useTheme } from "@/components/ui/theme-provider";
 
 interface HeatmapDisplayProps {
   heatmapData: HeatmapData;
@@ -13,12 +14,14 @@ const HeatmapDisplay: React.FC<HeatmapDisplayProps> = ({
   title, 
   description 
 }) => {
+  const { theme } = useTheme();
+  
   // Define the priority colors
   const priorityColors = {
-    high: "bg-red-100",
-    medium: "bg-orange-100",
-    low: "bg-yellow-100",
-    not_recommended: "bg-green-100"
+    high: "bg-destructive/20",
+    medium: "bg-warning/20",
+    low: "bg-success/20",
+    not_recommended: "bg-muted"
   };
   
   // Define the value levels and effort levels in order
@@ -35,7 +38,7 @@ const HeatmapDisplay: React.FC<HeatmapDisplayProps> = ({
         <div className="pb-8">
           <div className="relative">
             {/* Y-axis label */}
-            <div className="absolute -left-10 top-1/2 -translate-y-1/2 -rotate-90 text-sm font-medium text-neutral-600">
+            <div className="absolute -left-10 top-1/2 -translate-y-1/2 -rotate-90 text-sm font-medium text-foreground">
               Business Value
             </div>
             
@@ -63,7 +66,7 @@ const HeatmapDisplay: React.FC<HeatmapDisplayProps> = ({
                              cell.priority === "low" ? "Consider" : "Deprioritize"}
                           </div>
                           {cell.items.length > 0 && (
-                            <div className="text-xs text-neutral-500 mt-1">
+                            <div className="text-xs text-foreground mt-1">
                               {cell.items.map(item => item.title).join(", ")}
                             </div>
                           )}
@@ -76,19 +79,19 @@ const HeatmapDisplay: React.FC<HeatmapDisplayProps> = ({
             </div>
             
             {/* X-axis label */}
-            <div className="text-center text-sm font-medium text-neutral-600 mt-2">
+            <div className="text-center text-sm font-medium text-foreground mt-2">
               Implementation Effort
             </div>
             
             {/* X-axis markers */}
-            <div className="flex justify-between mt-1 px-1 text-xs text-neutral-500">
+            <div className="flex justify-between mt-1 px-1 text-xs text-muted-foreground">
               <div>High Effort</div>
               <div>Medium Effort</div>
               <div>Low Effort</div>
             </div>
             
             {/* Y-axis markers */}
-            <div className="absolute -left-1 top-0 h-full flex flex-col justify-between py-1 text-xs text-neutral-500">
+            <div className="absolute -left-1 top-0 h-full flex flex-col justify-between py-1 text-xs text-muted-foreground">
               <div>High Value</div>
               <div>Medium Value</div>
               <div>Low Value</div>
@@ -98,20 +101,20 @@ const HeatmapDisplay: React.FC<HeatmapDisplayProps> = ({
           {/* Legend */}
           <div className="mt-6 flex justify-center space-x-6">
             <div className="flex items-center">
-              <div className="w-4 h-4 bg-red-100 mr-2"></div>
-              <span className="text-xs">High Priority</span>
+              <div className="w-4 h-4 bg-destructive/20 mr-2"></div>
+              <span className="text-xs text-foreground">High Priority</span>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-4 bg-orange-100 mr-2"></div>
-              <span className="text-xs">Medium Priority</span>
+              <div className="w-4 h-4 bg-warning/20 mr-2"></div>
+              <span className="text-xs text-foreground">Medium Priority</span>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-4 bg-yellow-100 mr-2"></div>
-              <span className="text-xs">Low Priority</span>
+              <div className="w-4 h-4 bg-success/20 mr-2"></div>
+              <span className="text-xs text-foreground">Low Priority</span>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-4 bg-green-100 mr-2"></div>
-              <span className="text-xs">Not Recommended</span>
+              <div className="w-4 h-4 bg-muted mr-2"></div>
+              <span className="text-xs text-foreground">Not Recommended</span>
             </div>
           </div>
         </div>

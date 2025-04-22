@@ -40,3 +40,26 @@ vite.config.ts.*
 
 # Archives
 *.tar.gz
+
+# Vercel
+.vercel/
+.vercel_build_output/
+.vercel_build_output.json
+.vercel_build_output.log
+.vercel_build_output.tgz
+.vercel_build_output.zip
+.vercel_build_output.tar.gz
+.vercel_build_output.tar
+.vercel_build_output.tar.xz
+.vercel_build_output.tar.bz2
+.vercel_build_output.tar.lz
+.vercel_build_output.tar.lzma
+.vercel_build_output.tar.lzo
+.vercel_build_output.tar.lzop
+.vercel_build_output.tar.xz
+.vercel_build_output.tar.bz2
+.vercel_build_output.tar.lz
+.vercel_build_output.tar.lzma
+.vercel_build_output.tar.lzo
+.vercel_build_output.tar.lzop
+.vercel

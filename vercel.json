@@ -1,11 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "framework": "vite",
-  "env": {
-    "NODE_ENV": "production"
-  },
   "builds": [
     {
       "src": "dist/index.js",
@@ -15,7 +11,7 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "outputDirectory": "dist"
+        "zeroConfig": true
       }
     }
   ],
@@ -25,11 +21,15 @@
       "dest": "dist/index.js"
     },
     {
+      "src": "^/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "/index.html"
     }
   ]
 } 

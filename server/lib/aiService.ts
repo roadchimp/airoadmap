@@ -89,31 +89,27 @@ export async function generateAICapabilityRecommendations(
   painPoints: any
 ): Promise<any[]> {
   try {
-    const painPointDescription = painPoints ? 
-      `Pain points include: Severity: ${painPoints.severity}/5, Frequency: ${painPoints.frequency}/5, Impact: ${painPoints.impact}/5. Description: ${painPoints.description || 'Not provided'}` :
-      'No specific pain points provided.';
-    
+    if (!openai) {
+      return fallbackAICapabilities(role);
+    }
+
+    const painPointDescription = painPoints
+      ? `Pain points include: Severity: ${painPoints.severity}/5, Frequency: ${painPoints.frequency}/5, Impact: ${painPoints.impact}/5. Description: ${painPoints.description || "Not provided"}`
+      : "No specific pain points provided.";
+
     const prompt = `As an AI transformation consultant, recommend 3-4 specific AI capabilities that would best address the needs of this role:
     
     Role: ${role.title}
     Department: ${department.name}
-    Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(', ') : 'Not provided'}
+    Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(", ") : "Not provided"}
     ${painPointDescription}
     
     For each capability, provide:
     1. A specific name/title for the capability
-    2. A brief description of what it does and how it helps this specific role
-    
-    Return the response as JSON in this format:
-    [
-      {
-        "name": "Capability Name",
-        "description": "Brief description of how it helps"
-      }
-    ]`;
+    2. A brief description of what it does and how it helps this specific role`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [
         { role: "system", content: "You are an AI transformation consultant providing specific, actionable recommendations." },
         { role: "user", content: prompt }
@@ -122,11 +118,9 @@ export async function generateAICapabilityRecommendations(
     });
 
     const content = response.choices[0].message.content;
-    const result = JSON.parse(content || '[]');
-    return result;
+    return JSON.parse(content || "[]");
   } catch (error) {
-    console.error('Error generating AI capability recommendations with OpenAI:', error);
-    // Fallback to basic suggestions
+    console.error("Error generating AI capability recommendations with OpenAI:", error);
     return fallbackAICapabilities(role);
   }
 }
@@ -139,27 +133,18 @@ export async function generatePerformanceImpact(
   department: Department
 ): Promise<any> {
   try {
+    if (!openai) {
+      return fallbackPerformanceImpact(role);
+    }
+
     const prompt = `Based on industry benchmarks and known AI implementation outcomes, predict the performance improvements for this role:
     
     Role: ${role.title}
     Department: ${department.name}
-    Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(', ') : 'Not provided'}
-    
-    Return your analysis as JSON with:
-    1. 2-3 key metrics that would be improved
-    2. An estimated percentage improvement for each metric
-    3. An estimated annual ROI in dollars
-    
-    Format:
-    {
-      "metrics": [
-        {"name": "Metric Name", "improvement": percentageValue}
-      ],
-      "estimatedAnnualRoi": dollarValue
-    }`;
+    Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(", ") : "Not provided"}`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4",
       messages: [
         { role: "system", content: "You are an AI transformation analyst providing realistic performance predictions." },
         { role: "user", content: prompt }
@@ -168,11 +153,9 @@ export async function generatePerformanceImpact(
     });
 
     const content = response.choices[0].message.content;
-    const result = JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
-    return result;
+    return JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
   } catch (error) {
-    console.error('Error generating performance impact predictions with OpenAI:', error);
-    // Fallback to basic impact estimation
+    console.error("Error generating performance impact predictions with OpenAI:", error);
     return fallbackPerformanceImpact(role);
   }
 }

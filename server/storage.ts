@@ -109,7 +109,11 @@ export class MemStorage implements IStorage {
   
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
+    const user = { 
+      ...insertUser, 
+      id,
+      role: insertUser.role || 'consultant' // Ensure role is always defined
+    };
     this.users.set(id, user);
     return user;
   }
@@ -125,7 +129,11 @@ export class MemStorage implements IStorage {
   
   async createOrganization(org: InsertOrganization): Promise<Organization> {
     const id = this.orgIdCounter++;
-    const organization: Organization = { ...org, id };
+    const organization = { 
+      ...org, 
+      id,
+      description: org.description || null // Ensure description is never undefined
+    };
     this.organizations.set(id, organization);
     return organization;
   }
@@ -141,7 +149,11 @@ export class MemStorage implements IStorage {
   
   async createDepartment(dept: InsertDepartment): Promise<Department> {
     const id = this.deptIdCounter++;
-    const department: Department = { ...dept, id };
+    const department = { 
+      ...dept, 
+      id,
+      description: dept.description || null // Ensure description is never undefined
+    };
     this.departments.set(id, department);
     return department;
   }
@@ -163,7 +175,13 @@ export class MemStorage implements IStorage {
   
   async createJobRole(role: InsertJobRole): Promise<JobRole> {
     const id = this.roleIdCounter++;
-    const jobRole: JobRole = { ...role, id };
+    const jobRole = { 
+      ...role, 
+      id,
+      description: role.description || null,
+      keyResponsibilities: role.keyResponsibilities || null,
+      aiPotential: role.aiPotential || null
+    };
     this.jobRoles.set(id, jobRole);
     return jobRole;
   }
@@ -179,7 +197,13 @@ export class MemStorage implements IStorage {
   
   async createAICapability(capability: InsertAICapability): Promise<AICapability> {
     const id = this.capabilityIdCounter++;
-    const aiCapability: AICapability = { ...capability, id };
+    const aiCapability = { 
+      ...capability, 
+      id,
+      description: capability.description || null,
+      implementationEffort: capability.implementationEffort || null,
+      businessValue: capability.businessValue || null
+    };
     this.aiCapabilities.set(id, aiCapability);
     return aiCapability;
   }
@@ -202,7 +226,13 @@ export class MemStorage implements IStorage {
   async createAssessment(assessment: InsertAssessment): Promise<Assessment> {
     const id = this.assessmentIdCounter++;
     const createdAt = new Date();
-    const newAssessment: Assessment = { ...assessment, id, createdAt };
+    const newAssessment = { 
+      ...assessment, 
+      id, 
+      createdAt,
+      status: assessment.status || 'draft',
+      stepData: assessment.stepData || null
+    };
     this.assessments.set(id, newAssessment);
     return newAssessment;
   }
@@ -260,151 +290,16 @@ export class MemStorage implements IStorage {
   async createReport(report: InsertReport): Promise<Report> {
     const id = this.reportIdCounter++;
     const generatedAt = new Date();
-    const newReport: Report = { ...report, id, generatedAt };
+    const newReport = { 
+      ...report, 
+      id, 
+      generatedAt,
+      executiveSummary: report.executiveSummary || null,
+      prioritizationData: report.prioritizationData || null,
+      aiSuggestions: report.aiSuggestions || null,
+      performanceImpact: report.performanceImpact || null,
+      consultantCommentary: report.consultantCommentary || null
+    };
     this.reports.set(id, newReport);
     return newReport;
   }
-  
-  async updateReportCommentary(id: number, commentary: string): Promise<Report> {
-    const report = this.reports.get(id);
-    if (!report) {
-      throw new Error(`Report with id ${id} not found`);
-    }
-    
-    const updatedReport = {
-      ...report,
-      consultantCommentary: commentary
-    };
-    
-    this.reports.set(id, updatedReport);
-    return updatedReport;
-  }
-  
-  // Initialize sample data for the application
-  private initializeSampleData() {
-    // Create user
-    const user: User = {
-      id: this.userIdCounter++,
-      username: "consultant",
-      password: "password123", // In a real app, this would be hashed
-      fullName: "Consultant User",
-      email: "consultant@example.com",
-      role: "consultant"
-    };
-    this.users.set(user.id, user);
-    
-    // Create departments
-    const departments: Department[] = [
-      { id: this.deptIdCounter++, name: "Sales & Marketing", description: "Handles all sales and marketing activities" },
-      { id: this.deptIdCounter++, name: "Customer Support", description: "Provides support to customers" },
-      { id: this.deptIdCounter++, name: "Finance", description: "Manages financial operations" },
-      { id: this.deptIdCounter++, name: "Human Resources", description: "Handles employee management and recruitment" },
-      { id: this.deptIdCounter++, name: "Engineering", description: "Develops and maintains products" },
-      { id: this.deptIdCounter++, name: "Operations", description: "Oversees day-to-day business operations" }
-    ];
-    
-    departments.forEach(dept => this.departments.set(dept.id, dept));
-    
-    // Create job roles
-    const jobRoles: JobRole[] = [
-      {
-        id: this.roleIdCounter++,
-        title: "Sales Operations Specialist",
-        departmentId: 1, // Sales & Marketing
-        description: "Manages RFP responses, sales data analysis, and CRM maintenance",
-        keyResponsibilities: ["Manage RFP responses", "Maintain sales data", "Perform CRM analysis", "Create sales reports", "Support proposal creation"],
-        aiPotential: "High"
-      },
-      {
-        id: this.roleIdCounter++,
-        title: "Content Marketing Manager",
-        departmentId: 1, // Sales & Marketing
-        description: "Creates and distributes content for marketing campaigns",
-        keyResponsibilities: ["Create marketing content", "Manage editorial calendar", "Coordinate content distribution", "Analyze content performance", "Develop content strategy"],
-        aiPotential: "Medium"
-      },
-      {
-        id: this.roleIdCounter++,
-        title: "Digital Marketing Specialist",
-        departmentId: 1, // Sales & Marketing
-        description: "Manages online advertising and campaign analysis",
-        keyResponsibilities: ["Manage online ad campaigns", "Analyze marketing data", "Optimize conversion rates", "Report on marketing KPIs", "Conduct A/B testing"],
-        aiPotential: "Medium"
-      },
-      {
-        id: this.roleIdCounter++,
-        title: "Customer Support Agent",
-        departmentId: 2, // Customer Support
-        description: "Handles tier 1 customer inquiries via chat, email, and phone",
-        keyResponsibilities: ["Handle customer inquiries", "Troubleshoot basic issues", "Escalate complex problems", "Maintain customer records", "Follow up on resolved issues"],
-        aiPotential: "High"
-      },
-      {
-        id: this.roleIdCounter++,
-        title: "Technical Support Specialist",
-        departmentId: 2, // Customer Support
-        description: "Resolves complex technical issues and product-specific problems",
-        keyResponsibilities: ["Diagnose technical problems", "Provide advanced troubleshooting", "Document solutions", "Train junior support staff", "Contribute to knowledge base"],
-        aiPotential: "Medium"
-      }
-    ];
-    
-    jobRoles.forEach(role => this.jobRoles.set(role.id, role));
-    
-    // Create AI capabilities
-    const capabilities: AICapability[] = [
-      {
-        id: this.capabilityIdCounter++,
-        name: "Natural Language Understanding",
-        category: "NLP",
-        description: "Ability to understand and interpret human language",
-        implementationEffort: "Medium",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "Response Generation",
-        category: "NLP",
-        description: "Generate human-like text responses",
-        implementationEffort: "Medium",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "Knowledge Base Integration",
-        category: "Information Retrieval",
-        description: "Connect to and retrieve information from knowledge repositories",
-        implementationEffort: "Low",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "RFP Response Automation",
-        category: "Document Processing",
-        description: "Extract questions and generate draft responses for RFPs",
-        implementationEffort: "Medium",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "Sales Data Analysis",
-        category: "Data Analysis",
-        description: "Analyze sales data to identify trends and opportunities",
-        implementationEffort: "Medium",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "Content Generation",
-        category: "Content Creation",
-        description: "Generate marketing copy, blog posts, and other content",
-        implementationEffort: "Low",
-        businessValue: "Medium"
-      }
-    ];
-    
-    capabilities.forEach(cap => this.aiCapabilities.set(cap.id, cap));
-  }
-}
-
-export const storage = new MemStorage();

@@ -39,21 +39,26 @@ export async function calculatePrioritization(stepData: WizardStepData) {
   let dataQuality = 3;
   if (stepData.techStack?.dataAvailability) {
     const dataAvailability = stepData.techStack.dataAvailability;
-    // Count available data sources to estimate data quality
     let availableSources = 0;
-    if (dataAvailability.structuredData) availableSources++;
-    if (dataAvailability.unstructuredText) availableSources++;
-    if (dataAvailability.historicalRecords) availableSources++;
-    if (dataAvailability.realTimeInputs) availableSources++;
-    if (dataAvailability.apiAccess) availableSources++;
     
-    // Convert count to a 1-5 scale
+    // Convert array to object for type safety
+    const dataTypes = dataAvailability.reduce((acc, type) => {
+      acc[type] = true;
+      return acc;
+    }, {} as Record<string, boolean>);
+
+    if (dataTypes['structuredData']) availableSources++;
+    if (dataTypes['unstructuredText']) availableSources++;
+    if (dataTypes['historicalRecords']) availableSources++;
+    if (dataTypes['realTimeInputs']) availableSources++;
+    if (dataTypes['apiAccess']) availableSources++;
+    
     dataQuality = Math.max(1, Math.min(5, availableSources + 1));
   }
   
   // Process each selected role in priority order
   for (let i = 0; i < roleRankings.length; i++) {
-    const roleId = roleRankings[i];
+    const roleId = typeof roleRankings[i] === 'number' ? roleRankings[i] : roleRankings[i].id || i + 1;
     // Use actual role data or create placeholder
     const role: { 
       id: number, 
@@ -68,7 +73,7 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     };
     
     // Get pain point data for this role
-    const rolePainPoints = painPoints[roleId] || {};
+    const rolePainPoints = painPoints[roleId.toString()] || {};
     
     // Calculate value score based on pain points (out of 5)
     const severity = rolePainPoints.severity || 3;
@@ -156,7 +161,7 @@ export async function calculatePrioritization(stepData: WizardStepData) {
       description: ''
     };
     
-    const rolePainPoints = painPoints[item.id] || {};
+    const rolePainPoints = painPoints[item.id.toString()] || {};
     
     // Call AI service for capability recommendations
     const capabilities = await generateAICapabilityRecommendations(

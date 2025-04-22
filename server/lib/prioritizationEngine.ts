@@ -58,7 +58,9 @@ export async function calculatePrioritization(stepData: WizardStepData) {
   
   // Process each selected role in priority order
   for (let i = 0; i < roleRankings.length; i++) {
-    const roleId = typeof roleRankings[i] === 'number' ? roleRankings[i] : roleRankings[i].id || i + 1;
+    const roleRanking = roleRankings[i];
+    const roleId = typeof roleRanking === 'number' ? roleRanking : 
+                  'id' in roleRanking ? roleRanking.id || i + 1 : i + 1;
     // Use actual role data or create placeholder
     const role: { 
       id: number, 
@@ -157,7 +159,6 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     const department: Department = {
       id: 1,
       name: item.department,
-      organizationId: 1,
       description: ''
     };
     
@@ -194,7 +195,6 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     const department: Department = {
       id: 1,
       name: item.department,
-      organizationId: 1,
       description: ''
     };
     

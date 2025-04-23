@@ -63,3 +63,9 @@ vite.config.ts.*
 .vercel_build_output.tar.lzo
 .vercel_build_output.tar.lzop
 .vercel
+
+# Misc
+*.log
+*.pid
+*.seed
+*.pid.lock

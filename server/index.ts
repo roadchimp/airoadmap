@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import cors from 'cors';
 import apiRoutes from './api/routes';
+import { PORT, isProduction } from './config';
 
 // Load environment variables
 dotenv.config();
@@ -15,7 +16,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // Add CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'development' ? true : process.env.CLIENT_URL,
+  origin: isProduction ? process.env.CORS_ORIGIN : '*',
   credentials: true,
 }));
 

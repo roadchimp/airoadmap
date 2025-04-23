@@ -353,6 +353,9 @@ class LinkedInScraper {
             await page.waitForNavigation({ 
               waitUntil: 'domcontentloaded', 
               timeout: 30000 
+            }).catch(error => {
+              console.log(`⚠️ Navigation timeout after search submission for "${keyword}". Continuing anyway...`);
+              // Continue execution even if navigation timeout occurs
             });
             
             console.log(`✅ Submitted search for keyword: ${keyword} in location: ${location}`);
@@ -438,10 +441,18 @@ class LinkedInScraper {
                 );
 
                 console.log(`🌐 Loading job details from ${jobUrl}...`);
-                await page.goto(jobUrl, { 
-                  waitUntil: 'domcontentloaded',
-                  timeout: 30000 
-                });
+                // Navigate to job detail page
+                try {
+                  await page.goto(jobUrl, {
+                    waitUntil: 'domcontentloaded',
+                    timeout: 30000
+                  });
+                  console.log(`✅ Navigated to job detail page: ${jobUrl}`);
+                } catch (error: unknown) {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  console.log(`⚠️ Error navigating to job detail page: ${jobUrl}. Error: ${errorMessage}`);
+                  return; // Skip this job and move to the next
+                }
 
                 // Wait for job details with increased timeout
                 console.log('⏳ Waiting for job details to load...');

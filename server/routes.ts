@@ -11,7 +11,10 @@ import {
   insertAssessmentSchema,
   insertReportSchema,
   wizardStepDataSchema,
-  WizardStepData
+  WizardStepData,
+  insertJobDescriptionSchema,
+  insertJobScraperConfigSchema,
+  ProcessedJobContent
 } from "@shared/schema";
 import { calculatePrioritization } from "./lib/prioritizationEngine";
 
@@ -243,6 +246,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(report);
     } catch (error) {
       res.status(500).json({ message: "Error generating prioritization results", error });
+    }
+  });
+  
+  // Job Description routes
+  app.get("/api/job-descriptions", async (req: Request, res: Response) => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+    const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+    
+    const jobDescriptions = await storage.listJobDescriptions(limit, offset);
+    res.json(jobDescriptions);
+  });
+  
+  app.get("/api/job-descriptions/status/:status", async (req: Request, res: Response) => {
+    const status = req.params.status;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+    const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+    
+    const jobDescriptions = await storage.listJobDescriptionsByStatus(status, limit, offset);
+    res.json(jobDescriptions);
+  });
+  
+  app.get("/api/job-descriptions/:id", async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid job description ID" });
+    }
+    
+    const jobDescription = await storage.getJobDescription(id);
+    if (!jobDescription) {
+      return res.status(404).json({ message: "Job description not found" });
+    }
+    
+    res.json(jobDescription);
+  });
+  
+  app.post("/api/job-descriptions", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertJobDescriptionSchema.parse(req.body);
+      const jobDescription = await storage.createJobDescription(validatedData);
+      res.status(201).json(jobDescription);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid job description data", error });
+    }
+  });
+  
+  app.patch("/api/job-descriptions/:id/process", async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid job description ID" });
+    }
+    
+    try {
+      const processedContent = req.body as ProcessedJobContent;
+      const jobDescription = await storage.updateJobDescriptionProcessedContent(id, processedContent);
+      res.json(jobDescription);
+    } catch (error) {
+      res.status(400).json({ message: "Error updating job description processed content", error });
+    }
+  });
+  
+  app.patch("/api/job-descriptions/:id/status", async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid job description ID" });
+    }
+    
+    const { status, error } = req.body;
+    if (!status || typeof status !== "string") {
+      return res.status(400).json({ message: "Status is required" });
+    }
+    
+    try {
+      const jobDescription = await storage.updateJobDescriptionStatus(id, status, error);
+      res.json(jobDescription);
+    } catch (error) {
+      res.status(400).json({ message: "Error updating job description status", error });
+    }
+  });
+  
+  // Job Scraper Config routes
+  app.get("/api/job-scraper-configs", async (_req: Request, res: Response) => {
+    const configs = await storage.listJobScraperConfigs();
+    res.json(configs);
+  });
+  
+  app.get("/api/job-scraper-configs/active", async (_req: Request, res: Response) => {
+    const configs = await storage.listActiveJobScraperConfigs();
+    res.json(configs);
+  });
+  
+  app.get("/api/job-scraper-configs/:id", async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid job scraper config ID" });
+    }
+    
+    const config = await storage.getJobScraperConfig(id);
+    if (!config) {
+      return res.status(404).json({ message: "Job scraper config not found" });
+    }
+    
+    res.json(config);
+  });
+  
+  app.post("/api/job-scraper-configs", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertJobScraperConfigSchema.parse(req.body);
+      const config = await storage.createJobScraperConfig(validatedData);
+      res.status(201).json(config);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid job scraper config data", error });
+    }
+  });
+  
+  app.patch("/api/job-scraper-configs/:id/last-run", async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid job scraper config ID" });
+    }
+    
+    try {
+      const config = await storage.updateJobScraperConfigLastRun(id);
+      res.json(config);
+    } catch (error) {
+      res.status(400).json({ message: "Error updating job scraper config last run", error });
+    }
+  });
+  
+  app.patch("/api/job-scraper-configs/:id/status", async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: "Invalid job scraper config ID" });
+    }
+    
+    const { isActive } = req.body;
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({ message: "isActive is required and must be a boolean" });
+    }
+    
+    try {
+      const config = await storage.updateJobScraperConfigStatus(id, isActive);
+      res.json(config);
+    } catch (error) {
+      res.status(400).json({ message: "Error updating job scraper config status", error });
     }
   });
   

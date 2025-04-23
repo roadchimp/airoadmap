@@ -31,5 +31,15 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/run-job-scrapers",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/process-job-descriptions",
+      "schedule": "0 2 * * *"
+    }
   ]
 } 

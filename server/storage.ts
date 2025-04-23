@@ -10,7 +10,10 @@ import {
   HeatmapData,
   AISuggestion,
   PerformanceImpact,
-  PrioritizedItem
+  PrioritizedItem,
+  JobDescription, InsertJobDescription,
+  JobScraperConfig, InsertJobScraperConfig,
+  ProcessedJobContent
 } from "@shared/schema";
 
 // modify the interface with any CRUD methods
@@ -56,6 +59,22 @@ export interface IStorage {
   listReports(): Promise<Report[]>;
   createReport(report: InsertReport): Promise<Report>;
   updateReportCommentary(id: number, commentary: string): Promise<Report>;
+  
+  // Job Description methods
+  getJobDescription(id: number): Promise<JobDescription | undefined>;
+  listJobDescriptions(limit?: number, offset?: number): Promise<JobDescription[]>;
+  listJobDescriptionsByStatus(status: string, limit?: number, offset?: number): Promise<JobDescription[]>;
+  createJobDescription(jobDescription: InsertJobDescription): Promise<JobDescription>;
+  updateJobDescriptionProcessedContent(id: number, processedContent: ProcessedJobContent): Promise<JobDescription>;
+  updateJobDescriptionStatus(id: number, status: string, error?: string): Promise<JobDescription>;
+  
+  // Job Scraper Config methods
+  getJobScraperConfig(id: number): Promise<JobScraperConfig | undefined>;
+  listJobScraperConfigs(): Promise<JobScraperConfig[]>;
+  listActiveJobScraperConfigs(): Promise<JobScraperConfig[]>;
+  createJobScraperConfig(config: InsertJobScraperConfig): Promise<JobScraperConfig>;
+  updateJobScraperConfigLastRun(id: number): Promise<JobScraperConfig>;
+  updateJobScraperConfigStatus(id: number, isActive: boolean): Promise<JobScraperConfig>;
 }
 
 export class MemStorage implements IStorage {
@@ -66,6 +85,8 @@ export class MemStorage implements IStorage {
   private aiCapabilities: Map<number, AICapability>;
   private assessments: Map<number, Assessment>;
   private reports: Map<number, Report>;
+  private jobDescriptions: Map<number, JobDescription>;
+  private jobScraperConfigs: Map<number, JobScraperConfig>;
   
   private userIdCounter: number;
   private orgIdCounter: number;
@@ -74,6 +95,8 @@ export class MemStorage implements IStorage {
   private capabilityIdCounter: number;
   private assessmentIdCounter: number;
   private reportIdCounter: number;
+  private jobDescriptionIdCounter: number;
+  private jobScraperConfigIdCounter: number;
   
   constructor() {
     this.users = new Map();
@@ -83,6 +106,8 @@ export class MemStorage implements IStorage {
     this.aiCapabilities = new Map();
     this.assessments = new Map();
     this.reports = new Map();
+    this.jobDescriptions = new Map();
+    this.jobScraperConfigs = new Map();
     
     this.userIdCounter = 1;
     this.orgIdCounter = 1;
@@ -91,6 +116,8 @@ export class MemStorage implements IStorage {
     this.capabilityIdCounter = 1;
     this.assessmentIdCounter = 1;
     this.reportIdCounter = 1;
+    this.jobDescriptionIdCounter = 1;
+    this.jobScraperConfigIdCounter = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -319,6 +346,127 @@ export class MemStorage implements IStorage {
     return updatedReport;
   }
 
+  // Job Description methods
+  async getJobDescription(id: number): Promise<JobDescription | undefined> {
+    return this.jobDescriptions.get(id);
+  }
+  
+  async listJobDescriptions(limit: number = 100, offset: number = 0): Promise<JobDescription[]> {
+    const allJobDescriptions = Array.from(this.jobDescriptions.values());
+    return allJobDescriptions.slice(offset, offset + limit);
+  }
+  
+  async listJobDescriptionsByStatus(status: string, limit: number = 100, offset: number = 0): Promise<JobDescription[]> {
+    const filteredJobDescriptions = Array.from(this.jobDescriptions.values())
+      .filter(jd => jd.status === status);
+    return filteredJobDescriptions.slice(offset, offset + limit);
+  }
+  
+  async createJobDescription(jobDescription: InsertJobDescription): Promise<JobDescription> {
+    const id = this.jobDescriptionIdCounter++;
+    const newJobDescription = {
+      ...jobDescription,
+      id,
+      company: jobDescription.company || null,
+      location: jobDescription.location || null,
+      processedContent: null,
+      dateScraped: new Date(),
+      dateProcessed: null,
+      error: null,
+    };
+    this.jobDescriptions.set(id, newJobDescription);
+    return newJobDescription;
+  }
+  
+  async updateJobDescriptionProcessedContent(id: number, processedContent: ProcessedJobContent): Promise<JobDescription> {
+    const jobDescription = this.jobDescriptions.get(id);
+    if (!jobDescription) {
+      throw new Error(`Job description with ID ${id} not found`);
+    }
+    
+    const updatedJobDescription = {
+      ...jobDescription,
+      processedContent,
+      dateProcessed: new Date(),
+      status: 'processed'
+    };
+    
+    this.jobDescriptions.set(id, updatedJobDescription);
+    return updatedJobDescription;
+  }
+  
+  async updateJobDescriptionStatus(id: number, status: string, error?: string): Promise<JobDescription> {
+    const jobDescription = this.jobDescriptions.get(id);
+    if (!jobDescription) {
+      throw new Error(`Job description with ID ${id} not found`);
+    }
+    
+    const updatedJobDescription = {
+      ...jobDescription,
+      status,
+      error: error || null
+    };
+    
+    this.jobDescriptions.set(id, updatedJobDescription);
+    return updatedJobDescription;
+  }
+  
+  // Job Scraper Config methods
+  async getJobScraperConfig(id: number): Promise<JobScraperConfig | undefined> {
+    return this.jobScraperConfigs.get(id);
+  }
+  
+  async listJobScraperConfigs(): Promise<JobScraperConfig[]> {
+    return Array.from(this.jobScraperConfigs.values());
+  }
+  
+  async listActiveJobScraperConfigs(): Promise<JobScraperConfig[]> {
+    return Array.from(this.jobScraperConfigs.values())
+      .filter(config => config.isActive);
+  }
+  
+  async createJobScraperConfig(config: InsertJobScraperConfig): Promise<JobScraperConfig> {
+    const id = this.jobScraperConfigIdCounter++;
+    const newConfig = {
+      ...config,
+      id,
+      lastRun: null,
+      createdAt: new Date()
+    };
+    this.jobScraperConfigs.set(id, newConfig);
+    return newConfig;
+  }
+  
+  async updateJobScraperConfigLastRun(id: number): Promise<JobScraperConfig> {
+    const config = this.jobScraperConfigs.get(id);
+    if (!config) {
+      throw new Error(`Job scraper config with ID ${id} not found`);
+    }
+    
+    const updatedConfig = {
+      ...config,
+      lastRun: new Date()
+    };
+    
+    this.jobScraperConfigs.set(id, updatedConfig);
+    return updatedConfig;
+  }
+  
+  async updateJobScraperConfigStatus(id: number, isActive: boolean): Promise<JobScraperConfig> {
+    const config = this.jobScraperConfigs.get(id);
+    if (!config) {
+      throw new Error(`Job scraper config with ID ${id} not found`);
+    }
+    
+    const updatedConfig = {
+      ...config,
+      isActive
+    };
+    
+    this.jobScraperConfigs.set(id, updatedConfig);
+    return updatedConfig;
+  }
+
   private initializeSampleData() {
     // Create sample user
     const user: User = {
@@ -439,6 +587,25 @@ export class MemStorage implements IStorage {
       }
     ];
     capabilities.forEach(cap => this.aiCapabilities.set(cap.id, cap));
+
+    // Add sample job scraper configs
+    this.createJobScraperConfig({
+      name: "LinkedIn Tech Jobs",
+      targetWebsite: "linkedin",
+      keywords: ["software engineer", "web developer", "frontend", "backend"],
+      location: "San Francisco",
+      isActive: true,
+      cronSchedule: "0 0 * * *"
+    });
+    
+    this.createJobScraperConfig({
+      name: "Indeed Data Science",
+      targetWebsite: "indeed",
+      keywords: ["data scientist", "machine learning", "AI", "data analyst"],
+      location: "Remote",
+      isActive: true,
+      cronSchedule: "0 12 * * *"
+    });
   }
 }
 

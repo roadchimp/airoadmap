@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import cors from 'cors';
+import apiRoutes from './api/routes';
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +18,9 @@ app.use(cors({
   origin: process.env.NODE_ENV === 'development' ? true : process.env.CLIENT_URL,
   credentials: true,
 }));
+
+// Register API routes
+app.use('/api', apiRoutes);
 
 app.use((req, res, next) => {
   const start = Date.now();

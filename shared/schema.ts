@@ -264,3 +264,77 @@ export type PerformanceImpact = {
   }>;
   estimatedRoi: number;
 };
+
+// Job Description models
+export const jobDescriptions = pgTable("job_descriptions", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  company: text("company"),
+  location: text("location"),
+  jobBoard: text("job_board").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  rawContent: text("raw_content").notNull(),
+  processedContent: jsonb("processed_content"),
+  keywords: text("keywords").array(),
+  dateScraped: timestamp("date_scraped").defaultNow().notNull(),
+  dateProcessed: timestamp("date_processed"),
+  status: text("status").default("raw").notNull(), // raw, processed, error
+  error: text("error"),
+});
+
+export const insertJobDescriptionSchema = createInsertSchema(jobDescriptions).pick({
+  title: true,
+  company: true,
+  location: true,
+  jobBoard: true,
+  sourceUrl: true,
+  rawContent: true,
+  keywords: true,
+  status: true,
+});
+
+export const jobScraperConfigs = pgTable("job_scraper_configs", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  targetWebsite: text("target_website").notNull(),
+  keywords: text("keywords").array(),
+  location: text("location"),
+  isActive: boolean("is_active").default(true).notNull(),
+  cronSchedule: text("cron_schedule").default("0 0 * * *").notNull(), // Daily at midnight by default
+  lastRun: timestamp("last_run"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertJobScraperConfigSchema = createInsertSchema(jobScraperConfigs).pick({
+  name: true,
+  targetWebsite: true,
+  keywords: true,
+  location: true,
+  isActive: true,
+  cronSchedule: true,
+});
+
+// Types
+export type JobDescription = typeof jobDescriptions.$inferSelect;
+export type InsertJobDescription = z.infer<typeof insertJobDescriptionSchema>;
+
+export type JobScraperConfig = typeof jobScraperConfigs.$inferSelect;
+export type InsertJobScraperConfig = z.infer<typeof insertJobScraperConfigSchema>;
+
+export type ProcessedJobContent = {
+  skills: string[];
+  experience: string[];
+  education: string[];
+  responsibilities: string[];
+  benefits: string[];
+  requiredSkills: string[];
+  preferredSkills: string[];
+  salaryRange?: {
+    min?: number;
+    max?: number;
+    currency?: string;
+  };
+  jobType?: string;
+  industry?: string;
+  seniorityLevel?: string;
+};

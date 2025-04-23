@@ -14,7 +14,7 @@ import {
   JobDescription, InsertJobDescription,
   JobScraperConfig, InsertJobScraperConfig,
   ProcessedJobContent
-} from "@shared/schema";
+} from "../shared/schema.ts";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -364,15 +364,18 @@ export class MemStorage implements IStorage {
   
   async createJobDescription(jobDescription: InsertJobDescription): Promise<JobDescription> {
     const id = this.jobDescriptionIdCounter++;
-    const newJobDescription = {
+    const now = new Date();
+    const newJobDescription: JobDescription = {
       ...jobDescription,
       id,
+      status: jobDescription.status || 'raw',
       company: jobDescription.company || null,
       location: jobDescription.location || null,
       processedContent: null,
-      dateScraped: new Date(),
+      keywords: jobDescription.keywords || null,
+      dateScraped: now,
       dateProcessed: null,
-      error: null,
+      error: null
     };
     this.jobDescriptions.set(id, newJobDescription);
     return newJobDescription;
@@ -427,11 +430,16 @@ export class MemStorage implements IStorage {
   
   async createJobScraperConfig(config: InsertJobScraperConfig): Promise<JobScraperConfig> {
     const id = this.jobScraperConfigIdCounter++;
-    const newConfig = {
+    const now = new Date();
+    const newConfig: JobScraperConfig = {
       ...config,
       id,
-      lastRun: null,
-      createdAt: new Date()
+      createdAt: now,
+      location: config.location || null,
+      keywords: config.keywords || null,
+      isActive: config.isActive ?? true,
+      cronSchedule: config.cronSchedule || '0 0 * * *', // Default to daily at midnight
+      lastRun: null
     };
     this.jobScraperConfigs.set(id, newConfig);
     return newConfig;

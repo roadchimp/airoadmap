@@ -16,6 +16,8 @@ import {
   ProcessedJobContent
 } from "../shared/schema.ts";
 
+import { PgStorage } from './pg-storage.ts';
+
 // modify the interface with any CRUD methods
 // you might need
 export interface IStorage {
@@ -617,4 +619,22 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Create storage instance based on environment
+let storageInstance: IStorage;
+
+try {
+  // Check if DATABASE_URL is configured
+  if (process.env.DATABASE_URL) {
+    console.log('Using PostgreSQL storage implementation');
+    storageInstance = new PgStorage();
+  } else {
+    console.log('DATABASE_URL not set, using in-memory storage implementation');
+    storageInstance = new MemStorage();
+  }
+} catch (error) {
+  console.error('Error initializing PostgreSQL storage, falling back to in-memory storage:', error);
+  storageInstance = new MemStorage();
+}
+
+// Export the selected storage implementation
+export const storage = storageInstance;

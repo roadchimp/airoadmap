@@ -24,6 +24,20 @@ The system uses the following default rate limiting settings for LinkedIn:
 - `BETWEEN_KEYWORDS_DELAY`: 30000ms (30 seconds) delay between keywords
 - `MAX_CONCURRENT_SCRAPES`: 1 - Only scrape one job at a time
 
+### LinkedIn Search Workflow
+
+The LinkedIn scraper follows the exact manual workflow a human user would:
+
+1. Navigate to `linkedin.com/login` and submit credentials
+2. After successful login, click the LinkedIn Jobs icon in the navigation bar
+3. Enter search keywords and location in the search field
+4. Submit the search and wait for results to load
+5. Extract job links from the search results
+6. Visit each job detail page and extract information
+7. Process the extracted information and save it to storage
+
+This human-like navigation pattern significantly reduces the risk of being detected as an automated scraper.
+
 ### Best Practices
 
 1. **Randomized Delays**: All delays include randomization (±20%) to appear more human-like
@@ -33,6 +47,7 @@ The system uses the following default rate limiting settings for LinkedIn:
 5. **Robust Error Handling**: Automatic retries with exponential backoff for failures
 6. **Login Session Management**: Proper session handling with cookies
 7. **Request Logging**: Comprehensive logging of requests and responses for debugging
+8. **Natural Navigation Patterns**: Following the same UI paths as regular users
 
 ### Customizing Rate Limits
 
@@ -114,11 +129,17 @@ To test the job scraper locally:
 
 ### Running the Scraper Directly
 
-For development or debugging purposes, you can run the job scraper directly:
+For development or debugging purposes, you can run the job scraper directly using the npm script:
+
+```bash
+npm run scraper:run
+```
+
+Alternatively, you can execute the script using `tsx`:
 
 ```bash
 # Using tsx for TypeScript execution with ESM support
-npx tsx server/scripts/runScraper.ts
+npx tsx server/scraper/runScraper.ts
 ```
 
 This script will:
@@ -127,7 +148,7 @@ This script will:
 3. Log detailed information about the scraping process
 4. Save scraped job descriptions to storage
 
-You can modify `server/scripts/runScraper.ts` to target specific configurations or add custom parameters for testing.
+You can modify `server/scraper/runScraper.ts` to target specific configurations or add custom parameters for testing.
 
 ## Troubleshooting
 
@@ -138,20 +159,24 @@ You can modify `server/scripts/runScraper.ts` to target specific configurations 
 If you encounter login failures with LinkedIn:
 
 1. **Timeout Errors**:
-   - Verify your LinkedIn credentials are correct in environment variables
-   - Increase the login timeout in `server/lib/jobScraper.ts` (currently 60000ms)
+   - Verify your LinkedIn credentials are correct (currently hardcoded or managed elsewhere, not via .env)
+   - Increase the login timeout within the scraper script (`runScraper.ts` or related modules)
    - Check if your IP address has been temporarily blocked by LinkedIn
-   - Try running from a different network or using a VPN
 
 2. **Login Page Selectors**:
    - If LinkedIn updates their login page, the selectors might need updating
    - Check the browser console logs for errors related to selectors
-   - Update the selector paths in the `login` method in `LinkedInScraper` class
+   - Update the selector paths in the scraper script (`runScraper.ts` or related modules)
 
 3. **CAPTCHA/Verification**:
    - LinkedIn may require CAPTCHA or phone verification for suspicious logins
    - You may need to manually log in to LinkedIn once before running the scraper
    - Consider using a dedicated LinkedIn account for scraping
+
+4. **Page Loading Issues**:
+   - The scraper now uses `domcontentloaded` instead of `networkidle0` for improved reliability
+   - If page content isn't fully loaded, consider adjusting wait conditions or adding explicit waits
+   - Check for missing elements in the browser console when running in non-headless mode
 
 #### Performance Optimization
 
@@ -175,6 +200,31 @@ If you encounter login failures with LinkedIn:
 2. **Headless Mode Issues**:
    - If encountering problems in headless mode, try setting `headless: false` temporarily for debugging
    - Some websites detect headless browsers; adjust the browser configuration as needed
+
+## Running the Scraper in Non-Headless Mode
+
+For debugging purposes, the LinkedIn scraper is configured to run in non-headless mode by default (`headless: false` in the Puppeteer launch options). This allows you to observe the browser as it navigates through LinkedIn, searches for jobs, and extracts information.
+
+Benefits of non-headless mode:
+- Directly observe the login process and identify any issues
+- See how the scraper interacts with LinkedIn's interface
+- Verify search keywords and results in real-time
+- Debug selector issues by observing the page structure
+
+To change to headless mode for production, modify the `headless` option in the Puppeteer launch configuration within the scraper script (`runScraper.ts` or related modules):
+
+```typescript
+const browser = await puppeteer.launch({
+  headless: true, // Change to true for production
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-accelerated-2d-canvas',
+    '--disable-gpu'
+  ]
+});
+```
 
 ## Extending the System
 

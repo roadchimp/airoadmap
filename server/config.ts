@@ -19,6 +19,9 @@ export const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 export const LINKEDIN_EMAIL = process.env.LINKEDIN_EMAIL || '';
 export const LINKEDIN_PASSWORD = process.env.LINKEDIN_PASSWORD || '';
 
+// OpenAI Configuration
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+
 // Job Search Configuration
 export const JOB_SEARCH_CONFIG = {
   keywords: (process.env.JOB_KEYWORDS || 'AI,Machine Learning,Data Science,Python,React,TypeScript').split(','),

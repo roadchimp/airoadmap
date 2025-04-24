@@ -112,6 +112,7 @@ airoadmap/
 │   │   ├── routes/    # API routes
 │   │   ├── services/  # Business logic
 │   │   └── utils/     # Utility functions
+│   └── scraper/       # Job scraping scripts (see server/scraper/README.md)
 ├── shared/           # Shared types and utilities
 ├── .env              # Environment variables
 ├── package.json      # Project dependencies

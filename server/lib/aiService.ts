@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { WizardStepData, JobRole, Department } from '@shared/schema';
 import dotenv from 'dotenv';
@@ -9,7 +8,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Check for required environment variables
-const requiredEnvVars = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'];
+const requiredEnvVars = ['OPENAI_API_KEY'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {
@@ -17,25 +16,23 @@ if (missingEnvVars.length > 0) {
   console.warn('AI features will be disabled. Please set these variables in your .env file or Replit Secrets.');
 }
 
-// Initialize API clients
-// the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 // Initialize OpenAI client if API key is available
 const openai = process.env.OPENAI_API_KEY 
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
 
 /**
- * Generate an enhanced executive summary with Anthropic Claude
+ * Generate an enhanced executive summary with OpenAI GPT-4
  */
 export async function generateEnhancedExecutiveSummary(
   stepData: WizardStepData, 
   prioritizedRoles: any[]
 ): Promise<string> {
   try {
+    if (!openai) {
+      return fallbackExecutiveSummary(stepData, prioritizedRoles);
+    }
+
     // Extract relevant data for prompt construction
     const companyName = stepData.basics?.companyName || "your company";
     const industry = stepData.basics?.industry || "your industry";
@@ -64,18 +61,17 @@ export async function generateEnhancedExecutiveSummary(
     
     Use a professional, concise tone appropriate for C-level executives.`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-3-7-sonnet-20250219",
-      max_tokens: 1500,
-      messages: [{ role: 'user', content: prompt }],
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are an AI transformation consultant providing executive-level strategic insights." },
+        { role: "user", content: prompt }
+      ]
     });
 
-    // Safely extract text content
-    const content = message.content[0];
-    return typeof content === 'object' && 'text' in content ? content.text : String(content);
+    return response.choices[0].message.content || fallbackExecutiveSummary(stepData, prioritizedRoles);
   } catch (error) {
-    console.error('Error generating executive summary with Anthropic:', error);
-    // Fallback to basic summary generation
+    console.error('Error generating executive summary with OpenAI:', error);
     return fallbackExecutiveSummary(stepData, prioritizedRoles);
   }
 }

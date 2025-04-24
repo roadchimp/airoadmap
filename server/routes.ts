@@ -17,6 +17,7 @@ import {
   ProcessedJobContent
 } from "@shared/schema";
 import { calculatePrioritization } from "./lib/prioritizationEngine";
+import { exportJobsForBatch, processBatchResults } from './batch-processing/batchProcessor';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
@@ -390,6 +391,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(config);
     } catch (error) {
       res.status(400).json({ message: "Error updating job scraper config status", error });
+    }
+  });
+  
+  // Job Description Batch Processing routes
+  app.post("/api/job-descriptions/batch/export", async (req: Request, res: Response) => {
+    try {
+      const filepath = await exportJobsForBatch();
+      res.json({ 
+        success: true, 
+        message: 'Job descriptions exported for batch processing',
+        filepath: filepath
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error exporting job descriptions',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.post("/api/job-descriptions/batch/process", async (req: Request, res: Response) => {
+    const { responsePath } = req.body;
+    
+    if (!responsePath) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Response file path is required' 
+      });
+    }
+    
+    try {
+      await processBatchResults(responsePath);
+      res.json({ 
+        success: true, 
+        message: 'Batch processing completed successfully' 
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error processing batch results',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
   

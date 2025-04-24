@@ -1,46 +1,49 @@
 import { JobDescription, ProcessedJobContent } from '@shared/schema';
 import { storage } from '../storage';
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '', 
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 /**
- * Class for processing job descriptions using Anthropic Claude
+ * Class for processing job descriptions using OpenAI GPT-4
  */
 export class JobProcessor {
   /**
-   * Process a single job description using Claude
+   * Process a single job description using GPT-4
    */
   async processJobDescription(jobDescription: JobDescription): Promise<JobDescription> {
     try {
       console.log(`Processing job description: ${jobDescription.id} - ${jobDescription.title}`);
       
-      if (!process.env.ANTHROPIC_API_KEY) {
-        throw new Error('ANTHROPIC_API_KEY environment variable is not set');
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY environment variable is not set');
       }
       
-      // Create a prompt for Claude
+      // Create a prompt for GPT-4
       const prompt = this.createPrompt(jobDescription);
       
-      // Call Claude API
-      const response = await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 4000,
-        temperature: 0.2,
-        system: "You are an expert at analyzing job descriptions and extracting structured information from them. You provide accurate, detailed analysis of job requirements, responsibilities, skills, and other key information.",
+      // Call OpenAI API
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
         messages: [
+          {
+            role: 'system',
+            content: 'You are an expert at analyzing job descriptions and extracting structured information from them. You provide accurate, detailed analysis of job requirements, responsibilities, skills, and other key information. You ONLY respond with valid JSON.'
+          },
           {
             role: 'user',
             content: prompt
           }
-        ]
+        ],
+        temperature: 0.2,
+        response_format: { type: "json_object" }
       });
       
       // Parse the structured data
-      const processedContent = this.parseResponse(response.content[0].text);
+      const processedContent = this.parseResponse(response.choices[0].message.content || '{}');
       
       // Update job description with processed content
       const updatedJobDescription = await storage.updateJobDescriptionProcessedContent(
@@ -80,6 +83,9 @@ export class JobProcessor {
       for (const jobDescription of pendingJobDescriptions) {
         await this.processJobDescription(jobDescription);
         processedCount++;
+        
+        // Add a small delay between requests to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
       return processedCount;
@@ -90,49 +96,48 @@ export class JobProcessor {
   }
   
   /**
-   * Create a prompt for Claude
+   * Create a prompt for GPT-4
    */
   private createPrompt(jobDescription: JobDescription): string {
     return `
-I need you to analyze the following job description and extract structured information from it.
-The job title is: ${jobDescription.title}
-The company is: ${jobDescription.company || 'Not specified'}
-The location is: ${jobDescription.location || 'Not specified'}
+Analyze this job description and extract structured information in JSON format.
 
-JOB DESCRIPTION:
+Job Title: ${jobDescription.title}
+Company: ${jobDescription.company || 'Not specified'}
+Location: ${jobDescription.location || 'Not specified'}
+
+Job Description:
 ${jobDescription.rawContent}
 
-Please extract the following information in JSON format:
-1. skills: An array of all skills mentioned in the job description
-2. experience: An array of all experience requirements mentioned
-3. education: An array of all education requirements mentioned
-4. responsibilities: An array of all responsibilities or duties mentioned
-5. benefits: An array of all benefits or perks mentioned
-6. requiredSkills: An array of skills that are explicitly stated as required
-7. preferredSkills: An array of skills that are explicitly stated as preferred or a plus
-8. salaryRange: An object with min and max values (if mentioned) and currency
-9. jobType: The type of job (full-time, part-time, contract, etc.)
-10. industry: The industry this job is in
-11. seniorityLevel: The seniority level (entry, mid, senior, etc.)
+Extract and return ONLY a JSON object with these fields:
+{
+  "skills": [], // Array of all skills mentioned
+  "experience": [], // Array of all experience requirements
+  "education": [], // Array of all education requirements
+  "responsibilities": [], // Array of all responsibilities/duties
+  "benefits": [], // Array of all benefits/perks
+  "requiredSkills": [], // Array of explicitly required skills
+  "preferredSkills": [], // Array of preferred/nice-to-have skills
+  "salaryRange": { // Object with salary info if mentioned
+    "min": null,
+    "max": null,
+    "currency": null
+  },
+  "jobType": "", // full-time, part-time, contract, etc.
+  "industry": "", // Industry this job is in
+  "seniorityLevel": "" // entry, mid, senior, etc.
+}
 
-Return ONLY a valid JSON object with these fields, nothing else. If a field is not mentioned in the job description, include it as an empty array [] or appropriate empty value.
-    `;
+If any field is not mentioned in the job description, include it as an empty array [] or appropriate empty value.
+Return ONLY the JSON object, no additional text.`;
   }
   
   /**
-   * Parse Claude's response into structured data
+   * Parse GPT-4's response into structured data
    */
   private parseResponse(responseText: string): ProcessedJobContent {
     try {
-      // Extract JSON from response (in case there's any text before or after)
-      const jsonMatch = responseText.match(/({[\s\S]*})/);
-      
-      if (!jsonMatch) {
-        throw new Error('Could not extract JSON from Claude response');
-      }
-      
-      const jsonString = jsonMatch[0];
-      const processedContent = JSON.parse(jsonString) as ProcessedJobContent;
+      const processedContent = JSON.parse(responseText) as ProcessedJobContent;
       
       // Ensure all arrays exist even if not in response
       return {
@@ -149,7 +154,7 @@ Return ONLY a valid JSON object with these fields, nothing else. If a field is n
         seniorityLevel: processedContent.seniorityLevel || ''
       };
     } catch (error) {
-      console.error('Error parsing Claude response:', error);
+      console.error('Error parsing GPT-4 response:', error);
       console.error('Response text:', responseText);
       
       // Return default empty structure

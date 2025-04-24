@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+    This project uses ESM ("type": "module"), all new code should be consistent

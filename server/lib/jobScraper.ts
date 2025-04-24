@@ -3,6 +3,26 @@ import { storage } from '../storage.ts';
 import puppeteer, { Page } from 'puppeteer';
 import { LINKEDIN_EMAIL, LINKEDIN_PASSWORD } from '../config.ts';
 import pLimit from 'p-limit';
+import fs from 'fs';
+import path from 'path';
+
+// Create logs directory if it doesn't exist
+const LOGS_DIR = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(LOGS_DIR)) {
+  fs.mkdirSync(LOGS_DIR, { recursive: true });
+}
+
+// Create a log file for HTTP responses
+const LOG_FILE = path.join(LOGS_DIR, `http-responses-${new Date().toISOString().replace(/:/g, '-')}.log`);
+
+// Logger function to write to console and file
+function logToFile(message: string): void {
+  // Log to console
+  console.log(message);
+  
+  // Log to file
+  fs.appendFileSync(LOG_FILE, message + '\n');
+}
 
 // Rate limiting configuration
 const LINKEDIN_CONFIG = {
@@ -25,6 +45,69 @@ class LinkedInScraper {
     await new Promise(resolve => setTimeout(resolve, delay));
   }
 
+  private async scrollPage(page: Page): Promise<void> {
+    logToFile('📜 Scrolling page to load more content...');
+    
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => {
+        let totalHeight = 0;
+        const distance = 100;
+        const timer = setInterval(() => {
+          const scrollHeight = document.documentElement.scrollHeight;
+          window.scrollBy(0, distance);
+          totalHeight += distance;
+          
+          if (totalHeight >= scrollHeight) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 100);
+      });
+    });
+    
+    // Add a small delay after scrolling to let content load
+    await this.randomDelay(LINKEDIN_CONFIG.SCROLL_DELAY, LINKEDIN_CONFIG.SCROLL_DELAY * 1.5);
+  }
+
+  private async extractJobLinks(page: Page): Promise<string[]> {
+    logToFile('🔍 Extracting job links from search results...');
+    
+    // Try multiple selectors for job cards for maximum compatibility
+    const jobCardSelectors = [
+      'a.job-card-container__link',
+      'a.job-card-list__title',
+      'a.disabled.ember-view.job-card-container__link.job-card-list__title',
+      '.job-search-card a[data-control-id]'
+    ];
+    
+    // Use page.evaluate to run code in browser context and extract links
+    return await page.evaluate((selectors) => {
+      let links: string[] = [];
+      
+      // Try each selector until we find job links
+      for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          links = Array.from(elements)
+            .map(link => (link as HTMLAnchorElement).href)
+            .filter(href => href && href.includes('/jobs/view/'));
+          
+          if (links.length > 0) break;
+        }
+      }
+      
+      // If still no links, try a more general approach to find any job links
+      if (links.length === 0) {
+        const allLinks = document.querySelectorAll('a[href*="/jobs/view/"]');
+        links = Array.from(allLinks)
+          .map(link => (link as HTMLAnchorElement).href)
+          .filter(Boolean);
+      }
+      
+      return links;
+    }, jobCardSelectors);
+  }
+
   private async setupPage(page: Page): Promise<void> {
     // Enable request interception and logging
     await page.setRequestInterception(true);
@@ -45,21 +128,21 @@ class LinkedInScraper {
             try {
               // Try to parse as JSON if possible
               const jsonData = JSON.parse(postData);
-              console.log(`🌐 [${request.method()}] Request to: ${request.url()}`);
-              console.log(`📤 Request payload:`, JSON.stringify(jsonData, null, 2));
+              logToFile(`🌐 [${request.method()}] Request to: ${request.url()}`);
+              logToFile(`📤 Request payload: ${JSON.stringify(jsonData, null, 2)}`);
             } catch {
               // If not JSON, log as is
-              console.log(`🌐 [${request.method()}] Request to: ${request.url()}`);
-              console.log(`📤 Request payload: ${postData}`);
+              logToFile(`🌐 [${request.method()}] Request to: ${request.url()}`);
+              logToFile(`📤 Request payload: ${postData}`);
             }
           } else {
-            console.log(`🌐 [${request.method()}] Request to: ${request.url()}`);
+            logToFile(`🌐 [${request.method()}] Request to: ${request.url()}`);
           }
         } catch (e: unknown) {
-          console.log(`🌐 [${request.method()}] Request to: ${request.url()}`);
+          logToFile(`🌐 [${request.method()}] Request to: ${request.url()}`);
         }
       } else {
-        console.log(`🌐 [${request.method()}] Request to: ${request.url()}`);
+        logToFile(`🌐 [${request.method()}] Request to: ${request.url()}`);
       }
       
       request.continue();
@@ -72,7 +155,7 @@ class LinkedInScraper {
       const headers = response.headers();
       const contentType = headers['content-type'] || '';
       
-      console.log(`📥 [${status} ${statusText}] Response from: ${url}`);
+      logToFile(`📥 [${status} ${statusText}] Response from: ${url}`);
       
       // Log detailed response for JSON and important responses
       const isJSON = contentType.includes('application/json');
@@ -87,52 +170,65 @@ class LinkedInScraper {
             try {
               // Try to parse and pretty print JSON
               const json = JSON.parse(text);
-              console.log('📦 Response JSON payload:', JSON.stringify(json, null, 2));
+              logToFile(`📦 Response JSON payload: ${JSON.stringify(json, null, 2)}`);
             } catch {
               // Not valid JSON, log truncated text
               if (text.length > 500) {
-                console.log(`📦 Response body (truncated): ${text.substring(0, 500)}...`);
+                logToFile(`📦 Response body (truncated): ${text.substring(0, 500)}...`);
               } else {
-                console.log(`📦 Response body: ${text}`);
+                logToFile(`📦 Response body: ${text}`);
               }
             }
           }
         } catch (e: unknown) {
-          console.log('📦 Could not read response body:', e instanceof Error ? e.message : String(e));
+          logToFile(`📦 Could not read response body: ${e instanceof Error ? e.message : String(e)}`);
         }
       }
       
       // Always log error responses with details
       if (status >= 400) {
-        console.error(`❌ Error response: ${status} ${statusText} for ${url}`);
+        const errorMsg = `❌ Error response: ${status} ${statusText} for ${url}`;
+        console.error(errorMsg);
+        logToFile(errorMsg);
+        
         try {
           const text = await response.text();
           if (text && text.length > 0) {
             try {
               // Try to parse and pretty print JSON
               const json = JSON.parse(text);
-              console.error('📦 Error response JSON:', JSON.stringify(json, null, 2));
+              const errorResponseMsg = `📦 Error response JSON: ${JSON.stringify(json, null, 2)}`;
+              console.error(errorResponseMsg);
+              logToFile(errorResponseMsg);
             } catch {
               // Not valid JSON, log truncated text
+              let errorResponseMsg;
               if (text.length > 500) {
-                console.error(`📦 Error response (truncated): ${text.substring(0, 500)}...`);
+                errorResponseMsg = `📦 Error response (truncated): ${text.substring(0, 500)}...`;
               } else {
-                console.error(`📦 Error response: ${text}`);
+                errorResponseMsg = `📦 Error response: ${text}`;
               }
+              console.error(errorResponseMsg);
+              logToFile(errorResponseMsg);
             }
           }
         } catch (e: unknown) {
-          console.error('📦 Could not read error response body:', e instanceof Error ? e.message : String(e));
+          const errorBodyMsg = `📦 Could not read error response body: ${e instanceof Error ? e.message : String(e)}`;
+          console.error(errorBodyMsg);
+          logToFile(errorBodyMsg);
         }
       }
     });
 
     page.on('console', msg => {
-      console.log('🔍 Browser console:', msg.text());
+      const consoleMsg = `🔍 Browser console: ${msg.text()}`;
+      logToFile(consoleMsg);
     });
 
     page.on('pageerror', error => {
-      console.error('❌ Page error:', error);
+      const errorMsg = `❌ Page error: ${error}`;
+      console.error(errorMsg);
+      logToFile(errorMsg);
     });
 
     // Set a more descriptive user agent
@@ -144,14 +240,14 @@ class LinkedInScraper {
 
   private async login(page: Page): Promise<boolean> {
     try {
-      console.log('🔑 Attempting to navigate to LinkedIn login page...');
+      logToFile('🔑 Attempting to navigate to LinkedIn login page...');
       // Navigate to LinkedIn login page with more lenient wait conditions
       await page.goto('https://www.linkedin.com/login', { 
         waitUntil: 'domcontentloaded',
         timeout: 60000  // Increased timeout for initial load
       });
       
-      console.log('📝 Filling in credentials...');
+      logToFile('📝 Filling in credentials...');
       // Wait for and fill in credentials with explicit waits
       await page.waitForSelector('#username', { timeout: 30000 });
       await page.waitForSelector('#password', { timeout: 30000 });
@@ -159,10 +255,10 @@ class LinkedInScraper {
       await page.type('#password', LINKEDIN_PASSWORD, { delay: 100 });
       
       // Add a longer delay before clicking the sign-in button to allow security checks
-      console.log('⏳ Adding delay before clicking sign in button...');
+      logToFile('⏳ Adding delay before clicking sign in button...');
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      console.log('🖱️ Clicking sign in button...');
+      logToFile('🖱️ Clicking sign in button...');
       // Click sign in button with explicit wait
       await page.waitForSelector('button[type="submit"]', { timeout: 30000 });
       await Promise.all([
@@ -190,9 +286,11 @@ class LinkedInScraper {
       });
 
       if (isLoggedIn) {
-        console.log('✅ Successfully logged in to LinkedIn');
+        logToFile('✅ Successfully logged in to LinkedIn');
       } else {
-        console.error('❌ Login unsuccessful - no success indicators found');
+        const errorMsg = '❌ Login unsuccessful - no success indicators found';
+        console.error(errorMsg);
+        logToFile(errorMsg);
         // Take a screenshot for debugging if login fails
         await page.screenshot({ 
           path: 'linkedin-login-failed.png',
@@ -201,322 +299,272 @@ class LinkedInScraper {
       }
       
       return isLoggedIn;
-    } catch (error) {
-      console.error('❌ LinkedIn login failed:', error);
-      // Take a screenshot on error
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const loginErrorMsg = `❌ Error during login: ${errorMessage}`;
+      console.error(loginErrorMsg);
+      logToFile(loginErrorMsg);
+      
       try {
         await page.screenshot({ 
           path: 'linkedin-login-error.png',
           fullPage: true 
         });
       } catch (screenshotError) {
-        console.error('Failed to take error screenshot:', screenshotError);
+        const screenshotErrorMsg = `Failed to take error screenshot: ${screenshotError instanceof Error ? screenshotError.message : String(screenshotError)}`;
+        console.error(screenshotErrorMsg);
+        logToFile(screenshotErrorMsg);
       }
+      
       return false;
     }
   }
 
   async scrapeJobDescriptions(config: JobScraperConfig): Promise<InsertJobDescription[]> {
+    const { keywords, location } = config;
     const jobDescriptions: InsertJobDescription[] = [];
-    const keywords = config.keywords ?? [];
-    const location = config.location;
-
+    
     try {
-      console.log('🚀 Launching browser...');
-      const browser = await puppeteer.launch({
-        headless: false,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu'
-        ]
-      });
-
-      console.log('📄 Creating new page...');
-      const page = await browser.newPage();
+      // Check for null or empty keywords
+      if (!keywords || keywords.length === 0) {
+        logToFile('No keywords provided for LinkedIn scraping');
+        return jobDescriptions;
+      }
       
-      console.log('⚙️ Setting up page with logging and monitoring...');
+      logToFile(`🚀 Starting LinkedIn scraper with ${keywords.length} keywords`);
+      
+      // Launch browser with non-headless mode for testing and debugging
+      logToFile('🌐 Launching browser...');
+      const browser = await puppeteer.launch({
+        headless: false,  // Set to true in production
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: { width: 1280, height: 800 }
+      });
+      
+      // Open a new page and set up logging
+      const page = await browser.newPage();
+      logToFile('🔧 Setting up page and logging...');
       await this.setupPage(page);
       
-      // Login to LinkedIn first
-      const isLoggedIn = await this.login(page);
-      if (!isLoggedIn) {
-        console.error('❌ Failed to log in to LinkedIn. Please check your credentials.');
+      // Log in to LinkedIn
+      logToFile('🔑 Logging in to LinkedIn...');
+      const loginSuccessful = await this.login(page);
+      
+      if (!loginSuccessful) {
+        logToFile('❌ Failed to log in to LinkedIn. Aborting job scraping.');
         await browser.close();
-        return jobDescriptions;
-      }
-
-      // Add a delay after login
-      console.log('⏳ Adding delay after login...');
-      await this.randomDelay(5000, 8000);
-
-      if (!keywords || keywords.length === 0) {
-        console.log('⚠️ No keywords provided for scraping');
-        await browser.close();
-        return jobDescriptions;
-      }
-
-      // Follow manual workflow - click on Jobs icon in LinkedIn navigation
-      console.log('🖱️ Clicking on LinkedIn Jobs icon...');
-      try {
-        // Wait for and click on the Jobs icon in the top navigation
-        await page.waitForSelector('a[data-link-to="jobs"]', { timeout: 10000 })
-          .then(element => element?.click())
-          .catch(async () => {
-            // Try alternative selectors if the primary one fails
-            console.log('⚠️ Primary jobs selector not found, trying alternatives...');
-            const jobsSelectors = [
-              'a[href="https://www.linkedin.com/jobs/"]',
-              'a[href*="/jobs/"]',
-              'a[data-test-global-nav-link="jobs"]',
-              'li.global-nav__primary-item a[href*="jobs"]'
-            ];
-            
-            for (const selector of jobsSelectors) {
-              const element = await page.$(selector);
-              if (element) {
-                console.log(`✅ Found jobs link with selector: ${selector}`);
-                await element.click();
-                break;
-              }
-            }
-          });
-        
-        // Wait for the jobs page to load
-        await page.waitForNavigation({ 
-          waitUntil: 'domcontentloaded',
-          timeout: 30000
-        });
-        
-        console.log('✅ Successfully navigated to LinkedIn Jobs page');
-      } catch (error) {
-        console.error('❌ Error clicking on Jobs icon:', error);
-        console.log('⚠️ Falling back to direct URL navigation...');
-        await page.goto('https://www.linkedin.com/jobs/', { 
-          waitUntil: 'domcontentloaded',
-          timeout: 30000
-        });
+        return [];
       }
       
-      // Add a delay after navigating to jobs page
-      await this.randomDelay(2000, 3000);
-
+      // Process each keyword with concurrency limiting
+      logToFile(`🔍 Processing ${keywords.length} keywords with concurrency limit: ${LINKEDIN_CONFIG.MAX_CONCURRENT_SCRAPES}`);
+      
       for (const keyword of keywords) {
-        console.log(`🔍 Searching for jobs with keyword: "${keyword}"`);
+        logToFile(`🔍 Processing keyword: "${keyword}"`);
         
         try {
-          // Find and interact with the search box - mimic manual workflow
-          console.log('🔍 Looking for search input field...');
-          const searchInputSelector = 'input[aria-label="Search job titles or companies"]';
-          const alternativeSearchSelectors = [
-            'input.jobs-search-box__text-input',
-            'input[placeholder*="Search jobs"]',
-            'input[role="combobox"]',
-            'input[type="text"][data-tracking-control-name*="search"]'
+          // Navigate to LinkedIn Jobs
+          logToFile('🌐 Navigating to LinkedIn Jobs...');
+          
+          // Click on the Jobs icon (multiple selectors for redundancy)
+          const jobsIconSelectors = [
+            'a[href="https://www.linkedin.com/jobs/?"]',
+            'a[data-link-to="jobs"]',
+            'a[href^="/jobs"]',
+            'a.app-aware-link[href^="/jobs"]'
           ];
           
-          let searchInput = null;
-          
-          // Try primary selector first
-          searchInput = await page.$(searchInputSelector);
-          
-          // If not found, try alternatives
-          if (!searchInput) {
-            console.log('⚠️ Primary search input not found, trying alternatives...');
-            for (const selector of alternativeSearchSelectors) {
-              searchInput = await page.$(selector);
-              if (searchInput) {
-                console.log(`✅ Found search input with selector: ${selector}`);
+          let clickedJobsIcon = false;
+          for (const selector of jobsIconSelectors) {
+            try {
+              const element = await page.$(selector);
+              if (element) {
+                logToFile(`✅ Found jobs link with selector: ${selector}`);
+                await element.click();
+                clickedJobsIcon = true;
                 break;
               }
+            } catch (e) {
+              // Continue trying other selectors
             }
           }
           
-          if (searchInput) {
-            // Clear existing text if any - type-safe way to set value
-            await page.evaluate(el => {
-              if (el instanceof HTMLInputElement) {
-                el.value = '';
-              }
-            }, searchInput);
-            
-            // Type the search keyword
-            console.log(`📝 Typing search keyword: "${keyword}"`);
-            await searchInput.type(`${keyword} ${location || ''}`, { delay: 100 });
-            
-            // Submit the search
-            await page.keyboard.press('Enter');
-            
-            // Wait for search results to load
-            await page.waitForNavigation({ 
-              waitUntil: 'domcontentloaded', 
-              timeout: 30000 
-            }).catch(error => {
-              console.log(`⚠️ Navigation timeout after search submission for "${keyword}". Continuing anyway...`);
-              // Continue execution even if navigation timeout occurs
-            });
-            
-            console.log(`✅ Submitted search for keyword: ${keyword} in location: ${location}`);
-          } else {
-            // Fallback to direct URL if search input not found
-            console.log('⚠️ Could not find search input, falling back to direct URL...');
-            const searchQuery = encodeURIComponent(`${keyword} ${location || ''}`);
-            const url = `https://www.linkedin.com/jobs/search/?keywords=${searchQuery}`;
-            
-            console.log(`🌐 Navigating to search results for "${keyword}"...`);
-            await page.goto(url, { 
+          if (!clickedJobsIcon) {
+            // If we couldn't find the jobs icon, navigate directly to the jobs page
+            logToFile('⚠️ Could not find jobs icon, navigating directly to jobs page...');
+            await page.goto('https://www.linkedin.com/jobs/', {
               waitUntil: 'domcontentloaded',
-              timeout: 60000 
+              timeout: 30000
             });
           }
           
-          // Wait for job listings with increased timeout
-          const jobListSelector = '.jobs-search__results-list';
-          console.log('⏳ Waiting for job listings to load...');
-          await page.waitForSelector(jobListSelector, { timeout: 60000 })
-            .catch(() => {
-              console.log('⚠️ Could not find job listings, might be rate limited');
-            });
-
-          // Scroll to load more jobs
-          console.log('📜 Scrolling to load more jobs...');
-          await page.evaluate(async () => {
-            await new Promise<void>((resolve) => {
-              let totalHeight = 0;
-              const distance = 100;
-              const timer = setInterval(() => {
-                const scrollHeight = document.documentElement.scrollHeight;
-                window.scrollBy(0, distance);
-                totalHeight += distance;
-                
-                if (totalHeight >= scrollHeight) {
-                  clearInterval(timer);
-                  resolve();
-                }
-              }, 100);
-            });
-          });
-
-          // Wait a bit after scrolling
-          console.log('⏳ Adding delay after scrolling...');
-          await this.randomDelay(2000, 3000);
-
-          // Extract job links with retry mechanism
-          let jobLinks: string[] = [];
-          let retryCount = 0;
-          while (retryCount < 3 && jobLinks.length === 0) {
-            console.log(`🔍 Attempt ${retryCount + 1} to extract job links...`);
-            jobLinks = await page.evaluate(() => {
-              const links = document.querySelectorAll<HTMLAnchorElement>('a.job-card-container__link');
-              return Array.from(links)
-                .map(link => link.href)
-                .filter((href): href is string => href !== null);
-            });
-            
-            if (jobLinks.length === 0) {
-              console.log(`⚠️ Retry ${retryCount + 1}: No job links found, waiting...`);
-              retryCount++;
-              await this.randomDelay(2000, 3000);
+          // Wait for the jobs page to load
+          await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
+          
+          // Input the keyword in the search field
+          logToFile(`🔤 Entering keyword: "${keyword}"`);
+          
+          // Click on the search box to activate it (try multiple selectors)
+          const searchBoxSelectors = [
+            'input[aria-label="Search job titles or companies"]',
+            'input[placeholder="Search job titles or companies"]',
+            'input[role="combobox"]',
+            '.jobs-search-box__text-input[aria-label="Search job titles or companies"]'
+          ];
+          
+          let searchBoxFound = false;
+          for (const selector of searchBoxSelectors) {
+            try {
+              const searchBox = await page.$(selector);
+              if (searchBox) {
+                logToFile(`✅ Found search box with selector: ${selector}`);
+                await searchBox.click();
+                await searchBox.type(keyword);
+                searchBoxFound = true;
+                break;
+              }
+            } catch (error) {
+              // Continue trying other selectors
             }
           }
-
-          console.log(`✅ Found ${jobLinks.length} job links for "${keyword}"`);
-
-          // Process only a limited number of jobs
-          const jobsToProcess = jobLinks.slice(0, LINKEDIN_CONFIG.MAX_JOBS_PER_KEYWORD);
-          console.log(`ℹ️ Processing ${jobsToProcess.length} jobs (limited by MAX_JOBS_PER_KEYWORD)`);
           
-          for (const jobUrl of jobsToProcess) {
-            if (!jobUrl) continue;
+          if (!searchBoxFound) {
+            logToFile('⚠️ Could not find the search box. Trying an alternative approach...');
+            // If no search box found, try the URL approach directly
+            const keywordEncoded = encodeURIComponent(keyword);
+            const locationEncoded = encodeURIComponent(location || '');
+            await page.goto(`https://www.linkedin.com/jobs/search/?keywords=${keywordEncoded}&location=${locationEncoded}`, {
+              waitUntil: 'domcontentloaded',
+              timeout: 30000
+            });
+          } else {
+            // Press Enter to submit the search
+            logToFile('🔍 Submitting search...');
+            await page.keyboard.press('Enter');
+          }
+          
+          // Wait for search results to load
+          logToFile('⏳ Waiting for search results to load...');
+          await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
+          
+          // Extract job links - using retries for reliability
+          let jobLinks: string[] = [];
+          let retries = 0;
+          const maxRetries = 3;
+          
+          while (jobLinks.length === 0 && retries < maxRetries) {
+            if (retries > 0) {
+              logToFile(`🔄 Retry ${retries}/${maxRetries} extracting job links...`);
+              await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
+            }
+            
+            // Scroll down to load more results
+            logToFile('📜 Scrolling to load more job results...');
+            await this.scrollPage(page);
+            
+            // Extract job links
+            jobLinks = await this.extractJobLinks(page);
+            logToFile(`📊 Found ${jobLinks.length} job links`);
+            
+            retries++;
+          }
+          
+          // Limit the number of jobs to process
+          const jobLinksToProcess = jobLinks.slice(0, LINKEDIN_CONFIG.MAX_JOBS_PER_KEYWORD);
+          logToFile(`🔍 Processing ${jobLinksToProcess.length} job links for keyword "${keyword}"`);
+          
+          // Extract job descriptions from the links concurrently with rate limiting
+          const jobPromises = jobLinksToProcess.map((jobUrl, index) => {
+            return this.limit(async () => {
+              logToFile(`🔍 [${index + 1}/${jobLinksToProcess.length}] Getting job details for ${jobUrl}...`);
+              await this.randomDelay(
+                LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 0.8,
+                LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 1.2
+              );
 
-            // Use p-limit to ensure only one job is processed at a time
-            await this.limit(async () => {
+              logToFile(`🌐 Loading job details from ${jobUrl}...`);
+              // Navigate to job detail page
               try {
-                console.log(`⏳ Adding delay before loading job details for ${jobUrl}...`);
-                await this.randomDelay(
-                  LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 0.8,
-                  LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 1.2
-                );
+                await page.goto(jobUrl, {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 30000
+                });
+                logToFile(`✅ Navigated to job detail page: ${jobUrl}`);
+              } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                logToFile(`⚠️ Error navigating to job detail page: ${jobUrl}. Error: ${errorMessage}`);
+                return; // Skip this job and move to the next
+              }
 
-                console.log(`🌐 Loading job details from ${jobUrl}...`);
-                // Navigate to job detail page
-                try {
-                  await page.goto(jobUrl, {
-                    waitUntil: 'domcontentloaded',
-                    timeout: 30000
-                  });
-                  console.log(`✅ Navigated to job detail page: ${jobUrl}`);
-                } catch (error: unknown) {
-                  const errorMessage = error instanceof Error ? error.message : String(error);
-                  console.log(`⚠️ Error navigating to job detail page: ${jobUrl}. Error: ${errorMessage}`);
-                  return; // Skip this job and move to the next
-                }
-
-                // Wait for job details with increased timeout
-                console.log('⏳ Waiting for job details to load...');
-                await page.waitForSelector('.job-details', { timeout: 30000 })
-                  .catch(() => {
-                    console.log('⚠️ Could not find job details');
-                  });
-
-                // Extract job details
-                console.log('🔍 Extracting job details...');
-                const jobDetails = await page.evaluate(() => {
-                  const title = document.querySelector('.job-details-jobs-unified-top-card__job-title')?.textContent?.trim();
-                  const company = document.querySelector('.job-details-jobs-unified-top-card__company-name')?.textContent?.trim();
-                  const location = document.querySelector('.job-details-jobs-unified-top-card__bullet')?.textContent?.trim();
-                  const descriptionElement = document.querySelector('.jobs-description__content');
-                  const description = descriptionElement?.textContent?.trim();
-
-                  return {
-                    title,
-                    company,
-                    location,
-                    description
-                  };
+              // Wait for job details with increased timeout
+              logToFile('⏳ Waiting for job details to load...');
+              await page.waitForSelector('.job-details', { timeout: 30000 })
+                .catch(() => {
+                  logToFile('⚠️ Could not find job details');
                 });
 
-                if (jobDetails.title && jobDetails.description) {
-                  console.log(`✅ Successfully extracted job: "${jobDetails.title}" at "${jobDetails.company}"`);
-                  jobDescriptions.push({
-                    title: jobDetails.title,
-                    company: jobDetails.company || '',
-                    location: jobDetails.location || '',
-                    jobBoard: 'linkedin',
-                    sourceUrl: jobUrl,
-                    rawContent: jobDetails.description,
-                    keywords: [keyword],
-                    status: 'raw'
-                  });
-                } else {
-                  console.error('❌ Failed to extract job details - missing title or description');
-                }
-              } catch (error) {
-                console.error(`❌ Error scraping job ${jobUrl}:`, error);
+              // Extract job details
+              logToFile('🔍 Extracting job details...');
+              const jobDetails = await page.evaluate(() => {
+                const title = document.querySelector('.job-details-jobs-unified-top-card__job-title')?.textContent?.trim();
+                const company = document.querySelector('.job-details-jobs-unified-top-card__company-name')?.textContent?.trim();
+                const location = document.querySelector('.job-details-jobs-unified-top-card__bullet')?.textContent?.trim();
+                const descriptionElement = document.querySelector('.jobs-description__content');
+                const description = descriptionElement?.textContent?.trim();
+
+                return {
+                  title,
+                  company,
+                  location,
+                  description
+                };
+              });
+
+              if (jobDetails.title && jobDetails.description) {
+                logToFile(`✅ Successfully extracted job: "${jobDetails.title}" at "${jobDetails.company}"`);
+                jobDescriptions.push({
+                  title: jobDetails.title,
+                  company: jobDetails.company || '',
+                  location: jobDetails.location || '',
+                  jobBoard: 'linkedin',
+                  sourceUrl: jobUrl,
+                  rawContent: jobDetails.description,
+                  keywords: [keyword],
+                  status: 'raw'
+                });
+              } else {
+                logToFile(`⚠️ Failed to extract complete job details from ${jobUrl}`);
               }
             });
+          });
+          
+          // Wait for all job promises to complete
+          await Promise.all(jobPromises);
+          
+          logToFile(`✅ Completed processing keyword: "${keyword}". Found ${jobDescriptions.length} job descriptions so far.`);
+          
+          // Add delay between keywords to prevent rate limiting
+          if (keywords.indexOf(keyword) < keywords.length - 1) {
+            const delayMs = LINKEDIN_CONFIG.BETWEEN_KEYWORDS_DELAY;
+            logToFile(`⏳ Waiting ${delayMs / 1000} seconds before processing next keyword...`);
+            await new Promise(resolve => setTimeout(resolve, delayMs));
           }
-        } catch (error) {
-          console.error(`❌ Error processing keyword "${keyword}":`, error);
-        }
-
-        if (keywords.indexOf(keyword) < keywords.length - 1) {
-          console.log('⏳ Waiting between keywords to avoid rate limiting...');
-          await this.randomDelay(
-            LINKEDIN_CONFIG.BETWEEN_KEYWORDS_DELAY * 0.8,
-            LINKEDIN_CONFIG.BETWEEN_KEYWORDS_DELAY * 1.2
-          );
+          
+        } catch (keywordError: unknown) {
+          const errorMessage = keywordError instanceof Error ? keywordError.message : String(keywordError);
+          logToFile(`❌ Error processing keyword "${keyword}": ${errorMessage}`);
+          // Continue with next keyword
         }
       }
-
-      console.log('🏁 Closing browser...');
+      
+      logToFile(`🎉 LinkedIn scraping completed. Found ${jobDescriptions.length} total job descriptions.`);
       await browser.close();
-    } catch (error) {
-      console.error('❌ Error scraping LinkedIn:', error);
+      
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logToFile(`❌ LinkedIn scraping failed: ${errorMessage}`);
     }
-
+    
     return jobDescriptions;
   }
 }
@@ -532,10 +580,11 @@ class IndeedScraper {
     try {
       // Check for null or empty keywords
       if (!keywords || keywords.length === 0) {
-        console.log('No keywords provided for Indeed scraping');
+        logToFile('No keywords provided for Indeed scraping');
         return jobDescriptions;
       }
 
+      logToFile('🚀 Starting Indeed scraper...');
       const browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -543,77 +592,113 @@ class IndeedScraper {
       
       const page = await browser.newPage();
       
+      // Set up logging for requests and responses
+      page.on('console', msg => {
+        const consoleMsg = `🔍 Indeed browser console: ${msg.text()}`;
+        logToFile(consoleMsg);
+      });
+      
+      page.on('pageerror', error => {
+        const errorMsg = `❌ Indeed page error: ${error}`;
+        console.error(errorMsg);
+        logToFile(errorMsg);
+      });
+      
       // For each keyword, perform a search
       for (const keyword of keywords) {
+        logToFile(`🔍 Processing keyword: "${keyword}" for Indeed`);
         const searchQuery = encodeURIComponent(keyword);
         const locationQuery = encodeURIComponent(location || '');
         const url = `https://www.indeed.com/jobs?q=${searchQuery}&l=${locationQuery}`;
         
+        logToFile(`🌐 Navigating to Indeed search results for "${keyword}"...`);
         await page.goto(url, { waitUntil: 'domcontentloaded' });
         
         // Wait for job listings to load
+        logToFile('⏳ Waiting for Indeed job listings to load...');
         await page.waitForSelector('.jobsearch-ResultsList', { timeout: 10000 }).catch(() => {
-          console.log('Could not find job listings');
+          logToFile('⚠️ Could not find Indeed job listings');
         });
         
         // Extract job links
+        logToFile('🔍 Extracting job links from Indeed search results...');
         const jobLinks = await page.evaluate(() => {
           const links = document.querySelectorAll('a.jcs-JobTitle');
           return Array.from(links).map(link => link.getAttribute('href'));
         });
         
-        // Visit each job posting and extract details
-        for (let i = 0; i < Math.min(jobLinks.length, 10); i++) {
-          let jobUrl = jobLinks[i];
+        logToFile(`📊 Found ${jobLinks.length} job links on Indeed for keyword "${keyword}"`);
+        
+        // Process each job link
+        for (const jobHref of jobLinks) {
+          if (!jobHref) continue;
           
-          if (!jobUrl) continue;
-          
-          // Make sure the URL is absolute
-          if (jobUrl.startsWith('/')) {
-            jobUrl = `https://www.indeed.com${jobUrl}`;
-          }
-          
-          await page.goto(jobUrl, { waitUntil: 'domcontentloaded' });
-          
-          // Wait for job description to load
-          await page.waitForSelector('.jobsearch-JobComponent', { timeout: 10000 }).catch(() => {
-            console.log('Could not find job details');
-          });
-          
-          // Extract job details
-          const jobDetails = await page.evaluate(() => {
-            const title = document.querySelector('.jobsearch-JobInfoHeader-title')?.textContent?.trim();
-            const company = document.querySelector('.jobsearch-CompanyInfoContainer a')?.textContent?.trim();
-            const location = document.querySelector('.jobsearch-JobInfoHeader-subtitle .jobsearch-JobInfoHeader-compLocation')?.textContent?.trim();
-            const descriptionElement = document.querySelector('#jobDescriptionText');
-            const description = descriptionElement?.textContent?.trim();
+          try {
+            const jobUrl = new URL(jobHref.startsWith('http') ? jobHref : `https://www.indeed.com${jobHref}`, 'https://www.indeed.com').href;
             
-            return {
-              title,
-              company,
-              location,
-              description
-            };
-          });
-          
-          if (jobDetails.title && jobDetails.description) {
-            jobDescriptions.push({
-              title: jobDetails.title,
-              company: jobDetails.company || '',
-              location: jobDetails.location || '',
-              jobBoard: 'indeed',
-              sourceUrl: jobUrl,
-              rawContent: jobDetails.description,
-              keywords: [keyword],
-              status: 'raw'
+            logToFile(`🌐 Loading job details from ${jobUrl}...`);
+            await page.goto(jobUrl, { waitUntil: 'domcontentloaded' });
+            
+            // Wait for job details to load
+            logToFile('⏳ Waiting for Indeed job details to load...');
+            await page.waitForSelector('#jobDescriptionText', { timeout: 10000 }).catch(() => {
+              logToFile('⚠️ Could not find job description');
             });
+            
+            // Extract job details
+            logToFile('🔍 Extracting Indeed job details...');
+            const jobDetails = await page.evaluate(() => {
+              const title = document.querySelector('.jobsearch-JobInfoHeader-title')?.textContent?.trim();
+              const company = document.querySelector('.jobsearch-CompanyInfoContainer a')?.textContent?.trim();
+              const location = document.querySelector('.jobsearch-JobInfoHeader-subtitle .jobsearch-JobInfoHeader-compLocation')?.textContent?.trim();
+              const descriptionElement = document.querySelector('#jobDescriptionText');
+              const description = descriptionElement?.textContent?.trim();
+              
+              return {
+                title,
+                company,
+                location,
+                description
+              };
+            });
+            
+            if (jobDetails.title && jobDetails.description) {
+              logToFile(`✅ Successfully extracted Indeed job: "${jobDetails.title}" at "${jobDetails.company}"`);
+              jobDescriptions.push({
+                title: jobDetails.title,
+                company: jobDetails.company || '',
+                location: jobDetails.location || '',
+                jobBoard: 'indeed',
+                sourceUrl: jobUrl,
+                rawContent: jobDetails.description,
+                keywords: [keyword],
+                status: 'raw'
+              });
+            } else {
+              logToFile(`⚠️ Failed to extract complete job details from ${jobUrl}`);
+            }
+            
+            // Add delay between job scrapes
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logToFile(`⚠️ Error processing Indeed job: ${errorMessage}`);
           }
+        }
+        
+        // Add delay between keywords
+        if (keywords.indexOf(keyword) < keywords.length - 1) {
+          logToFile('⏳ Waiting between Indeed keywords to avoid rate limiting...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
       }
       
+      logToFile('🎉 Indeed scraping completed.');
       await browser.close();
-    } catch (error) {
-      console.error('Error scraping Indeed:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logToFile(`❌ Error scraping Indeed: ${errorMessage}`);
     }
     
     return jobDescriptions;
@@ -645,7 +730,7 @@ export class JobScraper {
    */
   async runScraper(config: JobScraperConfig): Promise<number> {
     try {
-      console.log(`Running job scraper for ${config.name}`);
+      logToFile(`🚀 Running job scraper for ${config.name}`);
       
       // Get the appropriate scraper
       const scraper = ScraperFactory.getScraper(config.targetWebsite);
@@ -653,43 +738,100 @@ export class JobScraper {
       // Scrape job descriptions
       const jobDescriptions = await scraper.scrapeJobDescriptions(config);
       
-      console.log(`Found ${jobDescriptions.length} job descriptions for ${config.name}`);
+      logToFile(`📊 Found ${jobDescriptions.length} job descriptions for ${config.name}`);
+      
+      let savedCount = 0;
       
       // Save job descriptions to storage one at a time
       for (const jobDescription of jobDescriptions) {
-        await storage.createJobDescription(jobDescription);
-        // Add small delay between storage operations
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          // Ensure fields are properly formatted
+          const sanitizedJobDescription = {
+            ...jobDescription,
+            // Ensure strings are actually strings
+            title: String(jobDescription.title),
+            company: jobDescription.company ? String(jobDescription.company) : '',
+            location: jobDescription.location ? String(jobDescription.location) : '',
+            jobBoard: String(jobDescription.jobBoard),
+            sourceUrl: String(jobDescription.sourceUrl),
+            rawContent: String(jobDescription.rawContent),
+            // Ensure keywords is an array of strings
+            keywords: Array.isArray(jobDescription.keywords) ? 
+              jobDescription.keywords.map(k => String(k)) : 
+              jobDescription.keywords ? [String(jobDescription.keywords)] : [],
+            status: 'raw'
+          };
+          
+          logToFile(`💾 Saving job: "${sanitizedJobDescription.title}" from ${sanitizedJobDescription.company}`);
+          await storage.createJobDescription(sanitizedJobDescription);
+          savedCount++;
+          logToFile(`✅ Successfully saved job (${savedCount}/${jobDescriptions.length})`);
+          
+          // Add small delay between storage operations
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (saveError: unknown) {
+          const errorMessage = saveError instanceof Error ? saveError.message : String(saveError);
+          logToFile(`❌ Error saving job description: ${errorMessage}`);
+          // Continue with next job even if this one failed
+        }
       }
       
       // Update the last run time for the config
       await storage.updateJobScraperConfigLastRun(config.id);
       
-      return jobDescriptions.length;
-    } catch (error) {
+      logToFile(`🎉 Job scraper completed. Saved ${savedCount} out of ${jobDescriptions.length} jobs.`);
+      return savedCount;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logToFile(`❌ Error running job scraper for ${config.name}: ${errorMessage}`);
       console.error(`Error running job scraper for ${config.name}:`, error);
       return 0;
     }
   }
   
   /**
-   * Run all active scrapers sequentially
+   * Run all active job scrapers
    */
   async runAllScrapers(): Promise<void> {
     try {
+      logToFile('🚀 Running all active job scrapers');
+      
+      // Get all active job scraper configurations
       const configs = await storage.listActiveJobScraperConfigs();
       
-      console.log(`Running ${configs.length} active job scrapers sequentially`);
+      logToFile(`📊 Found ${configs.length} active job scraper configurations`);
       
-      // Process configs one at a time
+      // Run each scraper sequentially to avoid rate limiting
       for (const config of configs) {
-        console.log(`Processing config: ${config.name}`);
-        await this.runScraper(config);
-        // Add delay between configs
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        logToFile(`🔍 Starting scraper for: ${config.name}`);
+        
+        try {
+          const jobCount = await this.runScraper(config);
+          logToFile(`✅ Completed scraper for ${config.name}. Found ${jobCount} jobs.`);
+          
+          // Update status to completed
+          await storage.updateJobScraperConfigStatus(config.id, true);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logToFile(`❌ Error in scraper for ${config.name}: ${errorMessage}`);
+          
+          // Update status to failed
+          await storage.updateJobScraperConfigStatus(config.id, false);
+        }
+        
+        // Add delay between scraper runs
+        if (configs.indexOf(config) < configs.length - 1) {
+          const delayTime = 30000; // 30 seconds
+          logToFile(`⏳ Waiting ${delayTime / 1000} seconds before next scraper...`);
+          await new Promise(resolve => setTimeout(resolve, delayTime));
+        }
       }
-    } catch (error) {
-      console.error('Error running job scrapers:', error);
+      
+      logToFile('🎉 All job scrapers completed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logToFile(`❌ Error running all job scrapers: ${errorMessage}`);
+      console.error('Error running all job scrapers:', error);
     }
   }
 } 

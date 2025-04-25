@@ -231,7 +231,9 @@ export class MemStorage implements IStorage {
       id,
       description: capability.description || null,
       implementationEffort: capability.implementationEffort || null,
-      businessValue: capability.businessValue || null
+      businessValue: capability.businessValue || null,
+      easeScore: capability.easeScore || null,
+      valueScore: capability.valueScore || null
     };
     this.aiCapabilities.set(id, aiCapability);
     return aiCapability;
@@ -272,14 +274,12 @@ export class MemStorage implements IStorage {
       throw new Error(`Assessment with id ${id} not found`);
     }
     
-    const updatedStepData = {
-      ...(assessment.stepData as WizardStepData || {}),
-      ...stepData
-    };
-    
     const updatedAssessment = {
       ...assessment,
-      stepData: updatedStepData
+      stepData: {
+        ...(assessment.stepData || {}),
+        ...stepData
+      }
     };
     
     this.assessments.set(id, updatedAssessment);
@@ -386,14 +386,12 @@ export class MemStorage implements IStorage {
   async updateJobDescriptionProcessedContent(id: number, processedContent: ProcessedJobContent): Promise<JobDescription> {
     const jobDescription = this.jobDescriptions.get(id);
     if (!jobDescription) {
-      throw new Error(`Job description with ID ${id} not found`);
+      throw new Error(`JobDescription with id ${id} not found`);
     }
     
     const updatedJobDescription = {
       ...jobDescription,
-      processedContent,
-      dateProcessed: new Date(),
-      status: 'processed'
+      processedContent
     };
     
     this.jobDescriptions.set(id, updatedJobDescription);
@@ -403,7 +401,7 @@ export class MemStorage implements IStorage {
   async updateJobDescriptionStatus(id: number, status: string, error?: string): Promise<JobDescription> {
     const jobDescription = this.jobDescriptions.get(id);
     if (!jobDescription) {
-      throw new Error(`Job description with ID ${id} not found`);
+      throw new Error(`JobDescription with id ${id} not found`);
     }
     
     const updatedJobDescription = {
@@ -450,7 +448,7 @@ export class MemStorage implements IStorage {
   async updateJobScraperConfigLastRun(id: number): Promise<JobScraperConfig> {
     const config = this.jobScraperConfigs.get(id);
     if (!config) {
-      throw new Error(`Job scraper config with ID ${id} not found`);
+      throw new Error(`JobScraperConfig with id ${id} not found`);
     }
     
     const updatedConfig = {
@@ -465,7 +463,7 @@ export class MemStorage implements IStorage {
   async updateJobScraperConfigStatus(id: number, isActive: boolean): Promise<JobScraperConfig> {
     const config = this.jobScraperConfigs.get(id);
     if (!config) {
-      throw new Error(`Job scraper config with ID ${id} not found`);
+      throw new Error(`JobScraperConfig with id ${id} not found`);
     }
     
     const updatedConfig = {
@@ -545,58 +543,58 @@ export class MemStorage implements IStorage {
     ];
     jobRoles.forEach(role => this.jobRoles.set(role.id, role));
 
-    // Create sample AI capabilities
-    const capabilities: AICapability[] = [
+    // Sample AI Capabilities
+    const sampleCapabilities = [
       {
-        id: this.capabilityIdCounter++,
-        name: "Natural Language Understanding",
-        category: "NLP",
-        description: "Ability to understand and interpret human language",
+        name: "Automated Document Processing",
+        category: "Document Management",
+        description: "AI-powered document processing and analysis",
         implementationEffort: "Medium",
-        businessValue: "High"
+        businessValue: "High",
+        easeScore: "Medium",
+        valueScore: "High"
       },
       {
-        id: this.capabilityIdCounter++,
-        name: "Response Generation",
-        category: "NLP",
-        description: "Generate human-like text responses",
-        implementationEffort: "Medium",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "Knowledge Base Integration",
-        category: "Information Retrieval",
-        description: "Connect to and retrieve information from knowledge repositories",
-        implementationEffort: "Low",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "RFP Response Automation",
-        category: "Document Processing",
-        description: "Extract questions and generate draft responses for RFPs",
-        implementationEffort: "Medium",
-        businessValue: "High"
-      },
-      {
-        id: this.capabilityIdCounter++,
-        name: "Sales Data Analysis",
+        name: "Predictive Analytics",
         category: "Data Analysis",
-        description: "Analyze sales data to identify trends and opportunities",
-        implementationEffort: "Medium",
-        businessValue: "High"
+        description: "Advanced predictive modeling and forecasting",
+        implementationEffort: "High",
+        businessValue: "Very High",
+        easeScore: "Low",
+        valueScore: "Very High"
       },
       {
-        id: this.capabilityIdCounter++,
-        name: "Content Generation",
-        category: "Content Creation",
-        description: "Generate marketing copy, blog posts, and other content",
+        name: "Natural Language Processing",
+        category: "Text Analysis",
+        description: "Understanding and processing human language",
+        implementationEffort: "Medium",
+        businessValue: "High",
+        easeScore: "Medium",
+        valueScore: "High"
+      },
+      {
+        name: "Image Recognition",
+        category: "Computer Vision",
+        description: "AI-powered image analysis and recognition",
+        implementationEffort: "High",
+        businessValue: "Medium",
+        easeScore: "Low",
+        valueScore: "Medium"
+      },
+      {
+        name: "Process Automation",
+        category: "Workflow",
+        description: "Automating repetitive business processes",
         implementationEffort: "Low",
-        businessValue: "Medium"
+        businessValue: "High",
+        easeScore: "High",
+        valueScore: "High"
       }
     ];
-    capabilities.forEach(cap => this.aiCapabilities.set(cap.id, cap));
+
+    sampleCapabilities.forEach(capability => {
+      this.createAICapability(capability);
+    });
 
     // Add sample job scraper configs
     this.createJobScraperConfig({

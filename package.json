@@ -16,7 +16,9 @@
     "db:setup": "tsx server/scripts/setupEnv.ts",
     "storage:export": "tsx server/scripts/exportMemStorage.ts",
     "storage:migrate": "tsx server/scripts/migrateToPostgres.ts",
-    "scraper:run": "tsx server/scraper/runScraper.ts"
+    "scraper:run": "tsx server/scraper/runScraper.ts",
+    "scraper:tools": "tsx server/scripts/tool_scraper.ts",
+    "process:batch": "tsx server/scripts/processBatchOutput.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -125,7 +127,7 @@
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "^4.19.1",
+    "tsx": "^4.19.3",
     "typescript": "^5.6.3",
     "vite": "^5.4.14"
   },

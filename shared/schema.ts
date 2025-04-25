@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, jsonb, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, jsonb, timestamp, boolean, numeric, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -72,8 +72,11 @@ export const aiCapabilities = pgTable("ai_capabilities", {
   name: text("name").notNull(),
   category: text("category").notNull(),
   description: text("description"),
-  implementationEffort: text("implementation_effort"), // High, Medium, Low
-  businessValue: text("business_value"), // High, Medium, Low
+  implementationEffort: text("implementation_effort"), // High, Medium, Low (Qualitative)
+  businessValue: text("business_value"), // High, Medium, Low (Qualitative)
+  // Add numeric scores for calculations
+  easeScore: numeric("ease_score"), // Quantitative score for ease (e.g., 1-5)
+  valueScore: numeric("value_score"), // Quantitative score for value (e.g., 1-5)
 });
 
 export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick({
@@ -82,6 +85,11 @@ export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick(
   description: true,
   implementationEffort: true,
   businessValue: true,
+  easeScore: true,
+  valueScore: true,
+}).extend({
+  businessValue: z.enum(["Low", "Medium", "High", "Very High"]).default("Medium"),
+  implementationEffort: z.enum(["Low", "Medium", "High"]).default("Medium"),
 });
 
 // Assessment model
@@ -338,3 +346,73 @@ export type ProcessedJobContent = {
   industry?: string;
   seniorityLevel?: string;
 };
+
+// New Table: Assessment Responses
+export const assessmentResponses = pgTable("assessment_responses", {
+  responseId: serial("response_id").primaryKey(),
+  assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  questionIdentifier: text("question_identifier").notNull(), // Could be a path like "painPoints.roleX.severity" or a specific question ID
+  responseText: text("response_text"),
+  responseNumeric: numeric("response_numeric"),
+  responseBoolean: boolean("response_boolean"),
+  responseJson: jsonb("response_json"), // For multi-select, etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// New Table: AI Tools
+export const aiTools = pgTable("ai_tools", {
+  toolId: serial("tool_id").primaryKey(),
+  toolName: text("tool_name").notNull(),
+  description: text("description"),
+  websiteUrl: text("website_url"),
+  licenseType: text("license_type"), // 'Open Source', 'Commercial', 'Freemium', etc.
+  primaryCategory: text("primary_category"), // Align with ai_capabilities categories?
+  tags: jsonb("tags"), // Using JSONB for flexible tagging
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(), // Consider onUpdateNow() trigger in DB
+});
+
+// New Table: Capability Tool Mapping (Many-to-Many)
+export const capabilityToolMapping = pgTable("capability_tool_mapping", {
+  mappingId: serial("mapping_id").primaryKey(),
+  capabilityId: integer("capability_id").notNull().references(() => aiCapabilities.id, { onDelete: 'cascade' }),
+  toolId: integer("tool_id").notNull().references(() => aiTools.toolId, { onDelete: 'cascade' }),
+  notes: text("notes"), // Optional notes on suitability, integration, etc.
+});
+
+// New Table: Assessment Results
+export const assessmentResults = pgTable("assessment_results", {
+  resultId: serial("result_id").primaryKey(),
+  assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
+  identifiedThemes: jsonb("identified_themes"), // e.g., [{ theme: "Efficiency", keywords: ["...", "..."] }]
+  rankedPriorities: jsonb("ranked_priorities"), // e.g., [{ capabilityId: 1, value_score: 4, ease_score: 5, rank: 1 }, ...]
+  recommendedCapabilities: jsonb("recommended_capabilities"), // Array of ai_capabilities.id or objects { id: X, rationale: "..." }
+  capabilityRationale: jsonb("capability_rationale"), // { capabilityId: X, explanation: "..." }
+  existingToolAnalysis: text("existing_tool_analysis"),
+  recommendedTools: jsonb("recommended_tools"), // Array of ai_tools.id or objects { id: Y, reason: "..." }
+  rolloutCommentary: text("rollout_commentary"),
+  heatmapData: jsonb("heatmap_data"), // Structure for Value vs. Ease heatmap
+  processingStatus: text("processing_status").default('Pending').notNull(), // 'Pending', 'Processing', 'Success', 'Failed'
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => {
+  return {
+    // Ensure only one result per assessment
+    assessmentIdUnique: uniqueIndex("assessment_id_unique_idx").on(table.assessmentId),
+  };
+});
+
+// Add infer types for new tables
+export type AssessmentResponse = typeof assessmentResponses.$inferSelect;
+export type InsertAssessmentResponse = typeof assessmentResponses.$inferInsert;
+
+export type AiTool = typeof aiTools.$inferSelect;
+export type InsertAiTool = typeof aiTools.$inferInsert;
+
+export type CapabilityToolMapping = typeof capabilityToolMapping.$inferSelect;
+export type InsertCapabilityToolMapping = typeof capabilityToolMapping.$inferInsert;
+
+export type AssessmentResult = typeof assessmentResults.$inferSelect;
+export type InsertAssessmentResult = typeof assessmentResults.$inferInsert;

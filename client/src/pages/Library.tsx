@@ -10,10 +10,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import LibraryLayout from "@/components/library/LibraryLayout";
-import { JobRole, AICapability, insertJobRoleSchema, insertAICapabilitySchema } from "@shared/schema";
+import { JobRole, AICapability, insertJobRoleSchema, insertAICapabilitySchema, Department } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { getDepartments } from "@/lib/api";
+
+type FormValues = {
+  name: string;
+  category: string;
+  description: string;
+  implementationEffort: "Low" | "Medium" | "High";
+  businessValue: "Low" | "Medium" | "High" | "Very High";
+};
 
 const Library: React.FC = () => {
   const { toast } = useToast();
@@ -24,6 +33,9 @@ const Library: React.FC = () => {
   const [editingJobRole, setEditingJobRole] = useState<JobRole | null>(null);
   const [editingAICapability, setEditingAICapability] = useState<AICapability | null>(null);
   
+  // Type for departments state
+  const [departments, setDepartments] = useState<Department[]>([]);
+  
   // Fetch job roles
   const { 
     data: jobRoles = [], 
@@ -32,20 +44,23 @@ const Library: React.FC = () => {
     queryKey: ["/api/job-roles"],
   });
   
-  // Fetch AI capabilities
+  // Fetch AI capabilities from new endpoint
   const { 
     data: aiCapabilities = [], 
     isLoading: isLoadingAICapabilities 
   } = useQuery<AICapability[]>({
-    queryKey: ["/api/ai-capabilities"],
+    queryKey: ["/api/capabilities"],
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
   
   // Fetch departments for the job role form
   const { 
-    data: departments = [], 
+    data: departmentsData = [] as Department[], 
     isLoading: isLoadingDepartments 
   } = useQuery({
-    queryKey: ["/api/departments"],
+    queryKey: ['/api/departments'],
+    queryFn: () => getDepartments()
   });
   
   // Job Role form setup
@@ -61,7 +76,7 @@ const Library: React.FC = () => {
   });
   
   // AI Capability form setup
-  const aiCapabilityForm = useForm<z.infer<typeof insertAICapabilitySchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(insertAICapabilitySchema),
     defaultValues: {
       name: "",
@@ -98,18 +113,27 @@ const Library: React.FC = () => {
   
   // Create AI capability mutation
   const createAICapability = useMutation({
-    mutationFn: async (data: z.infer<typeof insertAICapabilitySchema>) => {
-      const response = await apiRequest("POST", "/api/ai-capabilities", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "AI Capability created",
-        description: "The AI capability has been created successfully.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/ai-capabilities"] });
-      setAICapabilityDialogOpen(false);
-      aiCapabilityForm.reset();
+    mutationFn: async (data: FormValues) => {
+      try {
+        const response = await fetch("/api/capabilities", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) throw new Error("Failed to create capability");
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
+        toast({ title: "Success", description: "Capability created successfully" });
+        form.reset();
+      } catch (error) {
+        console.error(error);
+        toast({ 
+          title: "Error", 
+          description: error instanceof Error ? error.message : "Failed to create capability",
+          variant: "destructive" 
+        });
+      }
     },
     onError: (error) => {
       toast({
@@ -138,8 +162,8 @@ const Library: React.FC = () => {
   };
   
   // Handle AI capability form submission
-  const onSubmitAICapability = (data: z.infer<typeof insertAICapabilitySchema>) => {
-    createAICapability.mutateAsync(data);
+  const onSubmit = (values: FormValues) => {
+    createAICapability.mutateAsync(values);
   };
   
   // Open job role dialog
@@ -157,7 +181,7 @@ const Library: React.FC = () => {
   
   // Open AI capability dialog
   const handleAddAICapability = () => {
-    aiCapabilityForm.reset({
+    form.reset({
       name: "",
       category: "",
       description: "",
@@ -183,12 +207,12 @@ const Library: React.FC = () => {
   
   // Edit AI capability
   const handleEditAICapability = (capability: AICapability) => {
-    aiCapabilityForm.reset({
-      name: capability.name,
-      category: capability.category,
+    form.reset({
+      name: capability.name || "",
+      category: capability.category || "",
       description: capability.description || "",
-      implementationEffort: capability.implementationEffort || "Medium",
-      businessValue: capability.businessValue || "Medium"
+      implementationEffort: capability.implementationEffort as "Low" | "Medium" | "High",
+      businessValue: capability.businessValue as "Low" | "Medium" | "High" | "Very High"
     });
     setEditingAICapability(capability);
     setAICapabilityDialogOpen(true);
@@ -245,7 +269,7 @@ const Library: React.FC = () => {
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
                         <SelectContent>
-                          {departments.map((dept) => (
+                          {departmentsData.map((dept: Department) => (
                             <SelectItem key={dept.id} value={dept.id.toString()}>
                               {dept.name}
                             </SelectItem>
@@ -345,10 +369,10 @@ const Library: React.FC = () => {
             </DialogTitle>
           </DialogHeader>
           
-          <Form {...aiCapabilityForm}>
-            <form onSubmit={aiCapabilityForm.handleSubmit(onSubmitAICapability)} className="space-y-4">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
-                control={aiCapabilityForm.control}
+                control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
@@ -362,7 +386,7 @@ const Library: React.FC = () => {
               />
               
               <FormField
-                control={aiCapabilityForm.control}
+                control={form.control}
                 name="category"
                 render={({ field }) => (
                   <FormItem>
@@ -376,13 +400,17 @@ const Library: React.FC = () => {
               />
               
               <FormField
-                control={aiCapabilityForm.control}
+                control={form.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="What this AI capability does" />
+                      <Textarea 
+                        {...field} 
+                        value={field.value || ""} 
+                        placeholder="Enter capability description" 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -390,7 +418,7 @@ const Library: React.FC = () => {
               />
               
               <FormField
-                control={aiCapabilityForm.control}
+                control={form.control}
                 name="implementationEffort"
                 render={({ field }) => (
                   <FormItem>
@@ -416,7 +444,7 @@ const Library: React.FC = () => {
               />
               
               <FormField
-                control={aiCapabilityForm.control}
+                control={form.control}
                 name="businessValue"
                 render={({ field }) => (
                   <FormItem>

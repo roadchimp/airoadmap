@@ -50,6 +50,32 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
       setCurrentPage(newPage);
     }
   };
+
+  // Helper function to render status badge
+  const renderStatusBadge = (value: string | null | undefined, type: 'value' | 'effort') => {
+    const defaultValue = type === 'value' ? 'High' : 'Medium';
+    const actualValue = value || defaultValue;
+    
+    const getColorClasses = () => {
+      switch (actualValue) {
+        case 'High':
+        case 'Very High':
+          return 'bg-green-100 text-green-800';
+        case 'Medium':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'Low':
+          return 'bg-red-100 text-red-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    return (
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getColorClasses()}`}>
+        {actualValue}
+      </span>
+    );
+  };
   
   return (
     <>
@@ -143,10 +169,14 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
               : (paginatedData as AICapability[]).map((capability) => (
                 <TableRow key={capability.id}>
                   <TableCell className="font-medium">{capability.name}</TableCell>
-                  <TableCell>{capability.category}</TableCell>
+                  <TableCell>{capability.category || 'Uncategorized'}</TableCell>
                   <TableCell className="max-w-md truncate">{capability.description}</TableCell>
-                  <TableCell>{capability.businessValue}</TableCell>
-                  <TableCell>{capability.implementationEffort}</TableCell>
+                  <TableCell>
+                    {renderStatusBadge(capability.businessValue, 'value')}
+                  </TableCell>
+                  <TableCell>
+                    {renderStatusBadge(capability.implementationEffort, 'effort')}
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <button 

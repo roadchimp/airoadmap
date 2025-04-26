@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,7 @@ const PreviousReports: React.FC = () => {
             View and manage your AI transformation roadmap reports
           </p>
         </div>
-        <Link href="/assessment/new">
+        <Link to="/assessment/new">
           <Button>
             <span className="material-icons text-sm mr-1">add</span>
             New Assessment
@@ -68,7 +68,7 @@ const PreviousReports: React.FC = () => {
             <p className="text-neutral-500 mb-6">
               Complete an assessment to generate your first AI transformation roadmap.
             </p>
-            <Link href="/assessment/new">
+            <Link to="/assessment/new">
               <Button>Start New Assessment</Button>
             </Link>
           </CardContent>
@@ -116,7 +116,7 @@ const PreviousReports: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/reports/${report.id}`}>
+                        <Link to={`/reports/${report.id}`}>
                           <Button variant="outline" size="sm">
                             <span className="material-icons text-sm mr-1">visibility</span>
                             View

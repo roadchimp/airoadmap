@@ -7,6 +7,7 @@ import NotFound from "./pages/not-found"
 import Dashboard from "./pages/Dashboard"
 import NewAssessment from "./pages/NewAssessment"
 import PreviousReports from "./pages/PreviousReports"
+import ReportDetails from "./pages/ReportDetails"
 import Library from "./pages/Library"
 import Landing from "./pages/Landing"
 import Login from "./pages/Login"
@@ -34,7 +35,7 @@ export function AppRoutes() {
             <Route path="/assessment/new" element={<NewAssessment />} />
             <Route path="/assessment/:step" element={<NewAssessment />} />
             <Route path="/reports" element={<PreviousReports />} />
-            <Route path="/reports/:id" element={<PreviousReports />} />
+            <Route path="/reports/:id" element={<ReportDetails />} />
             <Route path="/library" element={<Library />} />
           </Route>
 

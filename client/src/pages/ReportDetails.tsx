@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -11,9 +11,9 @@ import { Report, Assessment } from "@shared/schema";
 
 const ReportDetails: React.FC = () => {
   const params = useParams();
-  const [location, navigate] = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const reportId = parseInt(params.id);
+  const reportId = parseInt(params.id || "");
   
   // Fetch report data
   const { 

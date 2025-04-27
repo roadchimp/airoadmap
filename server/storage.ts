@@ -80,12 +80,12 @@ export interface IStorage {
   updateJobScraperConfigLastRun(id: number): Promise<JobScraperConfig>;
   updateJobScraperConfigStatus(id: number, isActive: boolean): Promise<JobScraperConfig>;
 
-  // AI Tools methods
+  // AI Tool methods - USE snake_case type
   getAITool(id: number): Promise<AITool | undefined>;
   listAITools(search?: string, category?: string, licenseType?: string): Promise<AITool[]>;
-  createAITool(tool: Omit<AITool, "id" | "created_at" | "updated_at">): Promise<AITool>;
-  updateAITool(id: number, tool: Partial<Omit<AITool, "id" | "created_at" | "updated_at">>): Promise<AITool>;
-  deleteAITool(id: number): Promise<boolean>;
+  createAITool(tool: InsertAITool): Promise<AITool>;
+  updateAITool(id: number, toolUpdate: Partial<InsertAITool>): Promise<AITool>;
+  deleteAITool(id: number): Promise<void>;
 
   // Assessment Score methods
   upsertAssessmentScore(score: Omit<AssessmentScoreData, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentScoreData>;
@@ -492,7 +492,7 @@ export class MemStorage implements IStorage {
     return updatedConfig;
   }
 
-  // AI Tools methods
+  // AI Tool methods - USE snake_case type
   async getAITool(id: number): Promise<AITool | undefined> {
     return this.aiTools.get(id);
   }
@@ -521,7 +521,7 @@ export class MemStorage implements IStorage {
     return tools;
   }
 
-  async createAITool(tool: Omit<AITool, "id" | "created_at" | "updated_at">): Promise<AITool> {
+  async createAITool(tool: InsertAITool): Promise<AITool> {
     const id = this.aiToolIdCounter++;
     const now = new Date();
     const newTool: AITool = {
@@ -534,7 +534,7 @@ export class MemStorage implements IStorage {
     return newTool;
   }
 
-  async updateAITool(id: number, tool: Partial<Omit<AITool, "id" | "created_at" | "updated_at">>): Promise<AITool> {
+  async updateAITool(id: number, toolUpdate: Partial<InsertAITool>): Promise<AITool> {
     const existingTool = await this.getAITool(id);
     if (!existingTool) {
       throw new Error(`AI Tool with id ${id} not found`);
@@ -542,15 +542,15 @@ export class MemStorage implements IStorage {
 
     const updatedTool: AITool = {
       ...existingTool,
-      ...tool,
+      ...toolUpdate,
       updated_at: new Date()
     };
     this.aiTools.set(id, updatedTool);
     return updatedTool;
   }
 
-  async deleteAITool(id: number): Promise<boolean> {
-    return this.aiTools.delete(id);
+  async deleteAITool(id: number): Promise<void> {
+    this.aiTools.delete(id);
   }
 
   private initializeSampleData() {

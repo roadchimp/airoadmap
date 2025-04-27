@@ -5,7 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { JobRole, AICapability, AITool } from "@shared/schema";
+import { 
+  JobRole,
+  AICapability, 
+  AiTool,
+  JobRoleWithDepartment
+} from "@shared/schema";
 
 type DataType = "jobRole" | "aiCapability" | "aiTool";
 
@@ -23,9 +28,9 @@ interface FilterState {
 }
 
 interface DataTableProps {
-  data: JobRole[] | AICapability[] | AITool[];
+  data: (JobRoleWithDepartment | AICapability | AiTool)[];
   type: DataType;
-  onEdit?: (item: JobRole | AICapability | AITool) => void;
+  onEdit?: (item: JobRoleWithDepartment | AICapability | AiTool) => void;
   onDelete?: (id: number) => void;
 }
 
@@ -42,10 +47,10 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
   };
 
   // Apply filters to data
-  const applyFilters = (items: (JobRole | AICapability | AITool)[]) => {
+  const applyFilters = (items: (JobRoleWithDepartment | AICapability | AiTool)[]) => {
     return items.filter(item => {
       if (type === "jobRole") {
-        const role = item as JobRole;
+        const role = item as JobRoleWithDepartment;
         return (
           (!filters.aiPotential || filters.aiPotential === "all" || role.aiPotential === filters.aiPotential) &&
           (!filters.departmentId || role.departmentId === filters.departmentId)
@@ -58,7 +63,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
           (!filters.implementationEffort || filters.implementationEffort === "all" || capability.implementationEffort === filters.implementationEffort)
         );
       } else {
-        const tool = item as AITool;
+        const tool = item as AiTool;
         return (
           (!filters.primaryCategory || filters.primaryCategory === "all" || tool.primary_category === filters.primaryCategory) &&
           (!filters.licenseType || filters.licenseType === "all" || tool.license_type === filters.licenseType)
@@ -71,10 +76,11 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
   const filteredData = applyFilters(data.filter(item => {
     const searchTerm = searchQuery.toLowerCase();
     if (type === "jobRole") {
-      const role = item as JobRole;
+      const role = item as JobRoleWithDepartment;
       return (
         role.title.toLowerCase().includes(searchTerm) ||
-        role.description?.toLowerCase().includes(searchTerm)
+        role.description?.toLowerCase().includes(searchTerm) ||
+        role.departmentName?.toLowerCase().includes(searchTerm)
       );
     } else if (type === "aiCapability") {
       const capability = item as AICapability;
@@ -84,11 +90,11 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
         capability.category.toLowerCase().includes(searchTerm)
       );
     } else {
-      const tool = item as AITool;
+      const tool = item as AiTool;
       return (
         tool.tool_name.toLowerCase().includes(searchTerm) ||
         tool.description?.toLowerCase().includes(searchTerm) ||
-        tool.primary_category.toLowerCase().includes(searchTerm) ||
+        tool.primary_category?.toLowerCase().includes(searchTerm) ||
         tool.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
       );
     }
@@ -385,10 +391,10 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
           </TableHeader>
           <TableBody>
             {type === "jobRole"
-              ? (paginatedData as JobRole[]).map((role) => (
+              ? (paginatedData as JobRoleWithDepartment[]).map((role) => (
                 <TableRow key={role.id}>
                   <TableCell className="font-medium">{role.title}</TableCell>
-                  <TableCell>Department {role.departmentId}</TableCell>
+                  <TableCell>{role.departmentName}</TableCell>
                   <TableCell className="max-w-md truncate">
                     {role.keyResponsibilities?.join(", ")}
                   </TableCell>
@@ -407,7 +413,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
                     <div className="flex space-x-2">
                       <button 
                         className="text-primary-600 hover:text-primary-800"
-                        onClick={() => onEdit && onEdit(role)}
+                        onClick={() => onEdit && onEdit(role as JobRoleWithDepartment)}
                       >
                         <span className="material-icons text-sm">edit</span>
                       </button>
@@ -457,14 +463,14 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
                   </TableCell>
                 </TableRow>
               ))
-              : (paginatedData as AITool[]).map((tool) => (
-                <TableRow key={tool.id}>
+              : (paginatedData as AiTool[]).map((tool) => (
+                <TableRow key={tool.tool_id}>
                   <TableCell className="font-medium">{tool.tool_name}</TableCell>
-                  <TableCell>{tool.primary_category}</TableCell>
+                  <TableCell>{tool.primary_category || "N/A"}</TableCell>
                   <TableCell>
                     {renderStatusBadge(tool.license_type, 'license')}
                   </TableCell>
-                  <TableCell className="max-w-md truncate">{tool.description}</TableCell>
+                  <TableCell className="max-w-md truncate">{tool.description || "N/A"}</TableCell>
                   <TableCell>
                     {tool.website_url && (
                       <a 
@@ -490,7 +496,7 @@ const DataTable: React.FC<DataTableProps> = ({ data, type, onEdit, onDelete }) =
                       </button>
                       <button 
                         className="text-neutral-400 hover:text-neutral-600"
-                        onClick={() => onDelete && onDelete(tool.id)}
+                        onClick={() => onDelete && onDelete(tool.tool_id)}
                       >
                         <span className="material-icons text-sm">delete</span>
                       </button>

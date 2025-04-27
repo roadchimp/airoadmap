@@ -554,3 +554,8 @@ export interface AssessmentScoreResponse {
   message?: string;
   data?: AssessmentScoreData;
 }
+
+// Type for JobRole including department name
+export type JobRoleWithDepartment = JobRole & {
+  departmentName: string;
+};

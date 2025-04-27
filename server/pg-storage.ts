@@ -1,7 +1,7 @@
 import { drizzle as drizzleNodePostgres } from 'drizzle-orm/node-postgres';
 import { drizzle as drizzleNeonHttp } from 'drizzle-orm/neon-http';
 import { neon, neonConfig } from '@neondatabase/serverless';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, asc } from 'drizzle-orm';
 // Using dynamic import for pg which works better with ESM
 import { IStorage } from './storage.ts';
 import { Pool } from 'pg';
@@ -19,15 +19,17 @@ import type {
   User, InsertUser,
   Organization, InsertOrganization,
   Department, InsertDepartment,
-  JobRole, InsertJobRole,
+  JobRole, InsertJobRole, JobRoleWithDepartment,
   AICapability, InsertAICapability,
   Assessment, InsertAssessment, WizardStepData,
   Report, InsertReport,
   JobDescription, InsertJobDescription, ProcessedJobContent,
   JobScraperConfig, InsertJobScraperConfig,
-  AiTool, InsertAiTool,
+  AiTool, // DB Type (snake_case) - THIS IS THE ONE TO USE
+  InsertAiTool, // DB Insert Type (snake_case)
   CapabilityToolMapping, InsertCapabilityToolMapping,
-  AITool, AssessmentScoreData
+  AssessmentScoreData
+  // AITool // REMOVE References to this non-existent type
 } from '../shared/schema.ts';
 
 // Load root .env file for local development
@@ -150,12 +152,29 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
-  async listJobRoles(): Promise<JobRole[]> {
-    return await this.db.select().from(jobRoles);
+  async listJobRoles(): Promise<JobRoleWithDepartment[]> {
+    // Join jobRoles with departments and select department name
+    return await this.db
+      .select({
+        ...jobRoles, // Select all columns from jobRoles
+        departmentName: departments.name // Select department name as departmentName
+      })
+      .from(jobRoles)
+      .leftJoin(departments, eq(jobRoles.departmentId, departments.id))
+      .orderBy(asc(jobRoles.title)); // Optional: order by title
   }
 
-  async listJobRolesByDepartment(departmentId: number): Promise<JobRole[]> {
-    return await this.db.select().from(jobRoles).where(eq(jobRoles.departmentId, departmentId));
+  async listJobRolesByDepartment(departmentId: number): Promise<JobRoleWithDepartment[]> {
+    // Join jobRoles with departments and select department name, filtered by departmentId
+    return await this.db
+      .select({
+        ...jobRoles, // Select all columns from jobRoles
+        departmentName: departments.name // Select department name as departmentName
+      })
+      .from(jobRoles)
+      .leftJoin(departments, eq(jobRoles.departmentId, departments.id))
+      .where(eq(jobRoles.departmentId, departmentId))
+      .orderBy(asc(jobRoles.title)); // Optional: order by title
   }
 
   async createJobRole(role: InsertJobRole): Promise<JobRole> {
@@ -418,122 +437,123 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
-  // AI Tools methods
-  async getAITool(id: number): Promise<AITool | undefined> {
+  // AITool methods (Reverted to use snake_case AiTool type)
+
+  /**
+   * Retrieves a single AI tool by its ID.
+   * @param id The numeric ID of the AI tool.
+   * @returns A promise that resolves to the AiTool object or undefined if not found.
+   */
+  async getAITool(id: number): Promise<AiTool | undefined> {
     await this.ensureInitialized();
-    const result = await this.db.select().from(aiTools).where(eq(aiTools.toolId, id));
-    if (!result[0]) return undefined;
-    
-    const tool = result[0] as AiTool;
-    return {
-      id: tool.toolId,
-      tool_name: tool.toolName,
-      description: tool.description || "",
-      website_url: tool.websiteUrl || "",
-      license_type: (tool.licenseType as 'Open Source' | 'Commercial' | 'Freemium' | 'Unknown') || 'Unknown',
-      primary_category: tool.primaryCategory || "",
-      tags: tool.tags as string[] || [],
-      created_at: tool.createdAt,
-      updated_at: tool.updatedAt
-    };
+    const result: AiTool[] = await this.db.select().from(aiTools).where(eq(aiTools.tool_id, id));
+    return result[0];
   }
 
-  async listAITools(search?: string, category?: string, licenseType?: string): Promise<AITool[]> {
+  /**
+   * Lists AI tools, optionally filtering by search term, category, and license type.
+   * @param search Optional search term to filter by tool name or description.
+   * @param category Optional category to filter by.
+   * @param licenseType Optional license type to filter by.
+   * @returns A promise that resolves to an array of AiTool objects.
+   */
+  async listAITools(search?: string, category?: string, licenseType?: string): Promise<AiTool[]> {
     await this.ensureInitialized();
-    let query = this.db.select().from(aiTools);
-    
+    let query = this.db.select().from(aiTools).$dynamic(); 
+
+    const conditions = [];
     if (search) {
-      query = query.where(sql`LOWER(tool_name) LIKE LOWER(${'%' + search + '%'})`);
+      conditions.push(sql`(${aiTools.tool_name} ilike ${`%${search}%`} or ${aiTools.description} ilike ${`%${search}%`})`);
     }
     if (category) {
-      query = query.where(eq(aiTools.primaryCategory, category));
+      conditions.push(eq(aiTools.primary_category, category));
     }
     if (licenseType) {
-      query = query.where(eq(aiTools.licenseType, licenseType));
+      conditions.push(eq(aiTools.license_type, licenseType));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(sql.join(conditions, sql` and `));
     }
     
-    const results = await query;
-    return results.map((result: AiTool) => ({
-      id: result.toolId,
-      tool_name: result.toolName,
-      description: result.description || "",
-      website_url: result.websiteUrl || "",
-      license_type: (result.licenseType as 'Open Source' | 'Commercial' | 'Freemium' | 'Unknown') || 'Unknown',
-      primary_category: result.primaryCategory || "",
-      tags: result.tags as string[] || [],
-      created_at: result.createdAt,
-      updated_at: result.updatedAt
-    }));
+    return await query.orderBy(asc(aiTools.tool_name));
   }
 
-  async createAITool(tool: Omit<AITool, "id" | "created_at" | "updated_at">): Promise<AITool> {
+  /**
+   * Creates a new AI tool in the database.
+   * @param tool An object conforming to InsertAiTool (snake_case, excluding db-generated fields like created_at, updated_at).
+   * @returns A promise that resolves to the newly created AiTool object (including db-generated fields).
+   */
+  async createAITool(tool: InsertAiTool): Promise<AiTool> { 
     await this.ensureInitialized();
-    const now = new Date();
-    const result = await this.db.insert(aiTools).values({
-      toolName: tool.tool_name,
-      description: tool.description,
-      websiteUrl: tool.website_url,
-      licenseType: tool.license_type,
-      primaryCategory: tool.primary_category,
-      tags: tool.tags || null,
-      createdAt: now,
-      updatedAt: now
-    }).returning();
-
-    return {
-      id: result[0].toolId,
-      tool_name: result[0].toolName,
-      description: result[0].description,
-      website_url: result[0].websiteUrl,
-      license_type: result[0].licenseType,
-      primary_category: result[0].primaryCategory,
-      tags: result[0].tags,
-      created_at: result[0].createdAt,
-      updated_at: result[0].updatedAt
-    };
-  }
-
-  async updateAITool(id: number, tool: Partial<Omit<AITool, "id" | "created_at" | "updated_at">>): Promise<AITool> {
-    await this.ensureInitialized();
-    const now = new Date();
-    const updates: any = {
-      updatedAt: now
-    };
     
-    if (tool.tool_name) updates.toolName = tool.tool_name;
-    if (tool.description !== undefined) updates.description = tool.description;
-    if (tool.website_url !== undefined) updates.websiteUrl = tool.website_url;
-    if (tool.license_type !== undefined) updates.licenseType = tool.license_type;
-    if (tool.primary_category !== undefined) updates.primaryCategory = tool.primary_category;
-    if (tool.tags !== undefined) updates.tags = tool.tags;
-    
-    const result = await this.db.update(aiTools)
-      .set(updates)
-      .where(eq(aiTools.toolId, id))
-      .returning();
-
-    return {
-      id: result[0].toolId,
-      tool_name: result[0].toolName,
-      description: result[0].description,
-      website_url: result[0].websiteUrl,
-      license_type: result[0].licenseType,
-      primary_category: result[0].primaryCategory,
-      tags: result[0].tags,
-      created_at: result[0].createdAt,
-      updated_at: result[0].updatedAt
+    const dbInsertData: InsertAiTool = {
+        ...tool, 
+        tool_name: tool.tool_name, 
     };
+
+    const result: AiTool[] = await this.db.insert(aiTools).values(dbInsertData).returning();
+    const newDbTool = result[0];
+
+    if (!newDbTool) {
+        throw new Error("Failed to create AI tool, database did not return the created record.");
+    }
+
+    return newDbTool;
   }
 
-  async deleteAITool(id: number): Promise<boolean> {
+  /**
+   * Updates an existing AI tool by its ID.
+   * @param id The numeric ID of the AI tool to update.
+   * @param toolUpdate A partial object conforming to InsertAiTool (snake_case) containing the fields to update.
+   * @returns A promise that resolves to the updated AiTool object.
+   * @throws Error if the tool is not found or if no fields are provided for update.
+   */
+  async updateAITool(id: number, toolUpdate: Partial<InsertAiTool>): Promise<AiTool> { 
     await this.ensureInitialized();
-    const result = await this.db.delete(aiTools)
-      .where(eq(aiTools.toolId, id))
+
+    const dbUpdateData = toolUpdate;
+
+    if ('tool_id' in dbUpdateData) delete dbUpdateData.tool_id;
+    if ('created_at' in dbUpdateData) delete dbUpdateData.created_at;
+
+    const finalUpdateData = { ...dbUpdateData, updated_at: new Date() };
+
+    if (Object.keys(dbUpdateData).length === 0) { 
+       // Throw error if only timestamp would be updated (as no other fields were in toolUpdate)
+       throw new Error("No fields provided to update for AI Tool.");
+    }
+    
+    const result: AiTool[] = await this.db.update(aiTools)
+      .set(finalUpdateData)
+      .where(eq(aiTools.tool_id, id))
       .returning();
-    return result.length > 0;
+      
+    const updatedDbTool = result[0];
+
+     if (!updatedDbTool) {
+        throw new Error(`Failed to update AI tool with ID ${id}, record not found or update failed.`);
+    }
+
+    return updatedDbTool;
   }
 
-  // Capability Tool Mapping methods
+  /**
+   * Deletes an AI tool by its ID.
+   * @param id The numeric ID of the AI tool to delete.
+   * @returns A promise that resolves when the deletion is attempted. Logs a warning if the tool was not found.
+   */
+  async deleteAITool(id: number): Promise<void> { 
+    await this.ensureInitialized();
+    const result = await this.db.delete(aiTools).where(eq(aiTools.tool_id, id)).returning({ deletedId: aiTools.tool_id });
+    
+    if (result.length === 0) {
+       console.warn(`Attempted to delete AI Tool with ID ${id}, but it was not found.`);
+    }
+  }
+
+  // CapabilityToolMapping methods
+  // These seem okay as they use the specific InsertCapabilityToolMapping type
   async getCapabilityToolMappings(capabilityId: number): Promise<CapabilityToolMapping[]> {
     await this.ensureInitialized();
     return await this.db.select()

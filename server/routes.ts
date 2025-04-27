@@ -14,10 +14,12 @@ import {
   WizardStepData,
   insertJobDescriptionSchema,
   insertJobScraperConfigSchema,
-  ProcessedJobContent
+  ProcessedJobContent,
+  AITool
 } from "@shared/schema";
 import { calculatePrioritization } from "./lib/prioritizationEngine";
 import { exportJobsForBatch, processBatchResults } from './batch-processing/batchProcessor';
+import { calculateRoleScore } from "./lib/roleScoreEngine";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // prefix all routes with /api
@@ -434,6 +436,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Error processing batch results',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+  
+  // AI Tools routes
+  app.get("/api/ai-tools", async (req: Request, res: Response) => {
+    try {
+      const { search, category, licenseType } = req.query;
+      const tools = await storage.listAITools(
+        search as string | undefined,
+        category as string | undefined,
+        licenseType as string | undefined
+      );
+      res.json(tools);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching AI tools", error });
+    }
+  });
+
+  app.get("/api/ai-tools/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid tool ID" });
+      }
+
+      const tool = await storage.getAITool(id);
+      if (!tool) {
+        return res.status(404).json({ message: "AI tool not found" });
+      }
+
+      res.json(tool);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching AI tool", error });
+    }
+  });
+
+  app.post("/api/ai-tools", async (req: Request, res: Response) => {
+    try {
+      // Validate the request body against the AITool schema
+      const toolData: Omit<AITool, "id" | "created_at" | "updated_at"> = {
+        tool_name: req.body.tool_name,
+        primary_category: req.body.primary_category,
+        license_type: req.body.license_type,
+        description: req.body.description,
+        website_url: req.body.website_url,
+        tags: req.body.tags || []
+      };
+
+      const tool = await storage.createAITool(toolData);
+      res.status(201).json(tool);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid AI tool data", error });
+    }
+  });
+
+  app.put("/api/ai-tools/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid tool ID" });
+      }
+
+      // Validate the request body
+      const updateData: Partial<Omit<AITool, "id" | "created_at" | "updated_at">> = {
+        tool_name: req.body.tool_name,
+        primary_category: req.body.primary_category,
+        license_type: req.body.license_type,
+        description: req.body.description,
+        website_url: req.body.website_url,
+        tags: req.body.tags
+      };
+
+      // Remove undefined values
+      Object.keys(updateData).forEach(key => 
+        updateData[key] === undefined && delete updateData[key]
+      );
+
+      const tool = await storage.updateAITool(id, updateData);
+      res.json(tool);
+    } catch (error) {
+      if (error.message?.includes("not found")) {
+        res.status(404).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: "Error updating AI tool", error });
+      }
+    }
+  });
+
+  app.delete("/api/ai-tools/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid tool ID" });
+      }
+
+      const success = await storage.deleteAITool(id);
+      if (!success) {
+        return res.status(404).json({ message: "AI tool not found" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting AI tool", error });
+    }
+  });
+  
+  // Assessment Score routes
+  app.post("/api/assessment-scores", async (req: Request, res: Response) => {
+    try {
+      const { 
+        wizardStepId,
+        timeSavings,
+        qualityImpact,
+        strategicAlignment,
+        dataReadiness,
+        technicalFeasibility,
+        adoptionRisk,
+      } = req.body;
+
+      if (!wizardStepId) {
+        return res.status(400).json({ message: "wizardStepId is required" });
+      }
+
+      // Calculate scores
+      const roleScore = calculateRoleScore({
+        timeSavings,
+        qualityImpact,
+        strategicAlignment,
+        dataReadiness,
+        technicalFeasibility,
+        adoptionRisk,
+      });
+
+      // Create or update assessment score
+      const score = await storage.upsertAssessmentScore({
+        wizardStepId,
+        timeSavings,
+        qualityImpact,
+        strategicAlignment,
+        dataReadiness,
+        technicalFeasibility,
+        adoptionRisk,
+        valuePotentialTotal: roleScore.valuePotential.total,
+        easeOfImplementationTotal: roleScore.easeOfImplementation.total,
+        totalScore: roleScore.totalScore,
+      });
+
+      res.status(201).json(score);
+    } catch (error) {
+      res.status(400).json({ message: "Error creating/updating assessment score", error });
+    }
+  });
+
+  app.get("/api/assessment-scores/:wizardStepId", async (req: Request, res: Response) => {
+    const { wizardStepId } = req.params;
+    
+    if (!wizardStepId) {
+      return res.status(400).json({ message: "wizardStepId is required" });
+    }
+    
+    try {
+      const score = await storage.getAssessmentScore(wizardStepId);
+      if (!score) {
+        return res.status(404).json({ message: "Assessment score not found" });
+      }
+      
+      res.json(score);
+    } catch (error) {
+      res.status(400).json({ message: "Error fetching assessment score", error });
     }
   });
   

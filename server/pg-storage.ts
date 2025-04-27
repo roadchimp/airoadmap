@@ -1,12 +1,17 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq } from 'drizzle-orm';
+import { drizzle as drizzleNodePostgres } from 'drizzle-orm/node-postgres';
+import { drizzle as drizzleNeonHttp } from 'drizzle-orm/neon-http';
+import { neon, neonConfig } from '@neondatabase/serverless';
+import { eq, sql } from 'drizzle-orm';
 // Using dynamic import for pg which works better with ESM
 import { IStorage } from './storage.ts';
+import { Pool } from 'pg';
+import dotenv from 'dotenv';
 
 // Import the schema
 import { 
   assessments, departments, organizations, users, reports, 
-  aiCapabilities, jobRoles, jobDescriptions, jobScraperConfigs
+  aiCapabilities, jobRoles, jobDescriptions, jobScraperConfigs,
+  aiTools, capabilityToolMapping, assessmentScores
 } from '../shared/schema.ts';
 
 // Import types
@@ -19,12 +24,23 @@ import type {
   Assessment, InsertAssessment, WizardStepData,
   Report, InsertReport,
   JobDescription, InsertJobDescription, ProcessedJobContent,
-  JobScraperConfig, InsertJobScraperConfig
+  JobScraperConfig, InsertJobScraperConfig,
+  AiTool, InsertAiTool,
+  CapabilityToolMapping, InsertCapabilityToolMapping,
+  AITool, AssessmentScoreData
 } from '../shared/schema.ts';
 
+// Load root .env file for local development
+if (process.env.NODE_ENV === 'development') {
+  // Ensure dotenv is only loaded if not on Vercel
+  if (!process.env.VERCEL_ENV) {
+     dotenv.config({ path: '.env' }); 
+  }
+}
+
 export class PgStorage implements IStorage {
-  private db: any; // Use any to avoid TypeScript errors for now
-  private pool: any;
+  private db: any; // Drizzle instance
+  private pool: Pool | undefined; // Only used for local pg
   private isInitialized: boolean = false;
   private initPromise: Promise<void>;
 
@@ -34,25 +50,34 @@ export class PgStorage implements IStorage {
 
   private async initializeAsync(): Promise<void> {
     try {
-      // Check if database URL is available
-      if (!process.env.DATABASE_URL) {
-        throw new Error('DATABASE_URL environment variable is not set');
-      }
+      let connectionString: string | undefined;
 
-      // Dynamically import pg
-      const pg = await import('pg');
-      
-      // Initialize PostgreSQL connection
-      this.pool = new pg.Pool({
-        connectionString: process.env.DATABASE_URL,
-      });
-      
-      // Initialize Drizzle ORM
-      this.db = drizzle(this.pool);
-      this.isInitialized = true;
-      console.log('PostgreSQL database connection established');
+      // Use Neon connection string on Vercel
+      if (process.env.VERCEL_ENV === 'production' || process.env.VERCEL_ENV === 'preview') {
+        console.log('Initializing Neon HTTP database connection for Vercel');
+        connectionString = process.env.DATABASE_POSTGRES_URL; 
+        if (!connectionString) {
+          throw new Error('DATABASE_POSTGRES_URL environment variable not set for Vercel environment');
+        }
+        const sql = neon(connectionString);
+        this.db = drizzleNeonHttp(sql);
+        this.isInitialized = true;
+        console.log('Neon HTTP database connection established');
+      } else {
+        // Use local DATABASE_URL for local development
+        console.log('Initializing standard PostgreSQL connection for local development');
+        connectionString = process.env.DATABASE_URL;
+        if (!connectionString) {
+          throw new Error('DATABASE_URL environment variable not set for local development (check .env file)');
+        }
+        const pg = await import('pg');
+        this.pool = new pg.Pool({ connectionString });
+        this.db = drizzleNodePostgres(this.pool);
+        this.isInitialized = true;
+        console.log('Standard PostgreSQL database connection established');
+      }
     } catch (error) {
-      console.error('Error initializing PostgreSQL connection:', error);
+      console.error('Error initializing database connection:', error);
       throw error;
     }
   }
@@ -65,11 +90,12 @@ export class PgStorage implements IStorage {
   }
 
   async disconnect(): Promise<void> {
-    await this.ensureInitialized();
+    // Only need to disconnect the pool for local pg connections
     if (this.pool) {
       await this.pool.end();
-      console.log('PostgreSQL database connection closed');
+      console.log('Standard PostgreSQL database connection closed');
     }
+    this.isInitialized = false;
   }
 
   // User methods
@@ -388,6 +414,184 @@ export class PgStorage implements IStorage {
       .set({ isActive })
       .where(eq(jobScraperConfigs.id, id))
       .returning();
+    
+    return result[0];
+  }
+
+  // AI Tools methods
+  async getAITool(id: number): Promise<AITool | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(aiTools).where(eq(aiTools.toolId, id));
+    if (!result[0]) return undefined;
+    
+    const tool = result[0] as AiTool;
+    return {
+      id: tool.toolId,
+      tool_name: tool.toolName,
+      description: tool.description || "",
+      website_url: tool.websiteUrl || "",
+      license_type: (tool.licenseType as 'Open Source' | 'Commercial' | 'Freemium' | 'Unknown') || 'Unknown',
+      primary_category: tool.primaryCategory || "",
+      tags: tool.tags as string[] || [],
+      created_at: tool.createdAt,
+      updated_at: tool.updatedAt
+    };
+  }
+
+  async listAITools(search?: string, category?: string, licenseType?: string): Promise<AITool[]> {
+    await this.ensureInitialized();
+    let query = this.db.select().from(aiTools);
+    
+    if (search) {
+      query = query.where(sql`LOWER(tool_name) LIKE LOWER(${'%' + search + '%'})`);
+    }
+    if (category) {
+      query = query.where(eq(aiTools.primaryCategory, category));
+    }
+    if (licenseType) {
+      query = query.where(eq(aiTools.licenseType, licenseType));
+    }
+    
+    const results = await query;
+    return results.map((result: AiTool) => ({
+      id: result.toolId,
+      tool_name: result.toolName,
+      description: result.description || "",
+      website_url: result.websiteUrl || "",
+      license_type: (result.licenseType as 'Open Source' | 'Commercial' | 'Freemium' | 'Unknown') || 'Unknown',
+      primary_category: result.primaryCategory || "",
+      tags: result.tags as string[] || [],
+      created_at: result.createdAt,
+      updated_at: result.updatedAt
+    }));
+  }
+
+  async createAITool(tool: Omit<AITool, "id" | "created_at" | "updated_at">): Promise<AITool> {
+    await this.ensureInitialized();
+    const now = new Date();
+    const result = await this.db.insert(aiTools).values({
+      toolName: tool.tool_name,
+      description: tool.description,
+      websiteUrl: tool.website_url,
+      licenseType: tool.license_type,
+      primaryCategory: tool.primary_category,
+      tags: tool.tags || null,
+      createdAt: now,
+      updatedAt: now
+    }).returning();
+
+    return {
+      id: result[0].toolId,
+      tool_name: result[0].toolName,
+      description: result[0].description,
+      website_url: result[0].websiteUrl,
+      license_type: result[0].licenseType,
+      primary_category: result[0].primaryCategory,
+      tags: result[0].tags,
+      created_at: result[0].createdAt,
+      updated_at: result[0].updatedAt
+    };
+  }
+
+  async updateAITool(id: number, tool: Partial<Omit<AITool, "id" | "created_at" | "updated_at">>): Promise<AITool> {
+    await this.ensureInitialized();
+    const now = new Date();
+    const updates: any = {
+      updatedAt: now
+    };
+    
+    if (tool.tool_name) updates.toolName = tool.tool_name;
+    if (tool.description !== undefined) updates.description = tool.description;
+    if (tool.website_url !== undefined) updates.websiteUrl = tool.website_url;
+    if (tool.license_type !== undefined) updates.licenseType = tool.license_type;
+    if (tool.primary_category !== undefined) updates.primaryCategory = tool.primary_category;
+    if (tool.tags !== undefined) updates.tags = tool.tags;
+    
+    const result = await this.db.update(aiTools)
+      .set(updates)
+      .where(eq(aiTools.toolId, id))
+      .returning();
+
+    return {
+      id: result[0].toolId,
+      tool_name: result[0].toolName,
+      description: result[0].description,
+      website_url: result[0].websiteUrl,
+      license_type: result[0].licenseType,
+      primary_category: result[0].primaryCategory,
+      tags: result[0].tags,
+      created_at: result[0].createdAt,
+      updated_at: result[0].updatedAt
+    };
+  }
+
+  async deleteAITool(id: number): Promise<boolean> {
+    await this.ensureInitialized();
+    const result = await this.db.delete(aiTools)
+      .where(eq(aiTools.toolId, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Capability Tool Mapping methods
+  async getCapabilityToolMappings(capabilityId: number): Promise<CapabilityToolMapping[]> {
+    await this.ensureInitialized();
+    return await this.db.select()
+      .from(capabilityToolMapping)
+      .where(eq(capabilityToolMapping.capabilityId, capabilityId));
+  }
+
+  async getToolCapabilityMappings(toolId: number): Promise<CapabilityToolMapping[]> {
+    await this.ensureInitialized();
+    return await this.db.select()
+      .from(capabilityToolMapping)
+      .where(eq(capabilityToolMapping.toolId, toolId));
+  }
+
+  async createCapabilityToolMapping(mapping: InsertCapabilityToolMapping): Promise<CapabilityToolMapping> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(capabilityToolMapping)
+      .values({
+        ...mapping,
+        notes: mapping.notes || null
+      })
+      .returning();
+    return result[0];
+  }
+
+  async deleteCapabilityToolMapping(mappingId: number): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.delete(capabilityToolMapping)
+      .where(eq(capabilityToolMapping.mappingId, mappingId));
+  }
+
+  // Assessment Score methods
+  async upsertAssessmentScore(score: Omit<AssessmentScoreData, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentScoreData> {
+    await this.ensureInitialized();
+    
+    const result = await this.db.insert(assessmentScores)
+      .values({
+        ...score,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: assessmentScores.wizardStepId,
+        set: {
+          ...score,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    
+    return result[0];
+  }
+
+  async getAssessmentScore(wizardStepId: string): Promise<AssessmentScoreData | undefined> {
+    await this.ensureInitialized();
+    
+    const result = await this.db.select()
+      .from(assessmentScores)
+      .where(eq(assessmentScores.wizardStepId, wizardStepId));
     
     return result[0];
   }

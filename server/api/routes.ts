@@ -1,6 +1,7 @@
 import express from 'express';
 import { runJobScrapers, processJobDescriptions } from './cronJobs';
 import capabilitiesRouter from './capabilities';
+import toolsRouter from './tools';
 
 const router = express.Router();
 
@@ -10,5 +11,8 @@ router.post('/cron/process-job-descriptions', processJobDescriptions);
 
 // Capabilities routes
 router.use('/capabilities', capabilitiesRouter);
+
+// AI Tools routes
+router.use('/tools', toolsRouter);
 
 export default router; 

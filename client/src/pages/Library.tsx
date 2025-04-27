@@ -10,7 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import LibraryLayout from "@/components/library/LibraryLayout";
-import { JobRole, AICapability, insertJobRoleSchema, insertAICapabilitySchema, Department } from "@shared/schema";
+import AIToolDialog from "@/components/library/AIToolDialog";
+import { JobRole, AICapability, AITool, insertJobRoleSchema, insertAICapabilitySchema, Department } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -30,8 +31,10 @@ const Library: React.FC = () => {
   // Dialog state
   const [jobRoleDialogOpen, setJobRoleDialogOpen] = useState(false);
   const [aiCapabilityDialogOpen, setAICapabilityDialogOpen] = useState(false);
+  const [aiToolDialogOpen, setAIToolDialogOpen] = useState(false);
   const [editingJobRole, setEditingJobRole] = useState<JobRole | null>(null);
   const [editingAICapability, setEditingAICapability] = useState<AICapability | null>(null);
+  const [editingAITool, setEditingAITool] = useState<AITool | null>(null);
   
   // Type for departments state
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -50,6 +53,16 @@ const Library: React.FC = () => {
     isLoading: isLoadingAICapabilities 
   } = useQuery<AICapability[]>({
     queryKey: ["/api/capabilities"],
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+  
+  // Fetch AI tools
+  const {
+    data: aiTools = [],
+    isLoading: isLoadingAITools
+  } = useQuery<AITool[]>({
+    queryKey: ["/api/tools"],
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -114,31 +127,113 @@ const Library: React.FC = () => {
   // Create AI capability mutation
   const createAICapability = useMutation({
     mutationFn: async (data: FormValues) => {
-      try {
-        const response = await fetch("/api/capabilities", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) throw new Error("Failed to create capability");
-        
+      const response = await apiRequest("POST", "/api/capabilities", {
+        name: data.name,
+        category: data.category,
+        description: data.description,
+        implementation_effort: data.implementationEffort,
+        business_value: data.businessValue
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "AI capability created successfully"
+      });
         queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
-        toast({ title: "Success", description: "Capability created successfully" });
+      setAICapabilityDialogOpen(false);
         form.reset();
-      } catch (error) {
-        console.error(error);
-        toast({ 
-          title: "Error", 
-          description: error instanceof Error ? error.message : "Failed to create capability",
-          variant: "destructive" 
-        });
-      }
     },
     onError: (error) => {
       toast({
         title: "Error creating AI capability",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Failed to create AI capability",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Create AI tool mutation
+  const createAITool = useMutation({
+    mutationFn: async (data: Omit<AITool, "id" | "created_at" | "updated_at">) => {
+      const response = await apiRequest("POST", "/api/tools", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "AI tool created successfully"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
+      setAIToolDialogOpen(false);
+      setEditingAITool(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error creating AI tool",
+        description: error instanceof Error ? error.message : "Failed to create AI tool",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Delete mutations
+  const deleteJobRole = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/job-roles/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Job role deleted successfully"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/job-roles"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting job role",
+        description: error instanceof Error ? error.message : "Failed to delete job role",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteAICapability = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/capabilities/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "AI capability deleted successfully"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting AI capability",
+        description: error instanceof Error ? error.message : "Failed to delete AI capability",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteAITool = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/tools/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "AI tool deleted successfully"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting AI tool",
+        description: error instanceof Error ? error.message : "Failed to delete AI tool",
         variant: "destructive",
       });
     }
@@ -146,19 +241,7 @@ const Library: React.FC = () => {
   
   // Handle job role form submission
   const onSubmitJobRole = (data: z.infer<typeof insertJobRoleSchema>) => {
-    // Convert string responsibilities to array if needed
-    let keyResponsibilities = data.keyResponsibilities;
-    if (typeof data.keyResponsibilities === 'string') {
-      keyResponsibilities = (data.keyResponsibilities as string)
-        .split('\n')
-        .map(item => item.trim())
-        .filter(item => item.length > 0);
-    }
-    
-    createJobRole.mutateAsync({
-      ...data,
-      keyResponsibilities
-    });
+    createJobRole.mutateAsync(data);
   };
   
   // Handle AI capability form submission
@@ -218,15 +301,70 @@ const Library: React.FC = () => {
     setAICapabilityDialogOpen(true);
   };
   
+  // Open AI tool dialog
+  const handleAddAITool = () => {
+    setEditingAITool(null);
+    setAIToolDialogOpen(true);
+  };
+  
+  // Edit AI tool
+  const handleEditAITool = (tool: AITool) => {
+    setEditingAITool(tool);
+    setAIToolDialogOpen(true);
+  };
+  
+  // Handle AI tool submission
+  const handleAIToolSubmit = (data: Omit<AITool, "id" | "created_at" | "updated_at">) => {
+    if (editingAITool) {
+      // Handle edit - use PUT request for update
+      const response = apiRequest("PUT", `/api/tools/${editingAITool.id}`, data);
+      toast({
+        title: "Success",
+        description: "AI tool updated successfully"
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
+      setAIToolDialogOpen(false);
+      setEditingAITool(null);
+    } else {
+      // Handle create
+      createAITool.mutate(data);
+    }
+  };
+  
+  // Delete handlers
+  const handleDeleteJobRole = (id: number) => {
+    if (confirm("Are you sure you want to delete this job role?")) {
+      deleteJobRole.mutate(id);
+    }
+  };
+
+  const handleDeleteAICapability = (id: number) => {
+    if (confirm("Are you sure you want to delete this AI capability?")) {
+      deleteAICapability.mutate(id);
+    }
+  };
+
+  const handleDeleteAITool = (id: number) => {
+    if (confirm("Are you sure you want to delete this AI tool?")) {
+      deleteAITool.mutate(id);
+    }
+  };
+  
   return (
     <>
       <LibraryLayout
         jobRoles={jobRoles}
         aiCapabilities={aiCapabilities}
+        aiTools={aiTools}
         onAddJobRole={handleAddJobRole}
         onAddAICapability={handleAddAICapability}
+        onAddAITool={handleAddAITool}
         onEditJobRole={handleEditJobRole}
         onEditAICapability={handleEditAICapability}
+        onEditAITool={handleEditAITool}
+        onDeleteJobRole={handleDeleteJobRole}
+        onDeleteAICapability={handleDeleteAICapability}
+        onDeleteAITool={handleDeleteAITool}
       />
       
       {/* Job Role Dialog */}
@@ -289,7 +427,7 @@ const Library: React.FC = () => {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea {...field} placeholder="Brief description of this role" />
+                      <Textarea {...field} placeholder="Brief description of this role" value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -306,7 +444,7 @@ const Library: React.FC = () => {
                       <Textarea 
                         {...field} 
                         placeholder="Enter each responsibility on a new line"
-                        value={Array.isArray(field.value) ? field.value.join('\n') : field.value}
+                        value={Array.isArray(field.value) ? field.value.join('\n') : field.value || ""}
                       />
                     </FormControl>
                     <FormDescription>
@@ -325,7 +463,7 @@ const Library: React.FC = () => {
                     <FormLabel>AI Potential</FormLabel>
                     <FormControl>
                       <Select
-                        value={field.value}
+                        value={field.value || "Medium"}
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger>
@@ -485,6 +623,14 @@ const Library: React.FC = () => {
           </Form>
         </DialogContent>
       </Dialog>
+      
+      {/* AI Tool Dialog */}
+      <AIToolDialog
+        isOpen={aiToolDialogOpen}
+        onClose={() => setAIToolDialogOpen(false)}
+        onSubmit={handleAIToolSubmit}
+        initialData={editingAITool || undefined}
+      />
     </>
   );
 };

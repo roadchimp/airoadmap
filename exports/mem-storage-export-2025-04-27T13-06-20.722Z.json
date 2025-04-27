@@ -1,0 +1,195 @@
+{
+  "departments": [
+    {
+      "id": 1,
+      "name": "Sales & Marketing",
+      "description": "Handles all sales and marketing activities"
+    },
+    {
+      "id": 2,
+      "name": "Customer Support",
+      "description": "Provides support to customers"
+    },
+    {
+      "id": 3,
+      "name": "Finance",
+      "description": "Manages financial operations"
+    },
+    {
+      "id": 4,
+      "name": "Human Resources",
+      "description": "Handles employee management and recruitment"
+    },
+    {
+      "id": 5,
+      "name": "Engineering",
+      "description": "Develops and maintains products"
+    },
+    {
+      "id": 6,
+      "name": "Operations",
+      "description": "Oversees day-to-day business operations"
+    }
+  ],
+  "jobRoles": [
+    {
+      "id": 1,
+      "title": "Sales Operations Specialist",
+      "departmentId": 1,
+      "description": "Manages RFP responses, sales data analysis, and CRM maintenance",
+      "keyResponsibilities": [
+        "Manage RFP responses",
+        "Maintain sales data",
+        "Perform CRM analysis",
+        "Create sales reports",
+        "Support proposal creation"
+      ],
+      "aiPotential": "High"
+    },
+    {
+      "id": 2,
+      "title": "Content Marketing Manager",
+      "departmentId": 1,
+      "description": "Creates and distributes content for marketing campaigns",
+      "keyResponsibilities": [
+        "Create marketing content",
+        "Manage editorial calendar",
+        "Coordinate content distribution",
+        "Analyze content performance",
+        "Develop content strategy"
+      ],
+      "aiPotential": "Medium"
+    },
+    {
+      "id": 3,
+      "title": "Digital Marketing Specialist",
+      "departmentId": 1,
+      "description": "Manages online advertising and campaign analysis",
+      "keyResponsibilities": [
+        "Manage online ad campaigns",
+        "Analyze marketing data",
+        "Optimize conversion rates",
+        "Report on marketing KPIs",
+        "Conduct A/B testing"
+      ],
+      "aiPotential": "Medium"
+    },
+    {
+      "id": 4,
+      "title": "Customer Support Agent",
+      "departmentId": 2,
+      "description": "Handles tier 1 customer inquiries via chat, email, and phone",
+      "keyResponsibilities": [
+        "Handle customer inquiries",
+        "Troubleshoot basic issues",
+        "Escalate complex problems",
+        "Maintain customer records",
+        "Follow up on resolved issues"
+      ],
+      "aiPotential": "High"
+    },
+    {
+      "id": 5,
+      "title": "Technical Support Specialist",
+      "departmentId": 2,
+      "description": "Resolves complex technical issues and product-specific problems",
+      "keyResponsibilities": [
+        "Diagnose technical problems",
+        "Provide advanced troubleshooting",
+        "Document solutions",
+        "Train junior support staff",
+        "Contribute to knowledge base"
+      ],
+      "aiPotential": "Medium"
+    }
+  ],
+  "aiCapabilities": [
+    {
+      "name": "Automated Document Processing",
+      "category": "Document Management",
+      "description": "AI-powered document processing and analysis",
+      "implementationEffort": "Medium",
+      "businessValue": "High",
+      "easeScore": "Medium",
+      "valueScore": "High",
+      "id": 1
+    },
+    {
+      "name": "Predictive Analytics",
+      "category": "Data Analysis",
+      "description": "Advanced predictive modeling and forecasting",
+      "implementationEffort": "High",
+      "businessValue": "Very High",
+      "easeScore": "Low",
+      "valueScore": "Very High",
+      "id": 2
+    },
+    {
+      "name": "Natural Language Processing",
+      "category": "Text Analysis",
+      "description": "Understanding and processing human language",
+      "implementationEffort": "Medium",
+      "businessValue": "High",
+      "easeScore": "Medium",
+      "valueScore": "High",
+      "id": 3
+    },
+    {
+      "name": "Image Recognition",
+      "category": "Computer Vision",
+      "description": "AI-powered image analysis and recognition",
+      "implementationEffort": "High",
+      "businessValue": "Medium",
+      "easeScore": "Low",
+      "valueScore": "Medium",
+      "id": 4
+    },
+    {
+      "name": "Process Automation",
+      "category": "Workflow",
+      "description": "Automating repetitive business processes",
+      "implementationEffort": "Low",
+      "businessValue": "High",
+      "easeScore": "High",
+      "valueScore": "High",
+      "id": 5
+    }
+  ],
+  "assessments": [],
+  "reports": [],
+  "jobDescriptions": [],
+  "jobScraperConfigs": [
+    {
+      "name": "LinkedIn Tech Jobs",
+      "targetWebsite": "linkedin",
+      "keywords": [
+        "software engineer",
+        "web developer",
+        "frontend",
+        "backend"
+      ],
+      "location": "San Francisco",
+      "isActive": true,
+      "cronSchedule": "0 0 * * *",
+      "id": 1,
+      "createdAt": "2025-04-27T13:06:20.722Z",
+      "lastRun": null
+    },
+    {
+      "name": "Indeed Data Science",
+      "targetWebsite": "indeed",
+      "keywords": [
+        "data scientist",
+        "machine learning",
+        "AI",
+        "data analyst"
+      ],
+      "location": "Remote",
+      "isActive": true,
+      "cronSchedule": "0 12 * * *",
+      "id": 2,
+      "createdAt": "2025-04-27T13:06:20.722Z",
+      "lastRun": null
+    }
+  ]
+}

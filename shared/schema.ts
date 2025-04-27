@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, jsonb, timestamp, boolean, numeric, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, jsonb, timestamp, boolean, numeric, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -64,22 +64,41 @@ export const insertJobRoleSchema = createInsertSchema(jobRoles).pick({
   description: true,
   keyResponsibilities: true,
   aiPotential: true,
+}).extend({
+  keyResponsibilities: z.union([
+    z.string().transform(str => 
+      str.split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+    ),
+    z.array(z.string())
+  ]).default([])
 });
 
-// AI Capability model
+// AI Capability model - UPDATED
 export const aiCapabilities = pgTable("ai_capabilities", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey(), // Use integer to preserve migrated IDs
   name: text("name").notNull(),
-  category: text("category").notNull(),
+  category: text("category").notNull(), // Keep this for the capability's category
   description: text("description"),
   implementationEffort: text("implementation_effort"), // High, Medium, Low (Qualitative)
   businessValue: text("business_value"), // High, Medium, Low (Qualitative)
-  // Add numeric scores for calculations
   easeScore: numeric("ease_score"), // Quantitative score for ease (e.g., 1-5)
   valueScore: numeric("value_score"), // Quantitative score for value (e.g., 1-5)
+
+  // Fields to migrate from ai_tools (make them nullable initially)
+  primary_category: text("primary_category"), // Keep original tool category if needed? Or rename? Decide.
+  license_type: text("license_type"),
+  website_url: text("website_url"),
+  tags: text("tags").array(), // Assuming PostgreSQL array type
+
+  // Standard Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick({
+  id: true, // Include ID for potential inserts if needed later
   name: true,
   category: true,
   description: true,
@@ -87,9 +106,20 @@ export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick(
   businessValue: true,
   easeScore: true,
   valueScore: true,
+  // Add migrated fields
+  primary_category: true,
+  license_type: true,
+  website_url: true,
+  tags: true,
 }).extend({
   businessValue: z.enum(["Low", "Medium", "High", "Very High"]).default("Medium"),
   implementationEffort: z.enum(["Low", "Medium", "High"]).default("Medium"),
+  // Ensure tags are treated as an array, potentially empty
+  tags: z.array(z.string()).optional().default([]),
+  // Make migrated fields optional in Zod if they can be null in the DB
+  primary_category: z.string().optional(),
+  license_type: z.string().optional(),
+  website_url: z.string().optional(),
 });
 
 // Assessment model
@@ -132,7 +162,47 @@ export const insertReportSchema = createInsertSchema(reports).pick({
   consultantCommentary: true,
 });
 
-// Wizard Step Data schema
+// Scoring types
+export const scoringCriteria = {
+  valuePotential: {
+    timeSavings: "time_savings",
+    qualityImpact: "quality_impact",
+    strategicAlignment: "strategic_alignment"
+  },
+  easeOfImplementation: {
+    dataReadiness: "data_readiness",
+    technicalFeasibility: "technical_feasibility",
+    adoptionRisk: "adoption_risk"
+  }
+} as const;
+
+export type ScoringCriterion = typeof scoringCriteria.valuePotential[keyof typeof scoringCriteria.valuePotential] | 
+                              typeof scoringCriteria.easeOfImplementation[keyof typeof scoringCriteria.easeOfImplementation];
+
+export type ScoreValue = 1 | 2 | 3 | 4 | 5;
+
+export type RoleScore = {
+  valuePotential: {
+    timeSavings: ScoreValue;
+    qualityImpact: ScoreValue;
+    strategicAlignment: ScoreValue;
+    total: number;
+  };
+  easeOfImplementation: {
+    dataReadiness: ScoreValue;
+    technicalFeasibility: ScoreValue;
+    adoptionRisk: ScoreValue;
+    total: number;
+  };
+  totalScore: number;
+};
+
+export type AssessmentScores = {
+  roleScores: Record<number, RoleScore>;
+  timestamp: string;
+};
+
+// Update the Wizard Step Data schema
 export const wizardStepDataSchema = z.object({
   basics: z.object({
     companyName: z.string(),
@@ -171,14 +241,24 @@ export const wizardStepDataSchema = z.object({
       timeSpent: z.string().optional(),
       complexity: z.string().optional(),
       errorRisk: z.string().optional(),
+      repetitiveness: z.number().optional(),
+      isDataDriven: z.boolean().optional(),
+      dataDescription: z.string().optional(),
+      hasPredictiveTasks: z.boolean().optional(),
+      predictiveTasksDescription: z.string().optional(),
+      needsContentGeneration: z.boolean().optional(),
+      contentGenerationDescription: z.string().optional(),
+      decisionComplexity: z.string().optional(),
     })),
   }).optional(),
   
   techStack: z.object({
     currentSystems: z.string().optional(),
-    dataAvailability: z.array(z.string()).optional(), 
+    dataAvailability: z.array(z.string()).optional(),
     existingAutomation: z.string().optional(),
     dataQuality: z.number().optional(),
+    dataQualityIssues: z.string().optional(),
+    approvals: z.string().optional(),
   }).optional(),
   
   adoption: z.object({
@@ -191,7 +271,11 @@ export const wizardStepDataSchema = z.object({
       suitability: z.number().optional(),
     })),
   }).optional(),
-});
+
+  scores: z.object({
+    assessmentScores: z.custom<AssessmentScores>(),
+  }).optional(),
+}).strict();
 
 // Priority matrix types
 export const priorityLevels = ["high", "medium", "low", "not_recommended"] as const;
@@ -362,24 +446,36 @@ export const assessmentResponses = pgTable("assessment_responses", {
 
 // New Table: AI Tools
 export const aiTools = pgTable("ai_tools", {
-  toolId: serial("tool_id").primaryKey(),
-  toolName: text("tool_name").notNull(),
+  tool_id: integer("tool_id").primaryKey(), // Use integer PK based on existing script
+  tool_name: text("tool_name").notNull(), //.unique(), // Making unique later if needed after cleanup
+  primary_category: text("primary_category"), // Category of the tool itself
+  license_type: text("license_type"),
   description: text("description"),
-  websiteUrl: text("website_url"),
-  licenseType: text("license_type"), // 'Open Source', 'Commercial', 'Freemium', etc.
-  primaryCategory: text("primary_category"), // Align with ai_capabilities categories?
-  tags: jsonb("tags"), // Using JSONB for flexible tagging
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(), // Consider onUpdateNow() trigger in DB
+  website_url: text("website_url"),
+  tags: text("tags").array(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+    toolNameIdx: uniqueIndex("idx_ai_tools_tool_name").on(table.tool_name), // Keep unique index attempt
+}));
+
+export const insertAiToolSchema = createInsertSchema(aiTools).omit({
+  // tool_id must be provided if not serial
+  created_at: true,
+  updated_at: true,
+}).extend({
+  tags: z.array(z.string()).optional().default([]),
 });
 
 // New Table: Capability Tool Mapping (Many-to-Many)
 export const capabilityToolMapping = pgTable("capability_tool_mapping", {
-  mappingId: serial("mapping_id").primaryKey(),
-  capabilityId: integer("capability_id").notNull().references(() => aiCapabilities.id, { onDelete: 'cascade' }),
-  toolId: integer("tool_id").notNull().references(() => aiTools.toolId, { onDelete: 'cascade' }),
-  notes: text("notes"), // Optional notes on suitability, integration, etc.
-});
+  capability_id: integer("capability_id").notNull().references(() => aiCapabilities.id, { onDelete: 'cascade' }),
+  tool_id: integer("tool_id").notNull().references(() => aiTools.tool_id, { onDelete: 'cascade' }), // References tool_id PK
+  // Add primary key constraint for the combination
+}, (table) => ({
+    // pk: pg.primaryKey({ columns: [table.capability_id, table.tool_id] }), // Use primaryKey import
+    pk: primaryKey({ columns: [table.capability_id, table.tool_id] }), // Composite primary key
+}));
 
 // New Table: Assessment Results
 export const assessmentResults = pgTable("assessment_results", {
@@ -416,3 +512,45 @@ export type InsertCapabilityToolMapping = typeof capabilityToolMapping.$inferIns
 
 export type AssessmentResult = typeof assessmentResults.$inferSelect;
 export type InsertAssessmentResult = typeof assessmentResults.$inferInsert;
+
+// Add new table for assessment scores
+export const assessmentScores = pgTable("assessment_scores", {
+  id: serial("id").primaryKey(),
+  wizardStepId: text("wizard_step_id").notNull().unique(),
+  timeSavings: numeric("time_savings").notNull(),
+  qualityImpact: numeric("quality_impact").notNull(),
+  strategicAlignment: numeric("strategic_alignment").notNull(),
+  dataReadiness: numeric("data_readiness").notNull(),
+  technicalFeasibility: numeric("technical_feasibility").notNull(),
+  adoptionRisk: numeric("adoption_risk").notNull(),
+  valuePotentialTotal: numeric("value_potential_total").notNull(),
+  easeOfImplementationTotal: numeric("ease_of_implementation_total").notNull(),
+  totalScore: numeric("total_score").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type AssessmentScore = typeof assessmentScores.$inferSelect;
+export type InsertAssessmentScore = typeof assessmentScores.$inferInsert;
+
+export interface AssessmentScoreData {
+  id: string;
+  wizardStepId: string;
+  timeSavings: ScoreValue;
+  qualityImpact: ScoreValue;
+  strategicAlignment: ScoreValue;
+  dataReadiness: ScoreValue;
+  technicalFeasibility: ScoreValue;
+  adoptionRisk: ScoreValue;
+  valuePotentialTotal: number;
+  easeOfImplementationTotal: number;
+  totalScore: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface AssessmentScoreResponse {
+  success: boolean;
+  message?: string;
+  data?: AssessmentScoreData;
+}

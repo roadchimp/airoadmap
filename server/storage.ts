@@ -13,7 +13,9 @@ import {
   PrioritizedItem,
   JobDescription, InsertJobDescription,
   JobScraperConfig, InsertJobScraperConfig,
-  ProcessedJobContent
+  ProcessedJobContent,
+  AITool,
+  AssessmentScoreData
 } from "../shared/schema.ts";
 
 import { PgStorage } from './pg-storage.ts';
@@ -77,6 +79,17 @@ export interface IStorage {
   createJobScraperConfig(config: InsertJobScraperConfig): Promise<JobScraperConfig>;
   updateJobScraperConfigLastRun(id: number): Promise<JobScraperConfig>;
   updateJobScraperConfigStatus(id: number, isActive: boolean): Promise<JobScraperConfig>;
+
+  // AI Tools methods
+  getAITool(id: number): Promise<AITool | undefined>;
+  listAITools(search?: string, category?: string, licenseType?: string): Promise<AITool[]>;
+  createAITool(tool: Omit<AITool, "id" | "created_at" | "updated_at">): Promise<AITool>;
+  updateAITool(id: number, tool: Partial<Omit<AITool, "id" | "created_at" | "updated_at">>): Promise<AITool>;
+  deleteAITool(id: number): Promise<boolean>;
+
+  // Assessment Score methods
+  upsertAssessmentScore(score: Omit<AssessmentScoreData, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentScoreData>;
+  getAssessmentScore(wizardStepId: string): Promise<AssessmentScoreData | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -89,6 +102,7 @@ export class MemStorage implements IStorage {
   private reports: Map<number, Report>;
   private jobDescriptions: Map<number, JobDescription>;
   private jobScraperConfigs: Map<number, JobScraperConfig>;
+  private aiTools: Map<number, AITool>;
   
   private userIdCounter: number;
   private orgIdCounter: number;
@@ -99,6 +113,7 @@ export class MemStorage implements IStorage {
   private reportIdCounter: number;
   private jobDescriptionIdCounter: number;
   private jobScraperConfigIdCounter: number;
+  private aiToolIdCounter: number;
   
   constructor() {
     this.users = new Map();
@@ -110,6 +125,7 @@ export class MemStorage implements IStorage {
     this.reports = new Map();
     this.jobDescriptions = new Map();
     this.jobScraperConfigs = new Map();
+    this.aiTools = new Map();
     
     this.userIdCounter = 1;
     this.orgIdCounter = 1;
@@ -120,6 +136,7 @@ export class MemStorage implements IStorage {
     this.reportIdCounter = 1;
     this.jobDescriptionIdCounter = 1;
     this.jobScraperConfigIdCounter = 1;
+    this.aiToolIdCounter = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -473,6 +490,67 @@ export class MemStorage implements IStorage {
     
     this.jobScraperConfigs.set(id, updatedConfig);
     return updatedConfig;
+  }
+
+  // AI Tools methods
+  async getAITool(id: number): Promise<AITool | undefined> {
+    return this.aiTools.get(id);
+  }
+
+  async listAITools(search?: string, category?: string, licenseType?: string): Promise<AITool[]> {
+    let tools = Array.from(this.aiTools.values());
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      tools = tools.filter(tool => 
+        tool.tool_name.toLowerCase().includes(searchLower) ||
+        tool.description.toLowerCase().includes(searchLower) ||
+        tool.primary_category.toLowerCase().includes(searchLower) ||
+        tool.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+      );
+    }
+
+    if (category) {
+      tools = tools.filter(tool => tool.primary_category === category);
+    }
+
+    if (licenseType) {
+      tools = tools.filter(tool => tool.license_type === licenseType);
+    }
+
+    return tools;
+  }
+
+  async createAITool(tool: Omit<AITool, "id" | "created_at" | "updated_at">): Promise<AITool> {
+    const id = this.aiToolIdCounter++;
+    const now = new Date();
+    const newTool: AITool = {
+      id,
+      ...tool,
+      created_at: now,
+      updated_at: now
+    };
+    this.aiTools.set(id, newTool);
+    return newTool;
+  }
+
+  async updateAITool(id: number, tool: Partial<Omit<AITool, "id" | "created_at" | "updated_at">>): Promise<AITool> {
+    const existingTool = await this.getAITool(id);
+    if (!existingTool) {
+      throw new Error(`AI Tool with id ${id} not found`);
+    }
+
+    const updatedTool: AITool = {
+      ...existingTool,
+      ...tool,
+      updated_at: new Date()
+    };
+    this.aiTools.set(id, updatedTool);
+    return updatedTool;
+  }
+
+  async deleteAITool(id: number): Promise<boolean> {
+    return this.aiTools.delete(id);
   }
 
   private initializeSampleData() {

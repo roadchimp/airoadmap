@@ -1,0 +1,2576 @@
+[
+  {
+    "jobId": "job_req_001",
+    "responsibilities": [
+      {
+        "responsibility_text": "Drive top-of-the-funnel lead generation",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Update and manage all sales activities, opportunities, and account information in CRM",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Consistently achieve monthly quota of qualified opportunities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Quota Achievement Management",
+          "description": "Monitors and manages the achievement of sales quotas, providing insights and strategies to ensure targets are met consistently."
+        }
+      },
+      {
+        "responsibility_text": "Actively attract new partners by engaging new and existing leads",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Pre-qualify opportunities by business size, industry and use cases",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Work closely with Account Executives/Director of Sales to develop prospecting strategies",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Leverage Hubspot and other sales tools to manage accounts through the top of the funnel sales cycle",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Provide our clients with effective value proposition",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Value Proposition Communication",
+          "description": "Effectively communicates the unique benefits and value of a product or service to prospective clients, tailored to their specific needs and challenges."
+        }
+      },
+      {
+        "responsibility_text": "Have consultative sales conversations, articulate value propositions and build rapport through effective communication",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_002",
+    "responsibilities": [
+      {
+        "responsibility_text": "Technical Leadership in Sales Opportunities: Serve as an automation expert, providing strong technical leadership in sales opportunities.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Technical Sales Leadership",
+          "description": "Provides expert guidance and leadership in technical sales processes, leveraging deep product knowledge and industry expertise to influence sales outcomes."
+        }
+      },
+      {
+        "responsibility_text": "Early Sales Support: Offer technical support in the early stages of sales, including conducting demos, creating proofs of concept, and facilitating workshops for various clients.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Early Stage Sales Support",
+          "description": "Engages in the initial phases of the sales cycle to provide demonstrations, develop proofs of concept, and conduct educational workshops, enhancing client understanding and engagement."
+        }
+      },
+      {
+        "responsibility_text": "Collaborative Territory Management: Collaborate using multiple tools and techniques with IBM sales teams and specialists to effectively manage territories and identify sales opportunities.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Collaborative Territory Management",
+          "description": "Utilizes collaboration tools and strategic planning to manage sales territories and pinpoint potential sales opportunities in partnership with sales teams."
+        }
+      },
+      {
+        "responsibility_text": "Competitive Advantage: Demonstrate the value and advantages of the product over competitors.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Competitive Product Demonstration",
+          "description": "Focuses on highlighting the unique benefits and superior aspects of a product compared to competitors, effectively communicating its competitive edge to potential clients."
+        }
+      },
+      {
+        "responsibility_text": "Digital Brand Building: Build a strong personal brand across digital platforms such as social media, forums, and blogs to establish trust, expertise, and credibility.",
+        "matched_capability_id": 5,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_003",
+    "responsibilities": [
+      {
+        "responsibility_text": "Hit daily expectations of 100 cold-calls & 12 daily LinkedIn Sales Navigator Messages sent",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Generate 10 qualified meetings per month.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Work closely with your assigned Enterprise Account Executives by providing accurate lead distribution, and thorough discovery; generate sales-ready meetings and opportunities by positioning the value of Verkada.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Prospect, qualify, follow up and educate a high volume of cold leads.",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Understand and uncover prospects needs and business problems to effectively communicate how Verkada can solve them.",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Use Verkada tech stack and sales enablement tools according to Verkada standards; provide metrics on leads.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Achieve quota to ensure territory revenue and growth objectives.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Establish connections with potential customers within the technical realm and collaborate with colleagues across different functions.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Technical Sales Collaboration",
+          "description": "Facilitates collaboration and communication among sales teams and technical departments to enhance customer engagement and improve solution delivery."
+        }
+      },
+      {
+        "responsibility_text": "Collaborate in a dynamic team environment, adapt to changes while creating high quality opportunities and revenue growth.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Adaptive Sales Strategy",
+          "description": "Enables sales teams to quickly adapt strategies and approaches in response to dynamic market conditions and internal changes to maximize opportunities and revenue growth."
+        }
+      },
+      {
+        "responsibility_text": "Understanding of sales cycles and required qualification criteria.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Cycle Expertise",
+          "description": "Empowers sales professionals with deep understanding and insights into various sales cycles and the critical qualification criteria needed for different stages and deals."
+        }
+      },
+      {
+        "responsibility_text": "Have the knack for grasping complex business environments, figuring out what bugs customers, sorting out process hiccups, and turning needs into new business opportunities.",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_004",
+    "responsibilities": [
+      {
+        "responsibility_text": "actively seek out new business opportunities through a variety of channels",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "quickly research a company, identify opportunities, and strategize an approach to create interest for enterprise-level companies",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "work side by side with our Account Executive teams to strategize and generate value for existing and potential customers",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_005",
+    "responsibilities": [
+      {
+        "responsibility_text": "Produce new sales leads to the sales pipeline by identifying, qualifying, and setting meetings for Account Executives across North America.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Research prospective clients and acquire high-level contacts leveraging third-party databases and social networking sites.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Prospect, educate, qualify, and develop sales ready leads and opportunities from lead generation activities and outbound cold calling into targeted accounts.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Interact with prospects via telephone and email to uncover pain points, identify opportunities and generate interest.",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Use your experience and success to help mentor other Sales Development Representatives.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Mentorship & Training",
+          "description": "Provides guidance and training to junior sales staff based on personal sales experiences and successes, enhancing team performance and knowledge."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_006",
+    "responsibilities": [
+      {
+        "responsibility_text": "Create new business opportunities to fuel Procore’s growth",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Partner with an Account Executive to achieve mutually aligned sales quotas each month",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Collaboration & Quota Achievement",
+          "description": "Facilitates collaboration between sales team members to meet or exceed sales quotas, ensuring team alignment and effective joint sales strategies."
+        }
+      },
+      {
+        "responsibility_text": "Engage construction professionals through phone, email, and other channels to understand their challenges and identify opportunities to solve them",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Have the autonomy to operate beyond your role and help the team improve our process, training, use of technology, and any other aspects of our business",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Operational Improvement & Innovation",
+          "description": "Empowers employees to contribute to the improvement of operational processes, training programs, and technological adoption, fostering a culture of continuous innovation and efficiency."
+        }
+      },
+      {
+        "responsibility_text": "Work with sales management to develop targeted lists, call strategies, and messaging to create opportunities for new business",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Conduct daily activities including: Pre-call research and planning, Make a high volume of calls per day, Follow-up with previous contacts (nurturing leads), Maintain Salesforce records",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_007",
+    "responsibilities": [
+      {
+        "responsibility_text": "Build and deepen executive relationships with enterprise customers to influence their long-term technology and business decisions. Add value as a trusted advisor.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Executive Relationship Management",
+          "description": "Focuses on building and maintaining strategic relationships with key business executives to influence their decisions and align them with the organization's products and services."
+        }
+      },
+      {
+        "responsibility_text": "Become an expert on the customers' business, including their SaaS product portfolio, technology strategy, strategic growth plans, business drivers, financial structure, customer base, vertical market offering, and competitive landscape.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Customer Business Expertise",
+          "description": "Develops deep understanding of the customer's business environment, strategic objectives, and industry challenges to effectively align and propose tailored solutions."
+        }
+      },
+      {
+        "responsibility_text": "Lead account strategy to develop business growth opportunities, working cross-functionally with multiple teams and Google Partners, to maximize business impact within enterprise customers.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic Account Leadership",
+          "description": "Leads the development and execution of comprehensive account strategies that foster growth and maximize business impact through collaboration with cross-functional teams and partners."
+        }
+      },
+      {
+        "responsibility_text": "Manage complex business cycles, presenting to C-level executives and negotiating terms.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Complex Sales Cycle Management",
+          "description": "Manages end-to-end sales processes involving multiple stakeholders and decision-makers, presenting to top executives and negotiating critical contract terms."
+        }
+      },
+      {
+        "responsibility_text": "Drive business development, own operational excellence at scale, forecast accurately, and achieve strategic goals by leading customers through the entire business cycle.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Comprehensive Business Development",
+          "description": "Drives overall business growth and operational excellence, manages forecasting and strategic goal achievement through leadership across all phases of the customer engagement cycle."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_008",
+    "responsibilities": [
+      {
+        "responsibility_text": "Handle high-volume inbound leads generated through digital marketing efforts",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Conduct effective discovery calls with potential clients",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Articulate the value of our Roadmap for Retirement, our signature deliverable",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Build rapport and answer preliminary questions about our retirement planning services",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Coordinate with prospects to gather financial statements prior to their Retirement Planner meeting",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Financial Document Coordination",
+          "description": "Facilitates the collection and organization of financial documents from clients, ensuring all necessary paperwork is gathered efficiently and accurately before meetings."
+        }
+      },
+      {
+        "responsibility_text": "Ensure appointment attendance through professional follow-up",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Prepare leads for successful meetings with Retirement Planners",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_009",
+    "responsibilities": [
+      {
+        "responsibility_text": "responsible for customer satisfaction",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Customer Satisfaction Management",
+          "description": "Utilizes AI to monitor and analyze customer interactions and feedback to improve service quality and customer satisfaction levels."
+        }
+      },
+      {
+        "responsibility_text": "responsible for lead generation",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "providing excellent customer service",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_010",
+    "responsibilities": [
+      {
+        "responsibility_text": "Increasing sales of ADInstruments’ product range to customers operating in the life science markets across the territory.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Execution & Expansion",
+          "description": "Directly engages in selling products or services to new and existing customers, focusing on expanding market reach and increasing revenue."
+        }
+      },
+      {
+        "responsibility_text": "Identifying new business opportunities and pursuing new clientele who may be unfamiliar with our products.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Providing sales and technical support to existing customers.",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Creating and maintaining strong relationships with the customer base.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Customer Relationship Management",
+          "description": "Focuses on building and maintaining robust relationships with customers, ensuring high levels of satisfaction and loyalty."
+        }
+      },
+      {
+        "responsibility_text": "Advising and assisting scientists, engineers, and educators as required.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Technical Consultation & Support",
+          "description": "Provides expert advice and support to professionals in technical fields, helping them to effectively use products in their specific environments."
+        }
+      },
+      {
+        "responsibility_text": "Developing and maintaining both strong market awareness and a superb understanding of the product range.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_011",
+    "responsibilities": [
+      {
+        "responsibility_text": "prospecting, building and managing the sales pipeline",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "conducting effective discovery sessions",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Discovery Sessions",
+          "description": "Utilizes AI to guide sales representatives through discovery sessions, suggesting questions and topics based on prospect's industry, role, and previous interactions."
+        }
+      },
+      {
+        "responsibility_text": "bringing new customers into the BillGO network",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_012",
+    "responsibilities": [
+      {
+        "responsibility_text": "prospecting, building and managing the sales pipeline",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "conducting effective discovery sessions",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Discovery Session Facilitation",
+          "description": "Utilizes AI to guide sales representatives through structured discovery sessions, suggesting questions and topics based on prospect data and previous interactions to maximize the effectiveness of the session."
+        }
+      },
+      {
+        "responsibility_text": "bringing new customers into the BillGO network",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_013",
+    "responsibilities": [
+      {
+        "responsibility_text": "Generate High-Impact Leads: Connect with prospective clients to generate leads that convert into meaningful revenue opportunities.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Expand Market Presence: Drive growth by acquiring new clients and increasing market share.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Market Expansion Strategy",
+          "description": "Develops strategies and tactics for entering new markets and acquiring new customer segments, leveraging market analysis and competitive insights."
+        }
+      },
+      {
+        "responsibility_text": "Collaborate Globally: Work as a team player, sharing best practices and collaborating with colleagues across the globe.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Global Collaboration and Best Practices Sharing",
+          "description": "Facilitates effective global teamwork and the sharing of best practices across different regions and units within the organization."
+        }
+      },
+      {
+        "responsibility_text": "Research and Intelligence: Conduct thorough research to understand your accounts and industry, providing valuable insights and opportunities.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Engage and Qualify: Identify and address prospective customer needs by understanding their business challenges and engaging with key decision-makers.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Become a Trusted Advisor: Develop a deep understanding of the One Oracle stack and GIU solutions to provide expert guidance to prospects.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Solution Expertise Development",
+          "description": "Builds deep knowledge of company products and solutions to effectively advise and guide prospects in solution selection and implementation."
+        }
+      },
+      {
+        "responsibility_text": "Strategize and Execute: Partner with sales and marketing teams to implement effective outbound campaigns and align with industry go-to-market strategies.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_014",
+    "responsibilities": [
+      {
+        "responsibility_text": "Building and maintaining a pipeline of business through email, phone and LinkedIn prospecting",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Uncovering a company’s needs and catering Bazaarvoice’s value according to those specific needs",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Customized Value Proposition Development",
+          "description": "Tailors product or service value propositions to meet the specific needs and challenges of potential clients, enhancing relevance and appeal."
+        }
+      },
+      {
+        "responsibility_text": "Demonstrating the value propositions of our products and services via webinars, emails, phone calls, etc.",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Positioning a high-ROI solution to some of the most well-known brands and retailers in the world",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic ROI Positioning",
+          "description": "Effectively communicates the return on investment of products or services to high-value clients, emphasizing financial and strategic benefits."
+        }
+      },
+      {
+        "responsibility_text": "Partnering with an Account Director to cultivate new business opportunities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Collaborative Business Development",
+          "description": "Works in tandem with senior sales roles to identify and develop new business opportunities, leveraging combined expertise and networks."
+        }
+      },
+      {
+        "responsibility_text": "Learning the Sales cycle from beginning to end",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Comprehensive Sales Cycle Education",
+          "description": "Acquires thorough understanding and mastery of the entire sales process, from prospecting to closing deals."
+        }
+      },
+      {
+        "responsibility_text": "Learning a range of best-in-class Sales Development tools and processes",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Development Tools Proficiency",
+          "description": "Gains expertise in using advanced sales development tools and methodologies to enhance sales effectiveness."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_015",
+    "responsibilities": [
+      {
+        "responsibility_text": "Drive new business acquisition by prospecting, cold calling, emailing, and networking with potential clients.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Manage and grow a pipeline of leads for new case retainers in areas such as investigations, TSCM sweeps, cybersecurity consulting, and intelligence work.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Present and sell our services to clients, working closely with our inside sales team when needed.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Assisted Sales Presentation",
+          "description": "Provides AI-driven support tools and data insights to enhance the effectiveness of sales presentations and pitches."
+        }
+      },
+      {
+        "responsibility_text": "Utilize CRM platforms like Salesforce or HubSpot to track prospects and sales activities.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Meet and exceed sales targets through persistent effort, relationship-building, and a consultative sales approach.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Relationship Management",
+          "description": "Leverages AI to analyze interaction history and social data to suggest personalized engagement strategies and optimize relationship building."
+        }
+      },
+      {
+        "responsibility_text": "Attend in-person meetings, networking events, and sales consultations as required for specific campaigns.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Driven Event Optimization",
+          "description": "Utilizes AI to recommend optimal networking events and meetings based on strategic importance, potential ROI, and past outcomes."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_016",
+    "responsibilities": [
+      {
+        "responsibility_text": "Promote Vivax Pros’ products and services to prospective and existing clients - leads are generated and pre-qualified for you",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Build relationships with homeowners",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Relationship Management",
+          "description": "Facilitates the development and maintenance of strong, productive relationships with clients, enhancing customer satisfaction and loyalty."
+        }
+      },
+      {
+        "responsibility_text": "Earn and close business during the initial appointment or through call backs",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Closing Automation",
+          "description": "Employs AI to assist in closing deals by analyzing customer interactions and engagement to suggest optimal closing techniques and timing."
+        }
+      },
+      {
+        "responsibility_text": "Consistent follow up with clients",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_017",
+    "responsibilities": [
+      {
+        "responsibility_text": "Manage a large flow of incoming lead data.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate closely with the marketing team to identify opportunities from leads and schedule appointments based on those leads.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Provide a solid understanding of Invicti’s products to deliver high-level introductions to prospective clients.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Dissemination",
+          "description": "Provides comprehensive and up-to-date information about products to team members to ensure accurate representation in client interactions."
+        }
+      },
+      {
+        "responsibility_text": "Support the marketing team in testing, executing, and reporting on lead quality.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Effectively address prospective customer objections and answer initial questions.",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Schedule product demonstration appointments for our Account Executive teams.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate with the team to enhance processes and increase efficiency.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Process Optimization",
+          "description": "Engages in continuous improvement of internal processes to enhance team efficiency and effectiveness."
+        }
+      },
+      {
+        "responsibility_text": "Adapt to process changes and contribute to the testing of new ideas.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Adaptability and Innovation Support",
+          "description": "Adapts to new process implementations and actively contributes to the ideation and testing of innovative approaches within the team."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_018",
+    "responsibilities": [
+      {
+        "responsibility_text": "Source new sales opportunities through inbound qualification and outbound outreach",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Qualify prospects through consultative selling while leveraging BANT criteria",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Consultative Selling",
+          "description": "Employs AI to support sales representatives in consultative selling approaches, analyzing customer needs and aligning product offerings effectively based on BANT (Budget, Authority, Need, Timing) criteria."
+        }
+      },
+      {
+        "responsibility_text": "Grow top of sales funnel through warm and cold outbound campaigns",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Research companies and add prospects to our outbound list",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Maintain accurate client relationship data within Salesforce",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_019",
+    "responsibilities": [
+      {
+        "responsibility_text": "Multi-channel cold outreach at least 80+ prospects a day",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Update and manage all sales activities, opportunities, and account information in our CRM",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Consistently achieve a monthly quota of qualified opportunities/meetings set",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Quota Achievement & Performance Tracking",
+          "description": "Monitors and analyzes sales performance against targets to ensure quotas are met and provides insights for improvement."
+        }
+      },
+      {
+        "responsibility_text": "Train junior SDRs after a few months of joining",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Training & Development",
+          "description": "Provides structured training programs and coaching to junior sales representatives to enhance their skills and performance."
+        }
+      },
+      {
+        "responsibility_text": "Constantly raise the bar and improve performance",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Continuous Performance Improvement",
+          "description": "Implements strategies and tools for ongoing assessment and enhancement of sales team performance."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_020",
+    "responsibilities": [
+      {
+        "responsibility_text": "Drive top-of-the-funnel lead generation for account executives and sales managers",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Update and manage all sales activities, opportunities, and account information in CRM",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Consistently achieve monthly quota of qualified opportunities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Sales Performance Management",
+          "description": "Utilizes AI to monitor and optimize sales performance against targets, providing real-time analytics and predictive insights to help sales representatives meet or exceed their quotas."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_021",
+    "responsibilities": [
+      {
+        "responsibility_text": "Drive top-of-the-funnel lead generation for account executives and sales managers",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Update and manage all sales activities, opportunities, and account information in CRM",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Consistently achieve monthly quota of qualified opportunities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Sales Performance Management",
+          "description": "Utilizes AI to monitor and optimize sales performance against targets, providing real-time analytics and predictive insights to help sales representatives meet or exceed their quotas."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_022",
+    "responsibilities": [
+      {
+        "responsibility_text": "Drive top-of-the-funnel lead generation for account executives and sales managers",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Update and manage all sales activities, opportunities, and account information in CRM",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Consistently achieve monthly quota of qualified opportunities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Sales Performance Management",
+          "description": "Utilizes AI to monitor and optimize sales performance against quotas, providing predictive insights and recommendations to improve sales outcomes."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_023",
+    "responsibilities": [
+      {
+        "responsibility_text": "Respond to inbound leads and new business inquiries with a friendly, professional approach",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Pre-qualify potential clients and book intro meetings for the CEO",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Manage outreach campaigns and ongoing prospecting programs",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Use HubSpot to track leads, maintain clean records, and monitor sales progress",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate with internal teams to improve messaging and outreach strategies",
+        "matched_capability_id": 5,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Learn and speak confidently about our services (Paid Ads, SEO, Websites, Analytics, and Strategy)",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Service Knowledge & Communication",
+          "description": "Develops deep understanding of company services and communicates effectively about them to enhance customer engagement and support sales."
+        }
+      },
+      {
+        "responsibility_text": "Help improve our sales development process and suggest ways to boost performance",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_024",
+    "responsibilities": [
+      {
+        "responsibility_text": "Respond to and qualify inbound leads",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Book meetings with decision-makers for AEs",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Assisted Meeting Scheduling",
+          "description": "Uses AI to identify optimal times for meetings, coordinate schedules between parties, and automatically book meetings with decision-makers."
+        }
+      },
+      {
+        "responsibility_text": "Write compelling outreach messages using HubSpot/Outreach",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Track all activities and progress in the CRM",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_025",
+    "responsibilities": [
+      {
+        "responsibility_text": "Identify and research potential target companies and key decision-makers within our Ideal Customer Profile (ICP) using tools like LinkedIn Sales Navigator and other resources.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Develop and execute effective cold outreach strategies via email, LinkedIn, and potentially phone to engage prospects.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Craft personalized and engaging outreach messages that highlight the value proposition of Hawcx and resonate with the prospect's pain points.",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Engage with prospects to understand their security challenges, current authentication methods, and business needs. Qualify leads based on defined criteria (e.g., need, fit, potential).",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Powered Lead Qualification",
+          "description": "Utilizes AI to analyze interactions and data to qualify leads based on specific criteria such as need, fit, and potential, enhancing the efficiency of the qualification process."
+        }
+      },
+      {
+        "responsibility_text": "Schedule qualified meetings between prospects and our CEO (and future Account Executives) for product demonstrations and deeper discussions.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Assisted Meeting Scheduling",
+          "description": "Employs AI to coordinate and schedule meetings between sales representatives and prospects, optimizing for mutual availability and priority."
+        }
+      },
+      {
+        "responsibility_text": "Accurately track and update all activities and lead information in our CRM system.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Provide valuable feedback to the CEO on market trends, prospect responses, and the effectiveness of outreach strategies.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Meet and exceed monthly and quarterly targets for qualified meetings booked.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Sales Performance Tracking",
+          "description": "Leverages AI to monitor and analyze sales performance metrics, providing insights and recommendations to improve target achievement rates."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_026",
+    "responsibilities": [
+      {
+        "responsibility_text": "Own the top of the sales funnel—prospecting, outbound outreach, and setting up meetings with senior executives in real estate.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Develop a deep understanding of our platform and how it solves real pain points for property owners and operators.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Development",
+          "description": "Develops comprehensive knowledge of the product's features, benefits, and potential impact to effectively communicate and adapt solutions to customer needs."
+        }
+      },
+      {
+        "responsibility_text": "Drive your own success—we provide training and guidance, but you’ll need to take initiative and execute consistently.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Self-Driven Initiative and Execution",
+          "description": "Empowers individuals to take personal initiative in their roles, driving tasks and projects to completion with minimal supervision."
+        }
+      },
+      {
+        "responsibility_text": "Work closely with sales leadership to refine outreach strategies and scale what works.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_027",
+    "responsibilities": [
+      {
+        "responsibility_text": "Collaborate with sales, marketing and our partner team to develop new strategies to build our sales pipeline and grow our business",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic Sales & Marketing Collaboration",
+          "description": "Facilitates collaboration between sales, marketing, and partner teams to develop and implement strategies that enhance the sales pipeline and business growth."
+        }
+      },
+      {
+        "responsibility_text": "Balance the reactive work of responding to interested users with a creative and proactive approach to identify new opportunities",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Use Salesforce, Marketo, LinkedIn, and other prospecting tools to research accounts, identify key contacts and craft targeted messaging",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Learn our technology and effectively communicate our value proposition with a technical audience. Work to understand their goals and challenges to better understand how we can help",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Technical Product Education & Communication",
+          "description": "Educates and communicates effectively about technical products to a technical audience, understanding their specific goals and challenges to tailor the value proposition."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_028",
+    "responsibilities": [
+      {
+        "responsibility_text": "Collaborate with sales, marketing and our partner team to develop new strategies to build our sales pipeline and grow our business",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic Sales & Marketing Collaboration",
+          "description": "Facilitates collaboration between sales, marketing, and partner teams to develop and implement strategies that enhance the sales pipeline and business growth."
+        }
+      },
+      {
+        "responsibility_text": "Balance the reactive work of responding to interested users with a creative and proactive approach to identify new opportunities",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Use Salesforce, Marketo, LinkedIn, and other prospecting tools to research accounts, identify key contacts and craft targeted messaging",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Learn our technology and effectively communicate our value proposition with a technical audience. Work to understand their goals and challenges to better understand how we can help",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Technical Product Education & Communication",
+          "description": "Educates and communicates effectively about technical products to a technical audience, understanding their specific goals and challenges to tailor the value proposition."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_029",
+    "responsibilities": [
+      {
+        "responsibility_text": "Drive Revenue Growth: Connect with prospective clients to generate 5-star leads that transform into revenue. Be the catalyst for expanding our industry market share through new client acquisition.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Be a Collaborative All-Star: Bring your A-game every day and thrive in a team environment. Share best practices, collaborate with colleagues globally, and contribute to a positive, high-energy atmosphere.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Team Collaboration Enhancement",
+          "description": "Facilitates and enhances team collaboration through tools and platforms that enable sharing best practices and effective global teamwork."
+        }
+      },
+      {
+        "responsibility_text": "Research and Innovate: Dive deep into account research, gather intelligence, and develop a keen understanding of industry needs. Identify opportunities and gaps to create strategic solutions.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Qualify and Engage: Uncover and understand prospective customer needs by engaging key decision-makers and addressing their business challenges.",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Become a Trusted Advisor: Build comprehensive knowledge of the One Oracle stack and GIU solutions, positioning yourself as a trusted advisor to our prospects.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Expertise Development",
+          "description": "Enhances the ability of sales representatives to become product experts and trusted advisors through training modules and AI-driven learning platforms."
+        }
+      },
+      {
+        "responsibility_text": "Strategize and Execute: Partner with sales and marketing teams to craft and execute outbound campaigns and sales plays, aligning with our go-to-market strategies.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_030",
+    "responsibilities": [
+      {
+        "responsibility_text": "Conduct proactive and strategic cold calls to engage decision-makers at target companies",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Qualify and nurture new leads into revenue-generating opportunities through well-planned and executed outreach efforts",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Organize day-to-day activities to ensure all sales quotas and management objectives related to cold calling are met",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Activity Management",
+          "description": "Organizes and prioritizes daily sales activities to meet quotas and management objectives, ensuring efficient time management and task completion."
+        }
+      },
+      {
+        "responsibility_text": "Maintain accurate and up-to-date records of leads and interactions via CRM tools",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Become an expert in our product offerings, knowing the Recurly product inside and out",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Mastery",
+          "description": "Develops deep understanding and expertise in the specific products of the company, enabling effective presentation and discussion of product features and benefits with potential clients."
+        }
+      },
+      {
+        "responsibility_text": "Consistently meet and exceed sales targets through effective cold calling and outreach strategies",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_031",
+    "responsibilities": [
+      {
+        "responsibility_text": "Conduct proactive and strategic cold calls to engage decision-makers at target companies",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Qualify and nurture new leads into revenue-generating opportunities through well-planned and executed outreach efforts",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Organize day-to-day activities to ensure all sales quotas and management objectives related to cold calling are met",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Activity Management",
+          "description": "Organizes and prioritizes daily sales activities and tasks to ensure the achievement of sales quotas and alignment with management objectives."
+        }
+      },
+      {
+        "responsibility_text": "Maintain accurate and up-to-date records of leads and interactions via CRM tools",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Become an expert in our product offerings, knowing the Recurly product inside and out",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Mastery",
+          "description": "Acquires deep knowledge and understanding of specific products to effectively communicate features and benefits to potential customers."
+        }
+      },
+      {
+        "responsibility_text": "Consistently meet and exceed sales targets through effective cold calling and outreach strategies",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_032",
+    "responsibilities": [
+      {
+        "responsibility_text": "Focus on the first stages of the client relationship before scheduling Senior Sales Team members to meet with prospective clients",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Initial Client Engagement & Qualification",
+          "description": "Manages the initial stages of client interaction to assess potential and readiness for further engagement, setting the stage for more detailed discussions and meetings."
+        }
+      },
+      {
+        "responsibility_text": "Engage with prospective clients via phone, email, LinkedIn, and in-person conferences.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Research and build a pipeline of clients",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Learning product and preparing for a successful transition into an Account Executive role or desired career path",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Acquisition & Career Development",
+          "description": "Focuses on acquiring deep knowledge of the product and its market application, while preparing for career advancement within the organization."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_033",
+    "responsibilities": [
+      {
+        "responsibility_text": "Focus on the first stages of the client relationship before scheduling Senior Sales Team members to meet with prospective clients",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Initial Client Engagement & Qualification",
+          "description": "Handles the initial stages of client engagement, assessing client needs and qualifying them before escalating to higher-level sales personnel."
+        }
+      },
+      {
+        "responsibility_text": "Engage with prospective clients via phone, email, LinkedIn, and in-person conferences.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Research and build a pipeline of clients",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Learning product and preparing for a successful transition into an Account Executive role or desired career path",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Role Preparation & Product Knowledge Acquisition",
+          "description": "Facilitates the acquisition of in-depth product knowledge and preparation for advanced sales roles, enhancing career progression within the sales domain."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_034",
+    "responsibilities": [
+      {
+        "responsibility_text": "Developing sales strategies to draw in potential buyers or to solicit new potential customers",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Initiating contact with prospects through cold-calling, email, LinkedIn, or social media engagement",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Creating relationships with prospects to identify their potential needs and qualify their interests and viability to drive sales",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Presenting product information to customers once you have identified their needs",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Product Presentation",
+          "description": "Utilizes AI to dynamically generate and present product information tailored to the specific needs and interests of the customer, enhancing understanding and engagement."
+        }
+      },
+      {
+        "responsibility_text": "Driving trade show attendance and assisting with related sales responsibilities as needed",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Driven Event Promotion and Management",
+          "description": "Leverages AI to optimize event marketing strategies, predict attendee engagement levels, and automate the management of event-related sales tasks."
+        }
+      },
+      {
+        "responsibility_text": "Moving solid leads through the marketing funnel, connecting them to a salesperson, and arranging in-person meetings, emails, or phone calls",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Following up with prospects who expressed interest but did not purchase",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborating with sales executives to ensure the company’s goals and target are met",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Travel to trade shows as well as client installs as needed",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Optimized Travel and Itinerary Planning",
+          "description": "Employs AI to optimize travel schedules and itineraries for sales representatives, ensuring efficient routing and time management for client visits and trade shows."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_035",
+    "responsibilities": [
+      {
+        "responsibility_text": "inside sales",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Inside Sales",
+          "description": "Utilizes AI to assist in inside sales activities by suggesting optimal times for calls, predicting customer needs based on interaction history, and providing real-time assistance during customer interactions."
+        }
+      },
+      {
+        "responsibility_text": "lead generation",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "communication",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "sales activities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Supported Sales Activities",
+          "description": "Enhances various sales activities through AI by analyzing customer data to optimize sales pitches, managing inventory levels based on predicted demand, and setting dynamic pricing models."
+        }
+      },
+      {
+        "responsibility_text": "business development efforts",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Driven Business Development",
+          "description": "Employs AI to identify new business opportunities by analyzing market trends, competitor activities, and potential customer needs, facilitating strategic planning and decision-making."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_036",
+    "responsibilities": [
+      {
+        "responsibility_text": "inside sales",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Inside Sales Management",
+          "description": "Manages and executes inside sales operations including direct customer interactions, handling inquiries, and closing sales deals."
+        }
+      },
+      {
+        "responsibility_text": "lead generation",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "communication",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "sales activities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Comprehensive Sales Activity Management",
+          "description": "Coordinates and oversees all sales-related activities, from prospecting to closing deals, ensuring alignment with business goals and sales targets."
+        }
+      },
+      {
+        "responsibility_text": "business development efforts",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_037",
+    "responsibilities": [
+      {
+        "responsibility_text": "inside sales",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Inside Sales",
+          "description": "Employs AI to assist in managing and executing inside sales activities, including call scheduling, lead prioritization, and interactive selling through virtual assistants."
+        }
+      },
+      {
+        "responsibility_text": "lead generation",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "communication",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "sales",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Supported Sales Execution",
+          "description": "Utilizes AI to enhance direct sales processes by providing real-time insights, recommendations, and automated deal scoring to increase sales efficiency and effectiveness."
+        }
+      },
+      {
+        "responsibility_text": "business development activities",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "drive business growth and partnerships",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Driven Business Growth and Partnership Development",
+          "description": "Leverages AI to identify and cultivate potential business growth opportunities and strategic partnerships through market analysis and predictive modeling."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_038",
+    "responsibilities": [
+      {
+        "responsibility_text": "Engaging in initial and ongoing training to learn the business and how to penetrate new accounts.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Training & Account Penetration Strategy",
+          "description": "Provides AI-driven training modules and strategies for understanding business operations and effective account penetration techniques."
+        }
+      },
+      {
+        "responsibility_text": "Identifying and developing new opportunities through high call volume outreach.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Generating demand via phone meetings and outbound emails.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Calling on previous and potential new customers.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Working closely with your Territory Field Rep to finish business dealings.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Collaborative Sales Deal Closure",
+          "description": "Facilitates AI-enhanced collaboration tools and insights to assist sales representatives in closing deals effectively with field reps."
+        }
+      },
+      {
+        "responsibility_text": "Working in the new sales center in Fort Worth and contributing to an outstanding sales culture!",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Culture Enhancement",
+          "description": "Utilizes AI to foster and maintain a positive sales culture through morale-boosting activities, recognition of achievements, and personalized motivational insights."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_039",
+    "responsibilities": [
+      {
+        "responsibility_text": "Engaging in initial and ongoing training to learn the business and how to penetrate new accounts.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Training & Account Penetration Strategies",
+          "description": "Provides AI-driven training modules and strategies for understanding business context and effective account penetration techniques."
+        }
+      },
+      {
+        "responsibility_text": "Identifying and developing new opportunities through high call volume outreach.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Generating demand via phone meetings and outbound emails.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Calling on previous and potential new customers.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Working closely with your Territory Field Rep to finish business dealings.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Collaborative Sales Deal Closure",
+          "description": "Facilitates collaboration between sales representatives and field reps to effectively close deals, integrating insights from both roles."
+        }
+      },
+      {
+        "responsibility_text": "Working in the new sales center in Fort Worth and contributing to an outstanding sales culture.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Culture Development",
+          "description": "Supports the development and maintenance of a positive sales culture within a specific location or team, leveraging AI to enhance team dynamics and performance."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_040",
+    "responsibilities": [
+      {
+        "responsibility_text": "Build a top 1% outbound team - one that every other department is fighting to hire from",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Team Building and Development",
+          "description": "Focuses on recruiting, developing, and retaining high-performing teams, ensuring they meet or exceed organizational standards and goals."
+        }
+      },
+      {
+        "responsibility_text": "Recruit, coach, and retain excellent talent",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Talent Acquisition and Management",
+          "description": "Involves strategies and processes for attracting, developing, and retaining skilled workers to fulfill organizational needs."
+        }
+      },
+      {
+        "responsibility_text": "Create culture",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Organizational Culture Development",
+          "description": "Entails the creation and reinforcement of the desired organizational culture, values, and environment that encourages desired behaviors and practices."
+        }
+      },
+      {
+        "responsibility_text": "Break down company-level objectives and consistently reinvent outbound tactics and strategies accordingly",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic Planning and Execution",
+          "description": "Involves setting company-wide objectives, breaking them down into actionable plans, and adapting strategies to meet evolving market and internal conditions."
+        }
+      },
+      {
+        "responsibility_text": "Motivate and lead the sales team to exceed targets",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_041",
+    "responsibilities": [
+      {
+        "responsibility_text": "Taking warm in-house generated leads of business owners requesting assistance",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Gather information and lead each prospective client from pre-qualification to closing",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Discover qualified opportunities by responding to inbound interests and targeted outbound prospects to build rapport and establish long-term relationships",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_042",
+    "responsibilities": [
+      {
+        "responsibility_text": "Taking warm in-house generated leads of business owners requesting assistance",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Lead Management & Qualification",
+          "description": "Handles the initial contact with leads, assesses their interest and qualification status, and manages these leads within the sales pipeline."
+        }
+      },
+      {
+        "responsibility_text": "Gather information and lead each prospective client from pre-qualification to closing",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Discover qualified opportunities by responding to inbound interests and targeted outbound prospects to build rapport and establish long-term relationships",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Have an innate ability to build rapport and develop trust quickly with business owners",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Rapport Building & Trust Development",
+          "description": "Employs interpersonal skills and communication strategies to quickly establish a connection and trust with potential clients, enhancing relationship-building efforts."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_043",
+    "responsibilities": [
+      {
+        "responsibility_text": "Conduct outbound prospecting activities to identify and qualify potential leads through cold calling, email outreach, and other channels.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Research target accounts and industries to understand their business needs, challenges, and pain points.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Engage with decision-makers to communicate the value of RepMove.",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Schedule qualified appointments and demos for our sales team to further explore opportunities and close deals.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate closely with sales and marketing teams to optimize lead generation strategies and refine messaging to resonate with target audiences.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Maintain accurate records of all prospect interactions and activities in the CRM system.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_044",
+    "responsibilities": [
+      {
+        "responsibility_text": "Develop new sales qualified leads via telephone and email communication within a marketing and sales driven ICP (Ideal Company Profile) focused list of accounts",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Deliver on key daily metrics, including but not limited to call volume, talk time, email volume, etc.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Utilize provided tools (ZoomInfo) to identify and import prospects within SalesForce.com to bring outreach campaigns using SalesLoft",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Build and cultivate prospective relationships by initiating communications and conducting follow-up communications to move opportunities through the sales funnel; scheduling needs analysis calls and demonstrations for mid, large and enterprise markets",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Work with Manager, Demand Generation, Sales Managers and VPs of Sales and Marketing to develop and grow the sales pipeline",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Manage data on prospective clients in Salesforce.com",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Contribute to quarterly additions and omissions of ICP list based on direct communication and likelihood of winning business",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_045",
+    "responsibilities": [
+      {
+        "responsibility_text": "Make outbound calls to local and national business owners",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Offer a free, no-obligation SEO audit to showcase how we can improve their online presence",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Product Demonstrations",
+          "description": "Uses AI to generate and present customized product or service demonstrations based on the specific needs and characteristics of each prospect."
+        }
+      },
+      {
+        "responsibility_text": "Qualify leads using key criteria",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Set high-quality appointments for our SEO team",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Use CRM tools to manage leads, follow-ups, and reporting",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Hit daily and weekly targets for outreach and appointments",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_046",
+    "responsibilities": [
+      {
+        "responsibility_text": "Conduct high-volume outbound prospecting (calls, emails, social channels) to source leads.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Source qualified leads from industry conference lead lists, webinars, and other marketing activations.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Attend industry conferences to network and generate new business along with the rest of the GTM team.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Networking and Event Participation",
+          "description": "Utilizes AI to optimize networking strategies at events, identifying key participants and suggesting conversation starters based on shared interests and business objectives."
+        }
+      },
+      {
+        "responsibility_text": "Strategically identify and engage with decision-makers, tailoring outreach to address key business needs and pain points.",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate closely with Enterprise Account Executives, ensuring seamless handoff of qualified leads.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Facilitated Sales Collaboration",
+          "description": "Enhances collaboration between sales team members through AI-driven insights and coordination tools, ensuring efficient lead handoff and alignment on sales strategies."
+        }
+      },
+      {
+        "responsibility_text": "Consistently meet or exceed monthly and quarterly pipeline generation targets.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Leverage CRM tools to track outreach activity, measure success, and identify areas for improvement.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Work cross-functionally with marketing, GTM, and product teams to refine messaging and share market feedback.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Cross-Functional AI-Driven Feedback Integration",
+          "description": "Utilizes AI to integrate and analyze feedback across different teams (marketing, sales, product) to refine messaging and product offerings based on real-time market data and customer insights."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_047",
+    "responsibilities": [
+      {
+        "responsibility_text": "Work side-by-side with Account Executives and Sales Leaders to provide qualified leads through call, text, drip, and social media marketing/social selling.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Set appointments with potential new customers of all sizes such as large dental/vision practices, pharmaceutical and hospital systems throughout the country.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Appointment Scheduling Automation",
+          "description": "Automates the process of scheduling appointments with potential clients, integrating with calendars and providing reminders to both parties."
+        }
+      },
+      {
+        "responsibility_text": "Use strong presentation skills to engage with customers, promoting ProviderScience’s technology and showcasing the software’s unique features and benefits.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Presentation Tools",
+          "description": "Provides AI-driven support for creating and delivering engaging presentations, including dynamic content adjustment based on audience response and interaction."
+        }
+      },
+      {
+        "responsibility_text": "Function as an in-house advocate to assist sales with closing business.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI Sales Closing Assistance",
+          "description": "Utilizes AI to analyze customer interactions and sales progress to suggest optimal times and strategies for closing deals."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_048",
+    "responsibilities": [
+      {
+        "responsibility_text": "generating leads",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "conducting inside sales activities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Inside Sales Management",
+          "description": "Uses AI to optimize and manage inside sales activities including call scheduling, prioritization of leads based on likelihood of conversion, and real-time performance analytics."
+        }
+      },
+      {
+        "responsibility_text": "developing business opportunities",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "identifying potential clients",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "initiating contact",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "maintaining communication",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "supporting overall sales and business development efforts to achieve company goals",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_049",
+    "responsibilities": [
+      {
+        "responsibility_text": "generating leads",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "conducting inside sales activities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Inside Sales Management",
+          "description": "Uses AI to optimize and manage inside sales activities including call scheduling, prioritization of leads based on likelihood of conversion, and real-time performance analytics."
+        }
+      },
+      {
+        "responsibility_text": "developing business opportunities",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "identifying potential clients",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "initiating contact",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "maintaining communication",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "supporting overall sales and business development efforts to achieve company goals",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_050",
+    "responsibilities": [
+      {
+        "responsibility_text": "Gain SaaS sales experience by working with CrowdStrike’s most experienced sellers",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Experience Acquisition",
+          "description": "Facilitates the acquisition of sales skills and experience through mentorship and practical engagement with experienced sales professionals."
+        }
+      },
+      {
+        "responsibility_text": "Learn corporate selling strategies by running meetings with VP and C-level executives",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Executive Engagement Training",
+          "description": "Provides training and experience in engaging with high-level executives to understand and execute corporate selling strategies."
+        }
+      },
+      {
+        "responsibility_text": "Understand the cybersecurity technology landscape through industry research and competitive selling",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Cybersecurity Market Analysis",
+          "description": "Develops an understanding of the cybersecurity market through comprehensive industry research and competitive analysis."
+        }
+      },
+      {
+        "responsibility_text": "Learn go-to-market strategy by collaborating with CrowdStrike partners to generate business opportunities",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Go-to-Market Strategy Development",
+          "description": "Learns and contributes to the development of go-to-market strategies through collaboration with partners and stakeholders."
+        }
+      },
+      {
+        "responsibility_text": "Use the leading sales software tools to manage your book of business",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate cross-functionally with multiple teams to understand all the moving parts of an industry leader",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Cross-Functional Collaboration",
+          "description": "Engages in collaboration across different functional teams to gain a comprehensive understanding of the organization's operations and industry leadership."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_051",
+    "responsibilities": [
+      {
+        "responsibility_text": "Become a product expert across our entire platform and understand our competitor landscape",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product and Competitor Knowledge Acquisition",
+          "description": "Develops deep understanding of the company's products and the competitive market landscape, enabling effective positioning and strategic sales approaches."
+        }
+      },
+      {
+        "responsibility_text": "Manage inbound and outbound leads using specific qualifying criteria",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Outbound with strategic and thoughtful messaging to upmarket prospects",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Partner with marketing to manage outbound campaigns to increase lead volume",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Prospect into new accounts using proven sales methodology",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Maintain and update accurate records in CRM",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_052",
+    "responsibilities": [
+      {
+        "responsibility_text": "Generate Qualified Leads: Proactively identify and qualify leads through strategic outbound campaigns (calls, emails, LinkedIn) in collaboration with 2-4 Field Account Executives.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Execute Targeted Campaigns: Uncover prospect needs and platform fit, scheduling discovery calls and demos.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Prospect Research: Build and maintain targeted lists of key accounts and contacts.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Inbound Lead Management: Respond to and qualify inbound leads from demos, events, and marketing initiatives.",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Meeting Coordination: Schedule high-quality platform demonstrations for the sales team.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Assisted Meeting Scheduling",
+          "description": "Automates the scheduling of meetings and demonstrations based on availability, ensuring optimal timing for both sales representatives and prospects."
+        }
+      },
+      {
+        "responsibility_text": "Achieve Performance Goals: Meet and exceed performance metrics while maintaining high-quality standards.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_053",
+    "responsibilities": [
+      {
+        "responsibility_text": "Manage a large flow of incoming lead data.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate closely with the marketing team to identify opportunities from leads and schedule appointments based on those leads.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Provide a solid understanding of Invicti’s products to deliver high-level introductions to prospective clients.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Dissemination",
+          "description": "Effectively communicates detailed product information and value propositions to potential clients, ensuring clarity and engagement."
+        }
+      },
+      {
+        "responsibility_text": "Support the marketing team in testing, executing, and reporting on lead quality.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Effectively address prospective customer objections and answer initial questions.",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Schedule product demonstration appointments for our Account Executive teams.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate with the team to enhance processes and increase efficiency.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Process Optimization",
+          "description": "Works collaboratively to refine and improve operational processes, enhancing overall team efficiency and effectiveness."
+        }
+      },
+      {
+        "responsibility_text": "Adapt to process changes and contribute to the testing of new ideas.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Adaptive Process Innovation",
+          "description": "Actively adapts to and contributes to the innovation and testing of new operational processes, ensuring continuous improvement."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_054",
+    "responsibilities": [
+      {
+        "responsibility_text": "Grow your individual book of business by proactively generating new qualified leads",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Identify, connect with, qualify, sort, and track leads",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Hustle to achieve and exceed various core metrics, quotas, and KPIs as set by your manager, such as a minimum number of daily cold calls, emails, etc.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Display exceptional cold-call prospecting using consultative phone skills, including the ability to clearly articulate, inspire, project confidence, influence, overcome objections, and remain resilient throughout",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Enhanced Cold Calling",
+          "description": "Empowers sales representatives with AI-driven insights and prompts during live calls to enhance communication effectiveness, handle objections, and maintain resilience."
+        }
+      },
+      {
+        "responsibility_text": "Utilize Salesforce to ensure activities are documented properly, contact information remains updated, opportunities are forecast accurately, and adequate information regarding the prospect and/or opportunity is communicated",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Maintain knowledge of market conditions and competitive activities",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Other duties as needed",
+        "matched_capability_id": null,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_055",
+    "responsibilities": [
+      {
+        "responsibility_text": "Actively outbound prospect (cold-calling and messaging) and qualify outbound leads and inquiries",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Work alongside Account Executives to develop strategies to land outbound prospects and accounts",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic Sales Collaboration",
+          "description": "Facilitates collaboration between sales development representatives and account executives to strategize and execute sales plans effectively."
+        }
+      },
+      {
+        "responsibility_text": "Effectively partner and work across the sales and marketing teams, providing feedback through our internal systems on lead quality",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Act as the subject matter expert on Navan’s suite of product offerings (Travel & Expense)",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Expertise",
+          "description": "Maintains deep knowledge of company products and services to effectively communicate features and benefits to prospects."
+        }
+      },
+      {
+        "responsibility_text": "Leverage tools such as SFDC, Outreach, Zoominfo, Chorus, and Sales Navigator to build your book of business and up-level your sales ability",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Be mindful of your metrics and leveraging data to drive decision making",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Consistently achieve quota by helping strategize on effective outbound plays",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Quota Achievement",
+          "description": "Focuses on meeting or exceeding set sales quotas through strategic planning and execution of sales activities."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_056",
+    "responsibilities": [
+      {
+        "responsibility_text": "Identify high-potential customers, research Rubrik’s value fit, personalize messaging to prospects, and generate high-quality new business meetings for the company",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Responsible for outbound/inbound activities for our enterprise customer prospecting by contacting via email, social, and phone calls to qualify prospects to set meetings",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Follow up on inbound leads generated by Marketing and stay within compliance metrics, i.e. timely follow-up and attempts to connect",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate with the field sales team you’re aligned with and develop strategies for breaking into new accounts",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic Sales Collaboration",
+          "description": "Facilitates collaboration between sales teams and other departments to develop and execute strategies for account penetration and customer acquisition."
+        }
+      },
+      {
+        "responsibility_text": "Stay up-to-date on market trends, competition, and industry developments",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Be an expert on what we do and how we help our customers keep their businesses up and running.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Product Knowledge Expertise",
+          "description": "Ensures deep understanding and articulation of the company's products or services, enabling effective communication of benefits and solutions to customers."
+        }
+      },
+      {
+        "responsibility_text": "Use customer relationship management (Salesforce & Salesloft) software to manage leads and sales activities",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Own your business and your sales targets, and be able to report on your results to your stakeholders.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Performance Ownership",
+          "description": "Empowers individuals to manage their sales targets and business outcomes, providing tools and insights to track and report performance effectively."
+        }
+      },
+      {
+        "responsibility_text": "Develop how to think on your feet and learn the art of sales through team pitch competitions, boot camps, training, and more",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Skill Development",
+          "description": "Provides training and development opportunities to enhance sales skills, including improvisation, pitch crafting, and competitive selling techniques."
+        }
+      },
+      {
+        "responsibility_text": "You will receive coaching and development on an ongoing basis, our managers will assist with developing your skills and approach to calls, thus improving Rubrik’s service to its customers.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Ongoing Sales Coaching",
+          "description": "Continuous coaching and mentoring provided by management to refine sales techniques, enhance customer interactions, and improve overall service delivery."
+        }
+      },
+      {
+        "responsibility_text": "You will be working in-office 3-5 days a week for active coaching and peer camaraderie",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "In-Office Collaboration Enhancement",
+          "description": "Promotes in-office work to foster direct coaching, peer learning, and team building, enhancing collaborative efforts and team dynamics."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_057",
+    "responsibilities": [
+      {
+        "responsibility_text": "All phone, all day – your comfort zone is dialing, connecting, and qualifying.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "High-Volume Phone Communication",
+          "description": "Efficiently handles a high volume of phone calls for sales purposes, including dialing, connecting with prospects, and qualifying leads."
+        }
+      },
+      {
+        "responsibility_text": "Work leads coming into the CRM.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Call and qualify them to set demos for the sales team.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Lead Qualification & Demo Setting",
+          "description": "Engages with leads to assess their interest and suitability, and sets up product demonstrations for the sales team."
+        }
+      },
+      {
+        "responsibility_text": "No inbound? No problem. You’ll have a call list ready for cold calling.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Cold Calling",
+          "description": "Proactively reaches out to potential leads via phone using a prepared call list when inbound leads are insufficient."
+        }
+      },
+      {
+        "responsibility_text": "Follow and crush the sales script – but bring the smarts to pivot when needed.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Adaptive Sales Script Execution",
+          "description": "Follows a predefined sales script effectively while also possessing the ability to adapt and pivot the conversation based on the prospect's responses."
+        }
+      },
+      {
+        "responsibility_text": "Drive toward 80 demos/month – and celebrate when you crush it.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Demo Target Achievement",
+          "description": "Focuses on achieving a set target of sales demonstrations per month, aiming to surpass this goal and celebrating successes."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_058",
+    "responsibilities": [
+      {
+        "responsibility_text": "Lead Generation – research and identify high probability leads through a combination of outbound prospecting (cold calls, emails, social media, etc.) and inbound lead qualification",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Lead Qualification – engage with leads to understand needs, determine objectives, and ensure product/market fit",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Driven Lead Qualification",
+          "description": "Uses AI to analyze interactions and data to assess lead quality, understand specific needs, and determine the potential for product/market fit."
+        }
+      },
+      {
+        "responsibility_text": "Pipeline Development – develop, nurture, and manage an active pipeline of leads, progressing them through the qualification process and setting up effective meetings for the sales team",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Sales Team Collaboration – work closely with sellers on prospecting strategy, lead progression, and meeting preparation",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Collaborative Sales Strategy Development",
+          "description": "Facilitates AI-driven insights and recommendations to enhance team collaboration on sales strategies, lead management, and meeting preparations."
+        }
+      },
+      {
+        "responsibility_text": "CRM Management – keep detailed records of all prospect interactions within Salesforce, ensuring data is accurate and up to date to help track progress and performance",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_059",
+    "responsibilities": [
+      {
+        "responsibility_text": "Identify and qualify prospective customers and record sales prospecting activity in computer-based tracking systems",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Research into assigned territory to select targets",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Marketing campaign development, implementation, and follow-up",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Outbound sales cold calling and emailing",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Inbound sales follow-up",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Present the Bigbelly product to leads via web conferencing platform",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "AI-Powered Sales Presentation Assistance",
+          "description": "Provides real-time assistance during sales presentations, offering data-driven insights, handling FAQs, and adapting presentation content dynamically based on audience engagement."
+        }
+      },
+      {
+        "responsibility_text": "Contact sourcing for key players within the target region",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Pipeline management",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_060",
+    "responsibilities": [
+      {
+        "responsibility_text": "Proactively identify and qualify sales opportunities for MDR, CDR, and SecOps solutions, leveraging knowledge of threat detection and incident response technologies.",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Engage with prospects through various channels (email, phone, social media, etc.) to generate interest and build a robust pipeline.",
+        "matched_capability_id": 3,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Partner with Sales Managers to understand customer needs and effectively communicate the value of our MDR platform.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Customer Needs Analysis & Value Communication",
+          "description": "Analyzes customer needs in collaboration with sales teams and communicates the specific value of products or services effectively to prospects."
+        }
+      },
+      {
+        "responsibility_text": "Stay current on cybersecurity trends, particularly those related to Managed Detection and Response and Chronicle SecOps.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Industry Trend Analysis",
+          "description": "Keeps abreast of industry developments and technological advancements to maintain competitive edge and adapt sales strategies accordingly."
+        }
+      },
+      {
+        "responsibility_text": "Maintain accurate and organized records of customer interactions in CRM tools.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_061",
+    "responsibilities": [
+      {
+        "responsibility_text": "Execute the Solera Lead & Opportunity Management process for building sales pipeline.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Possess, or be willing to learn and develop a working understanding of Salesforce.com and other key sales technologies used for Business Development and Opportunity creation.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Collaborate with Marketing & Product teams to execute campaigns that ensure lead quality and quantity with proper closed-loop metric reporting.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Regularly perform against individual monthly and/or quarterly targets: pipeline, conversion rates, and Opportunities which may consist of meetings, appointments virtually, demos, or follow-up calls assigned to quota carrying sales reps in Solera.",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Performance Management",
+          "description": "Tracks and analyzes individual sales performance metrics such as pipeline growth, conversion rates, and meeting quotas, providing insights and forecasts to optimize sales strategies."
+        }
+      },
+      {
+        "responsibility_text": "Collaborate with internal sales operations stakeholders on reporting and analysis.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Chart and deliver timely and accurate forecasting and pipeline management.",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Ensure CRM tools and Solera value-selling methodologies are leveraged to process and track opportunities.",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_062",
+    "responsibilities": [
+      {
+        "responsibility_text": "Territory management with provided (and vetted) sales leads",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Meet with customers face-to-face",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Face-to-Face Interaction Management",
+          "description": "Facilitates and enhances in-person customer interactions through training, scheduling, and performance tracking to improve sales effectiveness."
+        }
+      },
+      {
+        "responsibility_text": "Meet weekly sales targets",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Effectively use Salesforce for production management",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Master our sales techniques with hands-on training",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Sales Technique Mastery Training",
+          "description": "Provides structured, hands-on training programs designed to enhance sales representatives' skills and techniques for improved performance."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_063",
+    "responsibilities": [
+      {
+        "responsibility_text": "Make 110–130+ outbound calls per day to warm leads",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "High-Volume Call Management",
+          "description": "Enables efficient management and execution of high-volume outbound call activities, optimizing call schedules and automating dialing processes."
+        }
+      },
+      {
+        "responsibility_text": "Build instant rapport, qualify interest, and schedule high-converting appointments",
+        "matched_capability_id": 4,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Follow up with past prospects and keep your pipeline hot",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Track everything in our CRM and stay on top of your numbers",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Operate with urgency, energy, and accountability",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Performance and Accountability Enhancement",
+          "description": "Tools and systems designed to enhance the urgency, energy, and accountability in sales operations, possibly through gamification or real-time performance feedback."
+        }
+      }
+    ]
+  },
+  {
+    "jobId": "job_req_064",
+    "responsibilities": [
+      {
+        "responsibility_text": "Identify, research, and engage high-level real estate business owners",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Qualify prospects based on investment activity, mindset, and fit",
+        "matched_capability_id": 1,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Build trust and spark meaningful, high-level conversations",
+        "matched_capability_id": 2,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Book strategic consultations with our executive sales team",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Strategic Consultation Scheduling",
+          "description": "Automates the scheduling of strategic consultations based on the availability of sales teams and the priority of the prospect, ensuring optimal alignment and preparation."
+        }
+      },
+      {
+        "responsibility_text": "Use tools like HubSpot, LinkedIn, and Sales Navigator",
+        "matched_capability_id": 7,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Partner with sales & marketing to fine-tune messaging and targeting",
+        "matched_capability_id": 6,
+        "suggested_new_capability": null
+      },
+      {
+        "responsibility_text": "Stay sharp on real estate trends and market shifts",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Market Trend Analysis",
+          "description": "Leverages AI to continuously analyze and report on emerging trends and shifts in the market, providing actionable insights to sales teams."
+        }
+      },
+      {
+        "responsibility_text": "Support and attend CG events to meet prospects and members in person",
+        "matched_capability_id": null,
+        "suggested_new_capability": {
+          "name": "Event Engagement Optimization",
+          "description": "Utilizes AI to optimize engagement strategies at events, identifying key attendees, scheduling meetings, and providing real-time insights to maximize networking opportunities."
+        }
+      }
+    ]
+  }
+]

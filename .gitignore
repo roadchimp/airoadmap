@@ -69,3 +69,6 @@ vite.config.ts.*
 *.pid
 *.seed
 *.pid.lock
+
+# Backups
+backups/

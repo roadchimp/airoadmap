@@ -73,4 +73,9 @@
 
 *   **Package Manager:** npm
 *   **Development Server:** `npm run dev`
-*   **Build:** `npm run build` 
+*   **Build:** `npm run build`
+
+## 8. Deployment
+
+*   **Production Environment:** Vercel (indicated by `vercel.json`)
+*   **Development Environment:** Local machine (via `npm run dev`) 

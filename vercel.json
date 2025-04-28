@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "dist/server/index.js"
-    }
-  ],
   "crons": [
     {
       "path": "/api/cron/run-job-scrapers",

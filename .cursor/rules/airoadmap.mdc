@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# IMPORTANT:
+
+# Always read memory-bank/airoadmap.md before writing any code
+
+# After adding a major feature or completing a project milestone, update airoadmap.md
+
+# Document the project folder structure in airoadmap.md
+# Document the entire database schema in airoadmap.md
+# For new migrations, make sure to add them to the same file

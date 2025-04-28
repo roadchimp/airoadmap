@@ -1,5 +1,6 @@
-console.log('--- [DEBUG] server/index.ts starting execution ---');
+console.log('--- [DEBUG] server/index.ts minimal execution test ---');
 
+/*
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -116,3 +117,4 @@ process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
   }
   process.exit(1);
 });
+*/

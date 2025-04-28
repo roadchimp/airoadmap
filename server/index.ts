@@ -1,4 +1,4 @@
-console.log('--- [DEBUG] server/index.ts starting execution ---');
+console.error('--- [ERROR DEBUG] server/index.ts starting ---');
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";

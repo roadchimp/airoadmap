@@ -11,6 +11,7 @@ import ReportDetails from "./pages/ReportDetails"
 import Library from "./pages/Library"
 import Landing from "./pages/Landing"
 import Login from "./pages/Login"
+import DebugEnvPage from "./pages/DebugEnvPage"
 
 const ProtectedLayout = () => {
   return (
@@ -28,6 +29,9 @@ export function AppRoutes() {
           {/* Public routes */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          
+          {/* Temporary Debug Route - REMOVE AFTER USE */}
+          <Route path="/debug-env" element={<DebugEnvPage />} />
           
           {/* Protected routes - wrapped in AppLayout */}
           <Route element={<ProtectedLayout />}>

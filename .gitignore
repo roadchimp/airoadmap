@@ -19,6 +19,7 @@ server/public
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 
 # Debug logs
 npm-debug.log*
@@ -69,6 +70,8 @@ vite.config.ts.*
 *.pid
 *.seed
 *.pid.lock
+*.dump
+*.sql
 
 # Backups
 backups/

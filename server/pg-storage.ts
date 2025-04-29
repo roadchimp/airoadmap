@@ -558,14 +558,14 @@ export class PgStorage implements IStorage {
     await this.ensureInitialized();
     return await this.db.select()
       .from(capabilityToolMapping)
-      .where(eq(capabilityToolMapping.capabilityId, capabilityId));
+      .where(eq(capabilityToolMapping.capability_id, capabilityId));
   }
 
   async getToolCapabilityMappings(toolId: number): Promise<CapabilityToolMapping[]> {
     await this.ensureInitialized();
     return await this.db.select()
       .from(capabilityToolMapping)
-      .where(eq(capabilityToolMapping.toolId, toolId));
+      .where(eq(capabilityToolMapping.tool_id, toolId));
   }
 
   async createCapabilityToolMapping(mapping: InsertCapabilityToolMapping): Promise<CapabilityToolMapping> {

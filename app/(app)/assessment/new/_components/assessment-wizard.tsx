@@ -562,7 +562,12 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       case "workVolume":
         const wvSelectedRoles = stepData.roles?.selectedRoles || [];
         // Ensure workVolumeData is correctly typed
-        const workVolumeData: Partial<WizardStepData['workVolume']> = stepData.workVolume || {};
+        const workVolumeData: Record<number, {
+          taskVolume?: string;
+          taskComplexity?: string;
+          repetitiveness?: string;
+          notes?: string;
+        }> = stepData.workVolume || {};
         
         return (
           <React.Fragment>
@@ -572,7 +577,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
               {wvSelectedRoles.length > 0 ? (
                 wvSelectedRoles.map((role) => {
                    // Safe access using role ID
-                   const roleWorkVolume = workVolumeData[role.id!];
+const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] || {};
                   return (
                     <Card key={role.id}>
                       <CardHeader>

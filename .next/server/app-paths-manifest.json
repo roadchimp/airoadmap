@@ -3,7 +3,5 @@
   "/api/departments/route": "app/api/departments/route.js",
   "/api/job-roles/route": "app/api/job-roles/route.js",
   "/(app)/assessment/new/page": "app/(app)/assessment/new/page.js",
-  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
-  "/(app)/library/page": "app/(app)/library/page.js",
-  "/(app)/reports/page": "app/(app)/reports/page.js"
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js"
 }

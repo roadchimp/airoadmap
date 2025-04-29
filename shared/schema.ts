@@ -256,9 +256,13 @@ export const wizardStepDataSchema = z.object({
     currentSystems: z.string().optional(),
     dataAvailability: z.array(z.string()).optional(),
     existingAutomation: z.string().optional(),
-    dataQuality: z.number().optional(),
+    dataQuality: z.string().optional(),
     dataQualityIssues: z.string().optional(),
     approvals: z.string().optional(),
+    dataAccessibility: z.string().optional(), // Add this
+    systemsIntegration: z.string().optional(), // Add this
+    relevantTools: z.string().optional(), // Add this
+    notes: z.string().optional(), // Add this
   }).optional(),
   
   adoption: z.object({
@@ -268,8 +272,13 @@ export const wizardStepDataSchema = z.object({
       benefits: z.string().optional(),
       successCriteria: z.string().optional(),
       risks: z.string().optional(),
-      suitability: z.number().optional(),
+      suitability: z.number().optional(),    
     })),
+    changeReadiness: z.string().optional(),
+    stakeholderAlignment: z.string().optional(),
+    expectedChallenges: z.string().optional(),
+    successMetrics: z.string().optional(),
+    trainingNeeds: z.string().optional(),  
   }).optional(),
 
   scores: z.object({

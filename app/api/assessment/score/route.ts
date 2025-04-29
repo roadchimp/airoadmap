@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { storage } from '../../../server/pg-storage';
-import { calculateRoleScore } from '../../../shared/scoring';
-import { AssessmentScoreData } from '../../../shared/schema';
+import { storage } from '../../../../server/storage';
+import { calculateRoleScore } from '../../../../shared/scoring';
+import { AssessmentScoreData } from '../../../../shared/schema';
 
 export async function POST(req: Request) {
   try {

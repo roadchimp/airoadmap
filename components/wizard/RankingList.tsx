@@ -1,98 +1,113 @@
-import React, { useState, useEffect } from "react";
-import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
+import React, { useMemo } from "react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Item {
   id: string | number;
   label: string;
-  description?: string;
-  value?: any;
+  value: string | number;
 }
 
 interface RankingListProps {
   items: Item[];
-  value: (string | number)[];
-  onChange: (newOrder: (string | number)[]) => void;
+  value: Item[];
+  onChange: (items: Item[]) => void;
 }
 
-const RankingList: React.FC<RankingListProps> = ({ items, value, onChange }) => {
-  // Map the provided value (ordered IDs) to the full items
-  const [orderedItems, setOrderedItems] = useState<Item[]>([]);
+const SortableItem = ({ item, index }: { item: Item; index: number }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
   
-  // Initialize ordered items based on value
-  useEffect(() => {
-    if (value.length > 0) {
-      // Order the items according to the value array
-      const ordered = value
-        .map(id => items.find(item => item.id === id))
-        .filter(Boolean) as Item[];
-      
-      // Add any remaining items not in value
-      const remainingItems = items.filter(item => !value.includes(item.id));
-      setOrderedItems([...ordered, ...remainingItems]);
-    } else {
-      // Initialize with the original items order
-      setOrderedItems([...items]);
-    }
-  }, [items, value]);
-  
-  const handleDragEnd = (result: DropResult) => {
-    const { destination, source } = result;
-    
-    // If dropped outside the list or in the same position
-    if (!destination || destination.index === source.index) {
-      return;
-    }
-    
-    // Reorder the items
-    const reordered = [...orderedItems];
-    const [moved] = reordered.splice(source.index, 1);
-    reordered.splice(destination.index, 0, moved);
-    
-    // Update state
-    setOrderedItems(reordered);
-    
-    // Call onChange with the new order of IDs
-    onChange(reordered.map(item => item.id));
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
   };
   
   return (
-    <div className="space-y-2 py-3">
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="ranking-list">
-          {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className="space-y-2"
-            >
-              {orderedItems.map((item, index) => (
-                <Draggable key={item.id.toString()} draggableId={item.id.toString()} index={index}>
-                  {(provided) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className="p-3 bg-white border border-neutral-300 rounded-md flex items-center cursor-move shadow-sm"
-                    >
-                      <div className="bg-neutral-100 w-6 h-6 flex items-center justify-center rounded mr-3">
-                        <span className="text-neutral-400 font-medium text-sm">{index + 1}</span>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">{item.label}</div>
-                        {item.description && (
-                          <div className="text-xs text-neutral-500">{item.description}</div>
-                        )}
-                      </div>
-                      <span className="material-icons ml-auto text-neutral-400">drag_indicator</span>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={`flex items-center p-3 mb-2 border rounded-md ${
+        isDragging ? "bg-blue-50 border-primary shadow-md" : "bg-white border-gray-200 hover:border-gray-300"
+      }`}
+      {...attributes} 
+      {...listeners}
+    >
+      <div className="mr-3 flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-sm font-medium">
+        {index + 1}
+      </div>
+      <div className="flex-1 text-slate-800">{item.label}</div>
+      <div className="ml-2 flex-shrink-0 text-slate-500">
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="16" 
+          height="16" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round" 
+          className="text-slate-400"
+        >
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <polyline points="19 12 12 19 5 12"></polyline>
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+const RankingList: React.FC<RankingListProps> = ({ items, value, onChange }) => {
+  // Initialize value from items if not provided
+  const rankedItems = useMemo(() => {
+    if (value && value.length > 0) {
+      // If we have existing ranked items, use them
+      return value;
+    } else {
+      // Otherwise, initialize with all provided items
+      return [...items];
+    }
+  }, [items, value]);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = rankedItems.findIndex(item => item.id === active.id);
+      const newIndex = rankedItems.findIndex(item => item.id === over.id);
+      
+      const newItems = arrayMove(rankedItems, oldIndex, newIndex);
+      onChange(newItems);
+    }
+  }
+  
+  return (
+    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+      <p className="text-sm text-slate-600 mb-4">
+        Drag and drop items to rank them in order of importance or priority.
+      </p>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        modifiers={[restrictToVerticalAxis]}
+      >
+        <SortableContext items={rankedItems.map(item => item.id)} strategy={verticalListSortingStrategy}>
+          {rankedItems.map((item, index) => (
+            <SortableItem key={item.id} item={item} index={index} />
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 };

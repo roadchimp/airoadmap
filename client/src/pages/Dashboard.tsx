@@ -72,7 +72,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
               <Link to="/assessment/new">
-                <Button className="w-full bg-red-600 hover:bg-red-700">
+                <Button className="bg-red-600 text-white hover:bg-red-700">  
                   <span className="mr-2">+</span> New Assessment
                 </Button>
               </Link>

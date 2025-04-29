@@ -506,6 +506,8 @@ export type InsertAssessmentResponse = typeof assessmentResponses.$inferInsert;
 
 export type AiTool = typeof aiTools.$inferSelect;
 export type InsertAiTool = typeof aiTools.$inferInsert;
+// Define the type for form data, excluding generated fields
+export type AiToolFormData = Omit<AiTool, 'tool_id' | 'created_at' | 'updated_at'>;
 
 export type CapabilityToolMapping = typeof capabilityToolMapping.$inferSelect;
 export type InsertCapabilityToolMapping = typeof capabilityToolMapping.$inferInsert;

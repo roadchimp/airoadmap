@@ -63,7 +63,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       <div className="flex flex-col gap-4">
         <div className="flex justify-between">
           {labels.map((label, i) => (
-            <div key={i} className="text-sm text-neutral-600 text-center flex-1">
+            <div key={i} className="text-sm text-slate-600 text-center flex-1">
               {label}
             </div>
           ))}
@@ -75,10 +75,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               type="button"
               onClick={() => onChange(step)}
               className={cn(
-                "flex-1 h-10 rounded-md border transition-colors",
+                "flex-1 h-12 rounded-md border transition-colors font-medium",
                 value === step
                   ? "bg-primary text-white border-primary"
-                  : "bg-white text-neutral-700 border-neutral-200 hover:border-primary"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-primary/50 hover:bg-slate-50"
               )}
             >
               {step}
@@ -90,21 +90,21 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   };
 
   return (
-    <div className="mb-8 border-b border-neutral-200 pb-8 last:border-0">
-      <Label className="block text-sm font-medium mb-1">
+    <div className="mb-8 pb-8 border-b border-slate-200 last:border-0 last:pb-0 last:mb-0">
+      <Label className="block text-base font-medium text-slate-900 mb-2">
         {questionText}
         {isRequired && <span className="text-red-500 ml-1">*</span>}
       </Label>
       
       {guidanceText && (
-        <p className="text-xs text-neutral-500 mb-3">{guidanceText}</p>
+        <p className="text-sm text-slate-500 mb-4">{guidanceText}</p>
       )}
       
       {inputType === "text" && (
         <Input
           value={value || ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-          className="w-full max-w-md"
+          className="w-full max-w-md border-slate-300 focus:border-primary focus:ring-primary"
         />
       )}
       
@@ -112,7 +112,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         <Textarea
           value={value || ""}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
-          className="w-full max-w-xl"
+          className="w-full max-w-xl border-slate-300 focus:border-primary focus:ring-primary"
           rows={4}
         />
       )}
@@ -132,29 +132,38 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           <div className="relative mb-4">
             <Input
               placeholder="Search for roles..."
-              className="w-full px-4 py-2 pr-10"
+              className="w-full px-4 py-2 pr-10 border-slate-300"
             />
-            <span className="material-icons absolute right-3 top-2 text-neutral-400">search</span>
+            <svg 
+              className="absolute right-3 top-2.5 text-slate-400 h-5 w-5" 
+              xmlns="http://www.w3.org/2000/svg" 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+            </svg>
           </div>
           
-          <div className="bg-neutral-50 border border-neutral-200 rounded-md">
+          <div className="bg-slate-50 border border-slate-200 rounded-md divide-y divide-slate-200">
             {options.map((option) => (
-              <Label key={option.id} className="p-3 border-b border-neutral-200 flex items-center last:border-0 font-normal cursor-pointer">
-                <Checkbox
-                  checked={(value || []).includes(option.id)}
-                  onCheckedChange={(checked: boolean | string) => {
-                    const isChecked = checked === true;
-                    if (isChecked) {
-                      onChange([...(value || []), option.id]);
-                    } else {
-                      onChange((value || []).filter((id: string | number) => id !== option.id));
-                    }
-                  }}
-                />
-                <div className="ml-3">
-                  <div className="text-sm font-medium">{option.label}</div>
+              <Label key={option.id} className="p-4 flex items-center font-normal cursor-pointer hover:bg-slate-100 transition-colors">
+                <div className="mr-3 flex-shrink-0">
+                  <Checkbox
+                    checked={(value || []).includes(option.id)}
+                    onCheckedChange={(checked: boolean | string) => {
+                      const isChecked = checked === true;
+                      if (isChecked) {
+                        onChange([...(value || []), option.id]);
+                      } else {
+                        onChange((value || []).filter((id: string | number) => id !== option.id));
+                      }
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium text-slate-900">{option.label}</div>
                   {option.description && (
-                    <div className="text-xs text-neutral-500 mt-0.5">{option.description}</div>
+                    <div className="mt-1 text-xs text-slate-500">{option.description}</div>
                   )}
                 </div>
               </Label>
@@ -164,31 +173,34 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       )}
       
       {inputType === "singleChoice" && options && (
-        <div className="space-y-2">
         <RadioGroup
           value={value?.toString() || ""}
-            onValueChange={(val: string) => onChange(val)}
+          onValueChange={(val: string) => onChange(val)}
+          className="space-y-3"
         >
           {options.map((option) => (
-              <Label key={option.id} className="flex items-center font-normal cursor-pointer">
-                <RadioGroupItem value={option.value.toString()} />
-                <span className="ml-2">
+            <div key={option.id} className="option-card">
+              <RadioGroupItem id={option.id.toString()} value={option.value.toString()} className="mr-3" />
+              <Label htmlFor={option.id.toString()} className="flex-1 cursor-pointer font-normal">
                 {option.label}
-                </span>
               </Label>
+            </div>
           ))}
         </RadioGroup>
-        </div>
       )}
       
       {inputType === "multipleChoice" && options && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {options.map((option) => (
-            <Label 
+            <div 
               key={option.id}
-              className="flex items-center p-3 bg-neutral-50 border border-neutral-300 rounded-md cursor-pointer hover:bg-neutral-100 font-normal"
+              className={cn(
+                "option-card",
+                (value || []).includes(option.id) && "selected"
+              )}
             >
               <Checkbox
+                id={option.id.toString()}
                 checked={(value || []).includes(option.id)}
                 onCheckedChange={(checked: boolean | string) => {
                   const isChecked = checked === true;
@@ -198,16 +210,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     onChange((value || []).filter((id: string | number) => id !== option.id));
                   }
                 }}
+                className="mr-3"
               />
-              <span className="ml-2 text-sm">{option.label}</span>
-            </Label>
+              <Label htmlFor={option.id.toString()} className="flex-1 cursor-pointer font-normal">
+                {option.label}
+              </Label>
+            </div>
           ))}
         </div>
       )}
       
-      {error && (
-        <p className="mt-2 text-sm text-red-600">{error}</p>
-      )}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
   );
 };

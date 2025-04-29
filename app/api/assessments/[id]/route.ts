@@ -1,0 +1,45 @@
+import { NextResponse } from 'next/server';
+import { storage } from '@/server/storage';
+
+interface Params {
+  id: string;
+}
+
+// GET /api/assessments/:id
+export async function GET(request: Request, { params }: { params: Params }) {
+  try {
+    const assessmentId = parseInt(params.id);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
+    }
+    
+    const assessment = await storage.getAssessment(assessmentId);
+    if (!assessment) {
+      return NextResponse.json({ message: 'Assessment not found' }, { status: 404 });
+    }
+    
+    return NextResponse.json(assessment);
+  } catch (error) {
+    console.error('Error fetching assessment by ID:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
+  }
+}
+
+// PATCH /api/assessments/:id/step
+export async function PATCH(request: Request, { params }: { params: Params }) {
+  const assessmentId = parseInt(params.id);
+  if (isNaN(assessmentId)) {
+    return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
+  }
+  
+  try {
+    const stepData = await request.json(); // Note: No explicit validation here, matches original
+    const assessment = await storage.updateAssessmentStep(assessmentId, stepData);
+    return NextResponse.json(assessment);
+  } catch (error) {
+    console.error('Error updating assessment step:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error updating assessment step';
+    return NextResponse.json({ message: errorMessage }, { status: 400 }); // Assuming 400 based on original
+  }
+} 

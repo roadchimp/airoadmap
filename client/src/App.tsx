@@ -1,5 +1,5 @@
-import { ThemeProvider } from "./components/ui/theme-provider"
-import { Toaster } from "./components/ui/toaster"
+import { ThemeProvider } from "../../components/ui/theme-provider"
+import { Toaster } from "../../components/ui/toaster"
 import { BrowserRouter } from "react-router-dom"
 import { AppRoutes } from "./routes"
 

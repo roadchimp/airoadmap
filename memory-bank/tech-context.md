@@ -1,40 +1,48 @@
-# Tech Context: AI GTM Readiness Analyzer
+# Tech Context
+
+This document details the technologies, tools, and development environment used in the AI Roadmap project.
 
 ## Core Technologies
-- **Frontend Framework:** Next.js (App Router structure)
-- **Backend Framework:** Next.js API Routes (preferred) with legacy Express.js routes
-- **Database:** PostgreSQL
-- **Programming Languages:** TypeScript
-- **Styling:** Tailwind CSS with Shadcn UI (built on Radix UI)
 
-## Development & Operations
-- **Version Control:** Git
-- **Package Management:** npm
-- **Runtime Environment:** Node.js
-- **Testing:** Jest (configured in jest.config.js)
-- **Deployment:** Vercel (indicated by vercel.json)
-- **CI/CD:** Vercel deployments
+*   **Runtime:** Node.js (Latest LTS recommended)
+*   **Language:** TypeScript (Strict mode enabled)
+*   **Framework:** Next.js (using App Router)
+*   **UI Library:** React
+*   **Styling:** Tailwind CSS
+*   **Component Library:** Shadcn UI (built on Radix UI)
+*   **State Management:** Likely Zustand or TanStack React Query (Confirm if one is primary - review codebase or `.cursorrules` if updated)
+*   **Database:** PostgreSQL
+*   **ORM:** Drizzle ORM
 
-## Key Dependencies & Tools
-- **Frontend State Management:** Zustand or TanStack React Query
-- **Database ORM:** Drizzle ORM
-- **API Communication:** Next.js API Routes
-- **Database Access:** Abstracted via server/storage.ts with PostgreSQL implementation
+## Development Environment
 
-## Project Structure
-- **`app/`**: Next.js App Router pages, layouts, API routes
-- **`client/src/`**: Legacy client-side code
-- **`server/`**: Backend-specific logic, storage implementations
-- **`shared/`**: Code shared between client and server
-- **`components/`**: Reusable UI components
-- **`lib/`**: General utility functions
-- **`hooks/`**: Custom React hooks
+*   **Package Manager:** npm
+*   **Module System:** ES Modules (`"type": "module"` in `package.json`)
+*   **Code Formatting/Linting:** Likely Prettier & ESLint (Confirm configuration)
+*   **Path Aliases:** Configured in `tsconfig.json` for cleaner imports (e.g., `@/app/*`, `@shared/*`, `@/server/*`).
+*   **Starting Dev Server:** `npm run dev`
+
+## Build & Deployment
+
+*   **Build Command:** `npm run build` (executes `next build`)
+*   **Deployment Platform:** Vercel
+*   **Output Directory:** `.next`
+*   **Environment Variables:** Managed via Vercel UI and `.env` files for local development (see `airoadmap.md` for required variables).
+
+## Key Libraries & Tools
+
+*   **`next`:** Core framework
+*   **`react` / `react-dom`:** UI rendering
+*   **`typescript`:** Language
+*   **`tailwindcss`:** CSS framework
+*   **`shadcn-ui` / `radix-ui`:** UI components
+*   **`drizzle-orm` / `drizzle-kit`:** Database ORM and migration tool
+*   **`pg`:** PostgreSQL driver for Node.js
+*   **`zod`:** Schema validation (likely used, confirm usage)
 
 ## Technical Constraints & Considerations
-- **Next.js App Router First:** Prioritize using Next.js App Router features
-- **Minimize Client Components:** Use React Server Components by default
-- **API Routes:** Prefer Next.js API Routes over legacy Express routes
-- **Database Interaction:** All operations through server/storage.ts abstraction
-- **Schema Definition:** Source of truth in shared/schema.ts
-- **Type Safety:** Strict TypeScript practices with shared types
-- **Path Aliases:** Use defined aliases from tsconfig.json 
+
+*   Adherence to Next.js App Router conventions is preferred for new development.
+*   Leverage Vercel platform features for deployment, cron jobs, etc.
+*   Maintain consistency with existing styling and component usage patterns.
+*   Ensure all database access goes through the defined storage layer (`server/storage.ts`). 

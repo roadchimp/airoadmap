@@ -411,18 +411,9 @@ const Library: React.FC = () => {
   return (
     <>
       <LibraryLayout
-        jobRoles={jobRoles}
-        aiCapabilities={aiCapabilities}
-        aiTools={aiTools}
-        onAddJobRole={handleAddJobRole}
-        onAddAICapability={handleAddAICapability}
-        onAddAITool={handleAddAITool}
-        onEditJobRole={handleEditJobRole}
-        onEditAICapability={handleEditAICapability}
-        onEditAITool={handleEditAITool}
-        onDeleteJobRole={handleDeleteJobRole}
-        onDeleteAICapability={handleDeleteAICapability}
-        onDeleteAITool={handleDeleteAITool}
+        initialJobRoles={jobRoles}
+        initialAiCapabilities={aiCapabilities}
+        initialAiTools={aiTools}
       />
       
       {/* Job Role Dialog */}

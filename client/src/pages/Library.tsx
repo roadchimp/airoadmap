@@ -376,9 +376,6 @@ const Library: React.FC = () => {
   const handleAIToolSubmit = (data: Partial<InsertAiTool>) => {
     if (editingAITool) {
       const apiUpdateData = { ...data };
-      delete apiUpdateData.tool_id;
-      delete apiUpdateData.created_at;
-
       updateAIToolMutation.mutate({ id: editingAITool.tool_id, data: apiUpdateData });
     } else {
       if (!data.tool_name) {

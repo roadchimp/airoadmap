@@ -14,8 +14,10 @@ import {
   JobDescription, InsertJobDescription,
   JobScraperConfig, InsertJobScraperConfig,
   ProcessedJobContent,
-  AITool,
-  AssessmentScoreData
+  AiTool,
+  AssessmentScoreData,
+  InsertAiTool,
+ 
 } from "../shared/schema.ts";
 
 import { PgStorage } from './pg-storage.ts';
@@ -81,10 +83,10 @@ export interface IStorage {
   updateJobScraperConfigStatus(id: number, isActive: boolean): Promise<JobScraperConfig>;
 
   // AI Tool methods - USE snake_case type
-  getAITool(id: number): Promise<AITool | undefined>;
-  listAITools(search?: string, category?: string, licenseType?: string): Promise<AITool[]>;
-  createAITool(tool: InsertAITool): Promise<AITool>;
-  updateAITool(id: number, toolUpdate: Partial<InsertAITool>): Promise<AITool>;
+  getAITool(id: number): Promise<AiTool | undefined>;
+  listAITools(search?: string, category?: string, licenseType?: string): Promise<AiTool[]>;
+  createAITool(tool: InsertAiTool): Promise<AiTool>;
+  updateAITool(id: number, toolUpdate: Partial<InsertAiTool>): Promise<AiTool>;
   deleteAITool(id: number): Promise<void>;
 
   // Assessment Score methods
@@ -102,7 +104,8 @@ export class MemStorage implements IStorage {
   private reports: Map<number, Report>;
   private jobDescriptions: Map<number, JobDescription>;
   private jobScraperConfigs: Map<number, JobScraperConfig>;
-  private aiTools: Map<number, AITool>;
+  private aiTools: Map<number, AiTool>;
+  private assessmentScores: Map<string, AssessmentScoreData>;
   
   private userIdCounter: number;
   private orgIdCounter: number;
@@ -126,6 +129,7 @@ export class MemStorage implements IStorage {
     this.jobDescriptions = new Map();
     this.jobScraperConfigs = new Map();
     this.aiTools = new Map();
+    this.assessmentScores = new Map();
     
     this.userIdCounter = 1;
     this.orgIdCounter = 1;
@@ -243,14 +247,24 @@ export class MemStorage implements IStorage {
   
   async createAICapability(capability: InsertAICapability): Promise<AICapability> {
     const id = this.capabilityIdCounter++;
-    const aiCapability = { 
-      ...capability, 
-      id,
-      description: capability.description || null,
-      implementationEffort: capability.implementationEffort || null,
-      businessValue: capability.businessValue || null,
-      easeScore: capability.easeScore || null,
-      valueScore: capability.valueScore || null
+    const now = new Date(); // Get current timestamp
+    // Explicitly define the object type and handle potential undefined -> null conversions
+    const aiCapability: AICapability = { 
+      id: id,
+      name: capability.name,
+      category: capability.category,
+      description: capability.description ?? null,
+      implementationEffort: capability.implementationEffort ?? null,
+      businessValue: capability.businessValue ?? null,
+      easeScore: capability.easeScore ?? null,
+      valueScore: capability.valueScore ?? null,
+      // Ensure migrated fields default to null if undefined
+      primary_category: capability.primary_category ?? null,
+      license_type: capability.license_type ?? null,
+      website_url: capability.website_url ?? null,
+      tags: capability.tags ?? null, // Assuming AICapability allows null tags array
+      createdAt: now,
+      updatedAt: now
     };
     this.aiCapabilities.set(id, aiCapability);
     return aiCapability;
@@ -493,19 +507,19 @@ export class MemStorage implements IStorage {
   }
 
   // AI Tool methods - USE snake_case type
-  async getAITool(id: number): Promise<AITool | undefined> {
+  async getAITool(id: number): Promise<AiTool| undefined> {
     return this.aiTools.get(id);
   }
 
-  async listAITools(search?: string, category?: string, licenseType?: string): Promise<AITool[]> {
+  async listAITools(search?: string, category?: string, licenseType?: string): Promise<AiTool[]> {
     let tools = Array.from(this.aiTools.values());
 
     if (search) {
       const searchLower = search.toLowerCase();
       tools = tools.filter(tool => 
         tool.tool_name.toLowerCase().includes(searchLower) ||
-        tool.description.toLowerCase().includes(searchLower) ||
-        tool.primary_category.toLowerCase().includes(searchLower) ||
+        (tool.description ?? '').toLowerCase().includes(searchLower) ||
+        (tool.primary_category ?? '').toLowerCase().includes(searchLower) ||
         tool.tags?.some(tag => tag.toLowerCase().includes(searchLower))
       );
     }
@@ -521,26 +535,35 @@ export class MemStorage implements IStorage {
     return tools;
   }
 
-  async createAITool(tool: InsertAITool): Promise<AITool> {
+  async createAITool(tool: InsertAiTool): Promise<AiTool> {
     const id = this.aiToolIdCounter++;
     const now = new Date();
-    const newTool: AITool = {
-      id,
-      ...tool,
+    
+    // Explicitly define the AiTool object to match the schema
+    const newTool: AiTool = {
+      tool_id: id,
+      tool_name: tool.tool_name, // Required
+      primary_category: tool.primary_category ?? null,
+      license_type: tool.license_type ?? null,
+      description: tool.description ?? null,
+      website_url: tool.website_url ?? null,
+      tags: tool.tags ?? null,
       created_at: now,
       updated_at: now
     };
+    
+    // Use the generated id (which matches newTool.tool_id) as the map key
     this.aiTools.set(id, newTool);
     return newTool;
   }
 
-  async updateAITool(id: number, toolUpdate: Partial<InsertAITool>): Promise<AITool> {
+  async updateAITool(id: number, toolUpdate: Partial<InsertAiTool>): Promise<AiTool> {
     const existingTool = await this.getAITool(id);
     if (!existingTool) {
       throw new Error(`AI Tool with id ${id} not found`);
     }
 
-    const updatedTool: AITool = {
+    const updatedTool: AiTool = {
       ...existingTool,
       ...toolUpdate,
       updated_at: new Date()
@@ -551,6 +574,26 @@ export class MemStorage implements IStorage {
 
   async deleteAITool(id: number): Promise<void> {
     this.aiTools.delete(id);
+  }
+
+  // Assessment Score methods
+  async upsertAssessmentScore(score: Omit<AssessmentScoreData, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentScoreData> {
+    const now = new Date();
+    const existingScore = this.assessmentScores.get(score.wizardStepId);
+    
+    const scoreData: AssessmentScoreData = {
+      id: existingScore?.id || score.wizardStepId, // Use existing ID or step ID as fallback
+      ...score,
+      createdAt: existingScore?.createdAt || now,
+      updatedAt: now
+    };
+    
+    this.assessmentScores.set(score.wizardStepId, scoreData);
+    return scoreData;
+  }
+
+  async getAssessmentScore(wizardStepId: string): Promise<AssessmentScoreData | undefined> {
+    return this.assessmentScores.get(wizardStepId);
   }
 
   private initializeSampleData() {
@@ -624,53 +667,64 @@ export class MemStorage implements IStorage {
     // Sample AI Capabilities
     const sampleCapabilities = [
       {
+        id: 0, // Placeholder ID, will be ignored by createAICapability
         name: "Automated Document Processing",
         category: "Document Management",
         description: "AI-powered document processing and analysis",
-        implementationEffort: "Medium",
-        businessValue: "High",
+        implementationEffort: "Medium" as const,
+        businessValue: "High" as const,
         easeScore: "Medium",
-        valueScore: "High"
+        valueScore: "High",
+        tags: [] // Use empty array instead of null
       },
       {
+        id: 0, // Placeholder ID
         name: "Predictive Analytics",
         category: "Data Analysis",
         description: "Advanced predictive modeling and forecasting",
-        implementationEffort: "High",
-        businessValue: "Very High",
+        implementationEffort: "High" as const,
+        businessValue: "Very High" as const,
         easeScore: "Low",
-        valueScore: "Very High"
+        valueScore: "Very High",
+        tags: [] // Use empty array instead of null
       },
       {
+        id: 0, // Placeholder ID
         name: "Natural Language Processing",
         category: "Text Analysis",
         description: "Understanding and processing human language",
-        implementationEffort: "Medium",
-        businessValue: "High",
+        implementationEffort: "Medium" as const,
+        businessValue: "High" as const,
         easeScore: "Medium",
-        valueScore: "High"
+        valueScore: "High",
+        tags: [] // Use empty array instead of null
       },
       {
+        id: 0, // Placeholder ID
         name: "Image Recognition",
         category: "Computer Vision",
         description: "AI-powered image analysis and recognition",
-        implementationEffort: "High",
-        businessValue: "Medium",
+        implementationEffort: "High" as const,
+        businessValue: "Medium" as const,
         easeScore: "Low",
-        valueScore: "Medium"
+        valueScore: "Medium",
+        tags: [] // Use empty array instead of null
       },
       {
+        id: 0, // Placeholder ID
         name: "Process Automation",
         category: "Workflow",
         description: "Automating repetitive business processes",
-        implementationEffort: "Low",
-        businessValue: "High",
+        implementationEffort: "Low" as const,
+        businessValue: "High" as const,
         easeScore: "High",
-        valueScore: "High"
+        valueScore: "High",
+        tags: [] // Use empty array instead of null
       }
     ];
 
     sampleCapabilities.forEach(capability => {
+      // No need for casting now as the types match
       this.createAICapability(capability);
     });
 

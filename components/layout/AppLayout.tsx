@@ -1,10 +1,8 @@
-'use client'; // This layout uses state, so it must be a Client Component
+'use client'; 
 
 import React, { useState } from "react";
-// Assuming SidebarNav and Header will also be moved to app/components/layout
-import SidebarNav from "./SidebarNav"; 
-import Header from "./Header";
-// Adjust theme provider import if needed, assuming it's globally available or passed via context
+import SidebarNav from "./SidebarNav"; // Adjust path if needed
+import Header from "./Header";         // Adjust path if needed
 import { useTheme } from "next-themes"; 
 
 interface AppLayoutProps {
@@ -13,38 +11,61 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const { theme } = useTheme(); // useTheme works in client components
-  
+  // const { theme } = useTheme(); // Keep if used
+
   const toggleMobileSidebar = () => {
     setMobileSidebarOpen(!mobileSidebarOpen);
   };
   
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
-        mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      }`}>
-        <SidebarNav onClose={() => setMobileSidebarOpen(false)} />
-      </div>
+    // 1. Outermost container: Horizontal flex, full screen height
+    <div className="flex h-screen bg-background text-foreground">
       
-      {/* Mobile backdrop */}
+      {/* 2. Sidebar Container: Handles mobile overlay AND desktop layout */}
+      {/*    - Mobile: fixed, transformed */}
+      {/*    - Desktop (md:): relative, fixed width, takes full height */}
+      <div 
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-md
+          transform transition-transform duration-300 ease-in-out 
+          md:relative md:translate-x-0 md:inset-y-auto md:h-full 
+          ${ mobileSidebarOpen ? "translate-x-0" : "-translate-x-full" }
+        `}
+      >
+        {/* SidebarNav needs internal flex-col h-full structure */}
+        <SidebarNav onClose={() => setMobileSidebarOpen(false)} /> 
+      </div>
+
+      {/* Mobile backdrop (keep as is) */}
       {mobileSidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
           onClick={() => setMobileSidebarOpen(false)}
         />
       )}
-      
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onMenuClick={toggleMobileSidebar} />
-        <main className="flex-1 overflow-y-auto text-foreground">
+
+      {/* 3. Right Side Container: Fills remaining horizontal space, stacks Header + Main vertically */}
+      <div className="flex-1 flex flex-col overflow-hidden"> {/* flex-1 takes horizontal space, flex-col stacks vertically */}
+        
+        {/* 4. Header Component: Sits at the top of the right side */}
+        {/*    Header itself likely has h-16, border-b, bg-white etc. */}
+        <Header onMenuClick={toggleMobileSidebar} /> 
+        
+        {/* 5. Main Content Area: Fills remaining vertical space below Header, scrolls internally */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6"> {/* flex-1 takes vertical space, scrolls */}
           {children} 
         </main>
-      </div>
-    </div>
+        
+      </div> {/* End Right Side Container */}
+      
+    </div> // End Outermost container
   );
 };
 
-export default AppLayout; 
+export default AppLayout;
+
+// --- Reminder: SidebarNav.tsx structure ---
+// Ensure the root element inside SidebarNav has `flex flex-col h-full`
+// Ensure the navigation area has `overflow-y-auto` (or similar scrolling mechanism)
+// Ensure the profile section has `mt-auto` to stick to the bottom.
+// Example structure was provided in the previous answer. 

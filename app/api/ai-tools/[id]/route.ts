@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import type { AiTool } from '@shared/schema';
+import type { AiTool, InsertAiTool } from '@shared/schema';
 
 interface Params {
   id: string;
@@ -37,14 +37,14 @@ export async function PUT(request: Request, { params }: { params: Params }) {
   try {
     const body = await request.json();
     
-    // Correcting Omit to use tool_id instead of id
-    const updateData: Partial<Omit<AiTool, "tool_id" | "created_at" | "updated_at">> = {
+    // Use Partial<InsertAiTool> for update data type
+    const updateData: Partial<InsertAiTool> = {
       tool_name: body.tool_name,
       primary_category: body.primary_category,
       license_type: body.license_type,
       description: body.description,
       website_url: body.website_url,
-      tags: body.tags
+      tags: body.tags // Keep null/undefined check below
     };
 
     // Remove undefined values to allow partial updates

@@ -1,8 +1,9 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { storage } from '@/server/storage';
 // Correcting the import casing based on linter error
-import type { AiTool } from '@shared/schema'; 
+import type { AiTool, InsertAiTool } from '@shared/schema';
 import { ZodError } from 'zod'; // Assuming zod might be used for future validation
+import { Description } from '@radix-ui/react-toast';
 
 // GET /api/ai-tools
 export async function GET(request: NextRequest) {
@@ -25,14 +26,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    // Correcting Omit to use tool_id instead of id
-    const toolData: Omit<AiTool, "tool_id" | "created_at" | "updated_at"> = {
+    // Use the corrected InsertAiTool type which omits generated fields
+    const toolData: InsertAiTool = {
       tool_name: body.tool_name,
       primary_category: body.primary_category,
       license_type: body.license_type,
       description: body.description,
       website_url: body.website_url,
-      tags: body.tags || []
+      tags: body.tags || [] // Default to empty array if tags are missing
     };
 
     // Add more robust validation here if needed before calling storage

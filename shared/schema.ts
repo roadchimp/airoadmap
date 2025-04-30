@@ -468,12 +468,13 @@ export const aiTools = pgTable("ai_tools", {
     toolNameIdx: uniqueIndex("idx_ai_tools_tool_name").on(table.tool_name), // Keep unique index attempt
 }));
 
+// Define Zod schema for insertion, omitting generated fields
 export const insertAiToolSchema = createInsertSchema(aiTools).omit({
-  // tool_id must be provided if not serial
+  tool_id: true, // Explicitly omit tool_id
   created_at: true,
   updated_at: true,
 }).extend({
-  tags: z.array(z.string()).optional().default([]),
+  tags: z.array(z.string()).optional().default([]), // Keep tag handling
 });
 
 // New Table: Capability Tool Mapping (Many-to-Many)
@@ -514,9 +515,10 @@ export type AssessmentResponse = typeof assessmentResponses.$inferSelect;
 export type InsertAssessmentResponse = typeof assessmentResponses.$inferInsert;
 
 export type AiTool = typeof aiTools.$inferSelect;
-export type InsertAiTool = typeof aiTools.$inferInsert;
+// Define InsertAiTool based on the Zod schema
+export type InsertAiTool = z.infer<typeof insertAiToolSchema>;
 // Define the type for form data, excluding generated fields
-export type AiToolFormData = Omit<AiTool, 'tool_id' | 'created_at' | 'updated_at'>;
+export type AiToolFormData = Omit<AiTool, 'tool_id' | 'created_at' | 'updated_at'>; // Keep this if used elsewhere
 
 export type CapabilityToolMapping = typeof capabilityToolMapping.$inferSelect;
 export type InsertCapabilityToolMapping = typeof capabilityToolMapping.$inferInsert;

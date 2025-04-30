@@ -541,18 +541,17 @@ export class MemStorage implements IStorage {
     
     // Explicitly define the AiTool object to match the schema
     const newTool: AiTool = {
-      tool_id: id,
+      tool_id: id, 
       tool_name: tool.tool_name, // Required
       primary_category: tool.primary_category ?? null,
       license_type: tool.license_type ?? null,
       description: tool.description ?? null,
       website_url: tool.website_url ?? null,
-      tags: tool.tags ?? null,
+      tags: tool.tags ?? null, 
       created_at: now,
       updated_at: now
     };
     
-    // Use the generated id (which matches newTool.tool_id) as the map key
     this.aiTools.set(id, newTool);
     return newTool;
   }
@@ -563,9 +562,10 @@ export class MemStorage implements IStorage {
       throw new Error(`AI Tool with id ${id} not found`);
     }
 
+    // Note: Spreading toolUpdate might overwrite tool_id if it exists in InsertAiTool
     const updatedTool: AiTool = {
       ...existingTool,
-      ...toolUpdate,
+      ...toolUpdate, 
       updated_at: new Date()
     };
     this.aiTools.set(id, updatedTool);

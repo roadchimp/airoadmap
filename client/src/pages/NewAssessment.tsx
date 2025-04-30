@@ -49,6 +49,8 @@ interface AssessmentData {
       }>;
     };
     techStack?: {
+      currentSystems?: string;
+      dataAvailability?: string[];
       existingAutomation?: string;
       dataQuality?: number;
     };
@@ -60,6 +62,7 @@ interface AssessmentData {
         suitability?: number;
       }>;
     };
+    scores?: any;
   };
 }
 
@@ -95,12 +98,22 @@ const NewAssessment: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   
   // Fetch departments and roles for the role selection step
-  const { data: departments } = useQuery({
+  const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/departments");
+      if (!response.ok) throw new Error('Failed to fetch departments');
+      return response.json() as Promise<Department[]>;
+    },
   });
   
-  const { data: jobRoles } = useQuery({
+  const { data: jobRoles = [] } = useQuery<JobRole[]>({
     queryKey: ["/api/job-roles"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/job-roles");
+      if (!response.ok) throw new Error('Failed to fetch job roles');
+      return response.json() as Promise<JobRole[]>;
+    },
   });
   
   // Create assessment mutation
@@ -236,7 +249,7 @@ const NewAssessment: React.FC = () => {
   // Update handleNext to use wizardSteps
   const handleNext = async () => {
     // First, save the current step data
-    await saveCurrentStep(assessment.stepData);
+    await saveCurrentStep(assessment.stepData as Partial<WizardStepData>);
     
     // Then, navigate to the next step
     if (currentStepIndex < wizardSteps.length - 1) {
@@ -263,7 +276,7 @@ const NewAssessment: React.FC = () => {
   // Submit assessment and generate report
   const handleSubmit = async () => {
     // First, save the review step if needed
-    await saveCurrentStep(assessment.stepData);
+    await saveCurrentStep(assessment.stepData as Partial<WizardStepData>);
     
     // Then, generate the report
     if (assessment.id) {

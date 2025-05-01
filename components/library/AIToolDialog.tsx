@@ -56,7 +56,7 @@ const AIToolDialog: React.FC<AIToolDialogProps> = ({
           </DialogTitle>
         </DialogHeader>
         <AIToolForm
-          initialData={initialData}
+          initialData={initialData || undefined}
           onSubmit={handleSubmit}
           onCancel={onClose}
         />

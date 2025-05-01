@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PgStorage } from '../pg-storage.js';
+import { ZodError } from 'zod';
 import { type AICapability, insertAICapabilitySchema } from '@shared/schema';
 
 const router = Router();
@@ -35,34 +36,46 @@ router.post('/', async (req, res) => {
     // Validate request body against schema
     const validatedData = insertAICapabilitySchema.parse(req.body);
 
-    // Create the capability
+    // Create the capability using camelCase properties matching the schema
     const capability = await storage.createAICapability({
+      // Add missing validated fields from schema if needed (like id, tags etc if applicable for creation)
+      id: validatedData.id, // Assuming id might be passed for specific creation scenarios
       name: validatedData.name,
       category: validatedData.category,
       description: validatedData.description,
-      implementation_effort: validatedData.implementation_effort,
-      business_value: validatedData.business_value
+      implementationEffort: validatedData.implementationEffort, // Use camelCase
+      businessValue: validatedData.businessValue, // Use camelCase
+      easeScore: validatedData.easeScore, // Add if in schema
+      valueScore: validatedData.valueScore, // Add if in schema
+      primary_category: validatedData.primary_category, // Add if in schema
+      license_type: validatedData.license_type, // Add if in schema
+      website_url: validatedData.website_url, // Add if in schema
+      tags: validatedData.tags, // Add if in schema
     });
 
-    // Transform the response to match frontend schema
+    // Transform the response to match frontend schema, using camelCase from capability object
     const transformedCapability = {
       id: capability.id,
       name: capability.name,
       description: capability.description || '',
       category: capability.category || 'Uncategorized',
-      implementationEffort: capability.implementation_effort || 'Medium',
-      businessValue: capability.business_value || 'Medium',
-      easeScore: capability.ease_score || null,
-      valueScore: capability.value_score || null
+      implementationEffort: capability.implementationEffort || 'Medium', // Use camelCase
+      businessValue: capability.businessValue || 'Medium', // Use camelCase
+      easeScore: capability.easeScore || null, // Use camelCase
+      valueScore: capability.valueScore || null // Use camelCase
+      // Add other relevant fields if needed by frontend
     };
 
     res.status(201).json(transformedCapability);
   } catch (error) {
     console.error('Error creating capability:', error);
-    if (error.name === 'ZodError') {
+    // Check if it's a Zod validation error
+    if (error instanceof ZodError) {
       res.status(400).json({ error: 'Invalid request data', details: error.errors });
-    } else {
-      res.status(500).json({ error: 'Failed to create capability' });
+    } else if (error instanceof Error) { // Handle generic errors
+        res.status(500).json({ error: `Failed to create capability: ${error.message}` });
+    } else { // Handle unknown errors
+        res.status(500).json({ error: 'Failed to create capability due to an unknown error' });
     }
   }
 });

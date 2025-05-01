@@ -119,6 +119,10 @@ export function validateScores(scores: Partial<Pick<AssessmentScoreData, keyof t
   });
 }
 
+// Define the possible qualitative ratings
+export const QUALITATIVE_RATINGS = ['Excellent', 'Good', 'Fair', 'Poor', 'Very Poor'] as const;
+export type QualitativeRating = typeof QUALITATIVE_RATINGS[number];
+
 /**
  * Gets a qualitative rating based on the total score
  * @param totalScore The total weighted score

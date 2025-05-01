@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { AssessmentScore, ScoreValue } from '@/shared/schema';
-import { getScoreDescription, getScoreGuidance } from '@/shared/scoring';
+import { AssessmentScore, ScoreValue } from '../shared/schema';
+import { getScoreDescription, getScoreGuidance } from '../shared/scoring';
 
 interface UseAssessmentScoringProps {
   wizardStepId: string;
+  
 }
 
 interface AssessmentScoreInput {
@@ -83,7 +84,7 @@ export function useAssessmentScoring({ wizardStepId }: UseAssessmentScoringProps
 
   const getDescription = () => {
     if (!assessmentScore) return '';
-    return getScoreDescription(assessmentScore.totalScore);
+    return getScoreDescription(parseFloat(assessmentScore.totalScore));
   };
 
   const getGuidance = (criteriaType: keyof AssessmentScoreInput) => {

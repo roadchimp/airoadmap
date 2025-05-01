@@ -573,16 +573,15 @@ export class PgStorage implements IStorage {
     const result = await this.db.insert(capabilityToolMapping)
       .values({
         ...mapping,
-        notes: mapping.notes || null
       })
       .returning();
     return result[0];
   }
 
-  async deleteCapabilityToolMapping(mappingId: number): Promise<void> {
+  async deleteCapabilityToolMapping(capabilityId: number, toolId: number): Promise<void> {
     await this.ensureInitialized();
     await this.db.delete(capabilityToolMapping)
-      .where(eq(capabilityToolMapping.mappingId, mappingId));
+      .where(sql`${capabilityToolMapping.capability_id} = ${capabilityId} and ${capabilityToolMapping.tool_id} = ${toolId}`);
   }
 
   // Assessment Score methods

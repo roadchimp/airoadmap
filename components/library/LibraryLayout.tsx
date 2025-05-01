@@ -248,13 +248,14 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
   };
   
   // Submit handler for AI Tool Dialog (calls placeholder mutations)
-  const handleAIToolDialogSubmit = (data: AiToolFormData) => {
+  const handleAIToolDialogSubmit = (data: Partial<InsertAiTool>) => {
      if (editingAITool?.tool_id) {
         // Call update mutation placeholder
-        handleUpdateTool(editingAITool.tool_id, data as Partial<InsertAiTool>); // Cast might be needed depending on exact InsertAiTool structure
+        handleUpdateTool(editingAITool.tool_id, data); // Data is already Partial<InsertAiTool>
      } else {
         // Call create mutation placeholder
-        // Ensure data conforms to InsertAiTool, adding defaults if needed before passing
+        // Data should conform to InsertAiTool
+        // We might need to add required fields validation here or in the form itself
         handleCreateTool(data as InsertAiTool); // Cast carefully or transform data
      }
      // Closing the dialog should ideally happen in the mutation's onSuccess callback

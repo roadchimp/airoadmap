@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { AssessmentScoreData, ScoreValue } from '@/shared/schema';
-import { SCORE_WEIGHTS, calculateTotalScore, validateScores } from '@/shared/scoring';
+import { AssessmentScoreData, ScoreValue } from '../shared/schema';
+import { SCORE_WEIGHTS, calculateTotalScore, validateScores } from '../shared/scoring';
 
 type ScoringState = Pick<AssessmentScoreData, keyof typeof SCORE_WEIGHTS>;
 

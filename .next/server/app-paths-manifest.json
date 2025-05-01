@@ -1,7 +1,3 @@
 {
-  "/page": "app/page.js",
-  "/api/departments/route": "app/api/departments/route.js",
-  "/api/job-roles/route": "app/api/job-roles/route.js",
-  "/(app)/assessment/new/page": "app/(app)/assessment/new/page.js",
   "/(app)/dashboard/page": "app/(app)/dashboard/page.js"
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { type WizardStepData } from '@/shared/schema';
-import { calculateRoleScores } from '@/lib/scoring';
+import { type WizardStepData, RoleScore } from '../../shared/schema';
+import { calculateRoleScore } from '../../shared/scoring';
 
 interface ScoreVisualizationProps {
   stepData: WizardStepData;
@@ -10,10 +10,43 @@ interface ScoreVisualizationProps {
 }
 
 export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps) {
-  const scores = calculateRoleScores(stepData, roleId);
-  const finalScore = scores.finalScores[roleId];
-  const valueScore = scores.valueScores[roleId];
-  const easeScore = scores.easeScores[roleId];
+  const numericRoleId = parseInt(roleId);
+  if (isNaN(numericRoleId)) {
+    return <div>Error: Invalid Role ID</div>;
+  }
+
+  const roleScoresInput = stepData.scores?.assessmentScores?.roleScores?.[numericRoleId]; 
+
+  if (!roleScoresInput) {
+    return <div>Scoring data not available for this role.</div>;
+  }
+
+  const scores: RoleScore = calculateRoleScore({
+    timeSavings: roleScoresInput.valuePotential.timeSavings,
+    qualityImpact: roleScoresInput.valuePotential.qualityImpact,
+    strategicAlignment: roleScoresInput.valuePotential.strategicAlignment,
+    dataReadiness: roleScoresInput.easeOfImplementation.dataReadiness,
+    technicalFeasibility: roleScoresInput.easeOfImplementation.technicalFeasibility,
+    adoptionRisk: roleScoresInput.easeOfImplementation.adoptionRisk,
+  });
+
+  const finalScore = scores.totalScore;
+  const valueScoreDetails = scores.valuePotential;
+  const easeScoreDetails = scores.easeOfImplementation;
+
+  const getQuadrant = (value: number, ease: number): string => {
+      if (value >= 3.5 && ease >= 3.5) return 'high-value-high-ease';
+      if (value >= 3.5 && ease < 3.5) return 'high-value-low-ease';
+      if (value < 3.5 && ease >= 3.5) return 'low-value-high-ease';
+      return 'low-value-low-ease';
+  };
+  const quadrant = getQuadrant(valueScoreDetails.total, easeScoreDetails.total);
+  
+  const implementationDetails = {
+    timeToImplement: 'N/A',
+    visibility: 'N/A',
+    foundationValue: 'N/A'
+  };
 
   return (
     <div className="space-y-8">
@@ -23,7 +56,7 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
           <div className="h-full w-full grid grid-cols-2 grid-rows-2 gap-4">
             {/* Quadrants */}
             <div className={`p-4 rounded-lg ${
-              finalScore.quadrant === 'high-value-high-ease' 
+              quadrant === 'high-value-high-ease' 
                 ? 'bg-green-100 border-2 border-green-500' 
                 : 'bg-gray-50'
             }`}>
@@ -31,7 +64,7 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
               <p className="text-xs text-gray-500">Quick wins with high impact</p>
             </div>
             <div className={`p-4 rounded-lg ${
-              finalScore.quadrant === 'high-value-low-ease' 
+              quadrant === 'high-value-low-ease' 
                 ? 'bg-yellow-100 border-2 border-yellow-500' 
                 : 'bg-gray-50'
             }`}>
@@ -39,7 +72,7 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
               <p className="text-xs text-gray-500">Strategic initiatives</p>
             </div>
             <div className={`p-4 rounded-lg ${
-              finalScore.quadrant === 'low-value-high-ease' 
+              quadrant === 'low-value-high-ease' 
                 ? 'bg-blue-100 border-2 border-blue-500' 
                 : 'bg-gray-50'
             }`}>
@@ -47,7 +80,7 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
               <p className="text-xs text-gray-500">Efficiency improvements</p>
             </div>
             <div className={`p-4 rounded-lg ${
-              finalScore.quadrant === 'low-value-low-ease' 
+              quadrant === 'low-value-low-ease' 
                 ? 'bg-red-100 border-2 border-red-500' 
                 : 'bg-gray-50'
             }`}>
@@ -59,10 +92,11 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
         
         {/* Score Dot */}
         <div 
-          className="absolute w-4 h-4 rounded-full bg-indigo-600"
+          className="absolute w-4 h-4 rounded-full bg-indigo-600 transition-all duration-500 ease-in-out"
           style={{
-            left: `${(valueScore.totalValueScore / 5) * 100}%`,
-            bottom: `${(easeScore.totalEaseScore / 5) * 100}%`,
+            left: `${Math.min(100, Math.max(0, (valueScoreDetails.total / 5) * 100))}%`,
+            bottom: `${Math.min(100, Math.max(0, (easeScoreDetails.total / 5) * 100))}%`,
+            transform: 'translate(-50%, 50%)'
           }}
         />
       </div>
@@ -71,21 +105,21 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
       <div className="grid grid-cols-2 gap-6">
         {/* Value Scores */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Value Score: {valueScore.totalValueScore.toFixed(1)}</h3>
+          <h3 className="text-lg font-semibold">Value Score: {valueScoreDetails.total.toFixed(1)}</h3>
           <div className="space-y-2">
             <ScoreBar 
               label="Time Savings" 
-              score={valueScore.timeSavings} 
+              score={valueScoreDetails.timeSavings} 
               max={5}
             />
             <ScoreBar 
               label="Quality Impact" 
-              score={valueScore.qualityImpact} 
+              score={valueScoreDetails.qualityImpact} 
               max={5}
             />
             <ScoreBar 
               label="Strategic Alignment" 
-              score={valueScore.strategicAlignment} 
+              score={valueScoreDetails.strategicAlignment} 
               max={5}
             />
           </div>
@@ -93,21 +127,21 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
 
         {/* Ease Scores */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Ease Score: {easeScore.totalEaseScore.toFixed(1)}</h3>
+          <h3 className="text-lg font-semibold">Ease Score: {easeScoreDetails.total.toFixed(1)}</h3>
           <div className="space-y-2">
             <ScoreBar 
               label="Data Readiness" 
-              score={easeScore.dataReadiness} 
+              score={easeScoreDetails.dataReadiness} 
               max={5}
             />
             <ScoreBar 
               label="Technical Feasibility" 
-              score={easeScore.technicalFeasibility} 
+              score={easeScoreDetails.technicalFeasibility} 
               max={5}
             />
             <ScoreBar 
               label="Adoption Risk" 
-              score={easeScore.adoptionRisk} 
+              score={easeScoreDetails.adoptionRisk} 
               max={5}
             />
           </div>
@@ -118,15 +152,15 @@ export function ScoreVisualization({ stepData, roleId }: ScoreVisualizationProps
       <div className="grid grid-cols-3 gap-4 mt-8">
         <div className="p-4 bg-gray-50 rounded-lg">
           <h4 className="text-sm font-medium text-gray-700">Time to Implement</h4>
-          <p className="text-2xl font-semibold">{finalScore.timeToImplement} weeks</p>
+          <p className="text-2xl font-semibold">{implementationDetails.timeToImplement}</p>
         </div>
         <div className="p-4 bg-gray-50 rounded-lg">
           <h4 className="text-sm font-medium text-gray-700">Visibility</h4>
-          <p className="text-2xl font-semibold">{finalScore.visibility}/5</p>
+          <p className="text-2xl font-semibold">{implementationDetails.visibility}</p>
         </div>
         <div className="p-4 bg-gray-50 rounded-lg">
           <h4 className="text-sm font-medium text-gray-700">Foundation Value</h4>
-          <p className="text-2xl font-semibold">{finalScore.foundationValue}/5</p>
+          <p className="text-2xl font-semibold">{implementationDetails.foundationValue}</p>
         </div>
       </div>
     </div>

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AITool } from "@shared/schema";
+import { AiTool } from "@shared/schema";
 
 const formSchema = z.object({
   tool_name: z.string().min(1, "Tool name is required"),
@@ -34,7 +34,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface AIToolFormProps {
-  initialData?: AITool;
+  initialData?: AiTool;
   onSubmit: (data: FormData) => void;
   onCancel: () => void;
 }
@@ -49,7 +49,9 @@ const AIToolForm: React.FC<AIToolFormProps> = ({
     defaultValues: {
       tool_name: initialData?.tool_name || "",
       primary_category: initialData?.primary_category || "",
-      license_type: initialData?.license_type || "Unknown",
+      license_type: ["Open Source", "Commercial", "Freemium", "Unknown"].includes(initialData?.license_type ?? '') 
+                      ? initialData?.license_type as FormData['license_type'] 
+                      : "Unknown",
       description: initialData?.description || "",
       website_url: initialData?.website_url || "",
       tags: initialData?.tags?.join(", ") || "",
@@ -57,7 +59,7 @@ const AIToolForm: React.FC<AIToolFormProps> = ({
   });
 
   return (
-    <Form {...form}>
+    <Form<FormData> {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormField
           control={form.control}

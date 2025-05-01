@@ -149,8 +149,8 @@ export function generatePreviewAssessment(stepData: Partial<WizardStepData>, rol
 } {
   const prioritizedItems: PrioritizedItem[] = [];
   
-  // Get selected roles
-  const selectedRoleIds = stepData.roles?.selectedRoles || [];
+  // Get selected role objects
+  const selectedRoles = stepData.roles?.selectedRoles || [];
   
   // Get pain points data
   const painPoints = stepData.painPoints?.roleSpecificPainPoints || {};
@@ -158,13 +158,22 @@ export function generatePreviewAssessment(stepData: Partial<WizardStepData>, rol
   // Get data quality rating
   const dataQuality = stepData.techStack?.dataQuality || 3;
   
-  // Process each selected role
-  selectedRoleIds.forEach(roleId => {
-    const role = roles.find(r => r.id === roleId);
+  // Process each selected role object
+  selectedRoles.forEach(selectedRole => {
+    // Check if the selected role object has an id
+    if (selectedRole.id === undefined) return;
+    
+    // Find the full JobRole using the id from the selectedRole object
+    const role = roles.find(r => r.id === selectedRole.id);
     if (!role) return;
     
-    const painPoint = painPoints[roleId] || {};
-    const { valueScore, effortScore } = calculateEstimatedScore(painPoint, dataQuality);
+    // Use the role id (number) to access pain points
+    const painPoint = painPoints[role.id] || {};
+    
+    // Ensure dataQuality is treated as a number
+    const numericDataQuality = typeof dataQuality === 'string' ? parseFloat(dataQuality) : dataQuality;
+    
+    const { valueScore, effortScore } = calculateEstimatedScore(painPoint, numericDataQuality);
     
     const valueLevel = getValueLevel(valueScore);
     const effortLevel = getEffortLevel(effortScore);

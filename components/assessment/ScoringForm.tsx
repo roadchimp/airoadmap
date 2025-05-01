@@ -1,9 +1,10 @@
 'use client';
 
 import { useAssessmentScoring } from '@/hooks/useAssessmentScoring';
-import { SCORE_WEIGHTS } from '@/shared/scoring';
+import { SCORE_WEIGHTS, validateScores } from '../../shared/scoring';
 import { cn } from '@/lib/utils';
 import { getRatingStyle } from '@/lib/scoring-ui';
+import { ScoreValue } from '../../shared/schema';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,11 @@ interface ScoringFormProps {
 
 export function ScoringForm({ onScoresComplete, className }: ScoringFormProps) {
   const { scores, setScore, totalScore } = useAssessmentScoring({
-    onComplete: onScoresComplete,
+    onScoreChange: (currentScores, currentTotalScore) => {
+      if (validateScores(currentScores)) {
+        onScoresComplete?.(currentTotalScore);
+      }
+    },
   });
 
   return (
@@ -34,8 +39,8 @@ export function ScoringForm({ onScoresComplete, className }: ScoringFormProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {Object.entries(SCORE_WEIGHTS).map(([criterion, weight]) => {
-          const currentScore = scores[criterion];
-          const rating = currentScore ? getRatingStyle(currentScore) : null;
+          const typedCriterion = criterion as keyof typeof SCORE_WEIGHTS;
+          const currentScore = scores[typedCriterion];
 
           return (
             <div key={criterion} className="space-y-2">
@@ -46,12 +51,12 @@ export function ScoringForm({ onScoresComplete, className }: ScoringFormProps) {
                 <Badge variant="secondary">Weight: {weight}</Badge>
               </div>
               <RadioGroup
-                value={currentScore || ''}
-                onValueChange={(value) => setScore(criterion, value)}
+                value={currentScore?.toString() || ''}
+                onValueChange={(value) => setScore(typedCriterion, parseInt(value) as ScoreValue)}
                 className="flex flex-wrap gap-4"
               >
-                {Object.entries(getRatingStyle('excellent')).map(([key]) => {
-                  const style = getRatingStyle(key as any);
+                {[1, 2, 3, 4, 5].map((scoreValue) => {
+                  const key = scoreValue.toString();
                   return (
                     <div
                       key={key}
@@ -61,21 +66,15 @@ export function ScoringForm({ onScoresComplete, className }: ScoringFormProps) {
                       <Label
                         htmlFor={`${criterion}-${key}`}
                         className={cn(
-                          'cursor-pointer font-medium',
-                          style.color
+                          'cursor-pointer font-medium'
                         )}
                       >
-                        {style.label}
+                        {key}
                       </Label>
                     </div>
                   );
                 })}
               </RadioGroup>
-              {rating && (
-                <p className={cn('text-sm italic', rating.color)}>
-                  {rating.description}
-                </p>
-              )}
             </div>
           );
         })}

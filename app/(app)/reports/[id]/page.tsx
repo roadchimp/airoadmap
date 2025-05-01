@@ -80,19 +80,6 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           </p>
       </div>
 
-      {/* TODO: Replace JSON previews with ReportView component */}
-       {/* Executive Summary */}
-      <ReportView {...reportViewProps} />
-
-      {/* Prioritization Data (Basic Preview) */}
-      <ReportView {...reportViewProps} />
-
-       {/* AI Suggestions (Basic Preview) */}
-       <ReportView {...reportViewProps} />
-
-       {/* Performance Impact (Basic Preview) */}
-       <ReportView {...reportViewProps} />
-
         {/* Consultant Commentary */}
         <ReportView {...reportViewProps} />
 

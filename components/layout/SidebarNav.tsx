@@ -23,6 +23,15 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
     return pathname.startsWith(path);
   }
 
+  // Define common active/inactive styles to avoid repetition
+  const activeLinkClasses = 'bg-red-100 text-red-700';
+  const inactiveLinkClasses = 'text-gray-600 hover:bg-gray-50 hover:text-gray-900';
+  const activeIconClasses = 'text-red-600';
+  const inactiveIconClasses = 'text-gray-400';
+  const baseLinkClasses = 'flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors';
+  const baseIconClasses = 'mr-3 h-5 w-5';
+
+
   return (
     // Main container: Vertical flex, full height, fixed width, background, right border
     <div className="flex flex-col h-full w-64 bg-white border-r border-gray-200">
@@ -48,17 +57,17 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
       </div>
 
       {/* Middle Section: Navigation Links - Grows to fill space */}
-      {/* Added slightly more vertical padding (py-6) */}
+
       <nav className="flex-grow overflow-y-auto py-6 px-3 space-y-1">
 
         {/* Dashboard Link - Updated Active Style */}
         <Link
           href="/dashboard"
           onClick={onClose}
-          className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
-            isActive('/dashboard')
-              ? 'bg-red-100 text-red-700' // Active: Light red bg, dark red text (matches image)
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' // Inactive: Gray text
+          className={`${baseLinkClasses} ${
+            isActive('/dashboard') 
+            ? activeLinkClasses 
+            : inactiveLinkClasses
           }`}
         >
           {/* Dashboard Icon - Color updates based on active state */}
@@ -73,10 +82,10 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
         <Link
           href="/assessment/new" // Simplified href, assuming query params handled elsewhere if needed
           onClick={onClose}
-           className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+           className={`${baseLinkClasses} ${
             isActive('/assessment')
-              ? 'bg-gray-100 text-gray-900' // Active: Standard light gray bg
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' // Inactive: Gray text
+              ? `${activeLinkClasses} ${activeIconClasses}`
+              : `${inactiveLinkClasses} ${inactiveIconClasses}`
           }`}
         >
           <svg className={`mr-3 h-5 w-5 ${isActive('/assessment') ? 'text-gray-700' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -89,10 +98,10 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
         <Link
           href="/reports"
           onClick={onClose}
-          className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+          className={`${baseLinkClasses} ${
             isActive('/reports')
-              ? 'bg-gray-100 text-gray-900'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              ? `${activeLinkClasses} ${activeIconClasses}`
+              : `${inactiveLinkClasses} ${inactiveIconClasses}`
           }`}
         >
           <svg className={`mr-3 h-5 w-5 ${isActive('/reports') ? 'text-gray-700' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -105,10 +114,10 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
         <Link
           href="/library"
           onClick={onClose}
-           className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+           className={`${baseLinkClasses} ${
             isActive('/library')
-              ? 'bg-gray-100 text-gray-900'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              ? `${activeLinkClasses} ${activeIconClasses}`
+              : `${inactiveLinkClasses} ${inactiveIconClasses}`
           }`}
         >
           <svg className={`mr-3 h-5 w-5 ${isActive('/library') ? 'text-gray-700' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">

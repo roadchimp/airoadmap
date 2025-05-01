@@ -49,7 +49,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         
         {/* 4. Header Component: Sits at the top of the right side */}
         {/*    Header itself likely has h-16, border-b, bg-white etc. */}
-        <Header onMenuClick={toggleMobileSidebar} /> 
+        <Header /> 
         
         {/* 5. Main Content Area: Fills remaining vertical space below Header, scrolls internally */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6"> {/* flex-1 takes vertical space, scrolls */}

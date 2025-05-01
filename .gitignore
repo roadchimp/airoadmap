@@ -83,3 +83,7 @@ temp/
 
 #Logs
 logs/
+
+# Ignore server test and script directories
+server/tests/
+server/scripts/

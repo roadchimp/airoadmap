@@ -212,11 +212,15 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
 
   const handleNext = useCallback(async () => {
     await saveCurrentStep();
-    if (currentStepIndex < wizardSteps.length - 1) {
-      const nextStep = wizardSteps[currentStepIndex + 1].id;
-      const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
-      router.push(`${basePath}?step=${nextStep}`);
-    }
+    
+    // Give React a chance to fully update state before navigation
+    setTimeout(() => {
+      if (currentStepIndex < wizardSteps.length - 1) {
+        const nextStep = wizardSteps[currentStepIndex + 1].id;
+        const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
+        router.push(`${basePath}?step=${nextStep}`);
+      }
+    }, 100); // Small delay to ensure state updates complete
   }, [saveCurrentStep, currentStepIndex, router, assessment.id]);
 
   const handlePrevious = useCallback(() => {
@@ -259,6 +263,18 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const renderStepContent = () => {
     const { id: stepId, title, description } = wizardSteps[currentStepIndex];
     const stepData = assessment.stepData || {};
+
+    // Stakeholder options for the key stakeholders field
+    const stakeholderOptions = [
+      "Executive Leadership",
+      "IT Department",
+      "Operations",
+      "Finance",
+      "Human Resources",
+      "Sales & Marketing",
+      // Add any other relevant options
+    ];
+
 
     switch (stepId) {
       case "basics":
@@ -346,13 +362,46 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
               
               <div className="section-card">
                 <h3 className="text-base font-medium mb-3 text-slate-800">Key Stakeholders</h3>
-                <Input
-                  className="border-slate-300 focus:border-primary focus:ring-primary"
-                  value={(stepData.basics?.stakeholders || []).join(", ")} 
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange("basics.stakeholders", e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                  placeholder="e.g., CEO, Head of Operations, IT Director"
-                />
-                <p className="text-xs text-slate-500 mt-2">Separate multiple stakeholders with commas</p>
+                <p className="text-sm text-slate-500 mb-4">Select all departments or roles involved in approving or supporting this AI implementation.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {stakeholderOptions.map((option) => {
+                      // Ensure stakeholders is treated as an array
+                      const currentStakeholders: string[] = stepData.basics?.stakeholders || [];
+                      const isSelected = currentStakeholders.includes(option);  
+                            
+      
+                      return (
+                        <div
+                          key={option}
+                          className={`checkbox-option ${isSelected ? 'selected' : ''}`} // Use appropriate styling
+                        >
+                          <Checkbox
+                            id={`stakeholder-${option.replace(/\s+/g, '-')}`} // Create a unique ID
+                            checked={isSelected}
+                            onCheckedChange={(checked: boolean | string) => {
+                              const wasChecked = checked === true;
+                              const currentSelection = stepData.basics?.stakeholders || [];
+                              let newSelection;
+                              if (wasChecked) {
+                                newSelection = [...currentSelection, option];
+                              } else {
+                                newSelection = currentSelection.filter(s => s !== option);
+                              }
+                              // Use handleInputChange to update the state
+                              handleInputChange("basics.stakeholders", newSelection);
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <Label
+                            htmlFor={`stakeholder-${option.replace(/\s+/g, '-')}`}
+                            className="cursor-pointer flex-1 font-normal text-slate-700"
+                          >
+                            {option}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                </div>
               </div>
             </div>
           </React.Fragment>
@@ -868,8 +917,12 @@ const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] |
   // Final check of WizardLayout call
   return (
     <WizardLayout 
-      steps={wizardSteps} 
+      title={assessment.title || "Assessment"}
       currentStepIndex={currentStepIndex}
+      totalSteps={wizardSteps.length}
+      // Pass assessmentId to ProgressIndicator (likely via WizardLayout)
+      assessmentId={assessment.id}  
+      steps={wizardSteps} 
       onNext={handleNext}
       onPrevious={handlePrevious}
       isSaving={isSaving}

@@ -10,6 +10,7 @@ interface Step {
 }
 
 interface WizardLayoutProps {
+  title: string;
   steps: Step[];
   children: React.ReactNode;
   currentStepIndex: number;
@@ -18,9 +19,12 @@ interface WizardLayoutProps {
   onSubmit?: () => void;
   isSubmitting?: boolean;
   isSaving?: boolean;
+  assessmentId?: number;
+  totalSteps: number;
 }
 
 const WizardLayout: React.FC<WizardLayoutProps> = ({
+  title,
   steps,
   children,
   currentStepIndex,

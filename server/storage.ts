@@ -754,9 +754,7 @@ let storageInstance: IStorage;
 
 try {
   // Check if DATABASE_URL is configured
-  const hasLocalUrl   = !!process.env.DATABASE_URL;
-  const hasNeonUrl    = !!process.env.DATABASE_POSTGRES_URL;
-  if (hasLocalUrl || hasNeonUrl) {
+  if (process.env.DATABASE_URL || process.env.DATABASE_POSTGRES_URL) {
     console.log('Using PostgreSQL storage implementation');
     storageInstance = new PgStorage();
   } else {

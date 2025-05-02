@@ -754,15 +754,17 @@ let storageInstance: IStorage;
 
 try {
   // Check if DATABASE_URL is configured
-  if (process.env.DATABASE_URL) {
+  const hasLocalUrl   = !!process.env.DATABASE_URL;
+  const hasNeonUrl    = !!process.env.DATABASE_POSTGRES_URL;
+  if (hasLocalUrl || hasNeonUrl) {
     console.log('Using PostgreSQL storage implementation');
     storageInstance = new PgStorage();
   } else {
-    console.log('DATABASE_URL not set, using in-memory storage implementation');
+    console.log('No DATABASE_URL or DATABASE_POSTGRES_URL found, using in-memory storage');
     storageInstance = new MemStorage();
   }
-} catch (error) {
-  console.error('Error initializing PostgreSQL storage, falling back to in-memory storage:', error);
+} catch (err) {
+  console.error('Error initializing PgStorage, falling back to MemStorage:', err);
   storageInstance = new MemStorage();
 }
 

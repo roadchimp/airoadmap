@@ -1082,8 +1082,10 @@ const NewAssessment: React.FC = () => {
   
   return (
     <WizardLayout
+      title={assessment.title || "New Assessment"}
       steps={wizardSteps}
       currentStepIndex={currentStepIndex}
+      totalSteps={wizardSteps.length}
       onNext={handleNext}
       onPrevious={handlePrevious}
       onSubmit={handleSubmit}

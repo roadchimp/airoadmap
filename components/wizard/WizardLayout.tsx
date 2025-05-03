@@ -21,6 +21,8 @@ interface WizardLayoutProps {
   isSaving?: boolean;
   assessmentId?: number;
   totalSteps: number;
+  onSaveBeforeNavigate?: () => Promise<void>;
+  maxReachedStepIndex?: number;
 }
 
 const WizardLayout: React.FC<WizardLayoutProps> = ({
@@ -32,7 +34,10 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
   onPrevious,
   onSubmit,
   isSubmitting = false,
-  isSaving = false
+  isSaving = false,
+  assessmentId,
+  onSaveBeforeNavigate,
+  maxReachedStepIndex
 }) => {
   const { toast } = useToast();
   const isFirstStep = currentStepIndex === 0;
@@ -46,10 +51,20 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
     }
   };
 
+  const handlePreviousClick = async () => {
+    if (onPrevious) {
+      try {
+        await onSaveBeforeNavigate?.();
+      } catch (error) {
+        console.error("Error saving before navigating back:", error);
+        toast({ title: "Save Error", description: "Could not save progress before going back.", variant: "destructive" });
+      }
+      onPrevious();
+    }
+  };
+
   return (
-    // Return the main content structure directly
     <div className="flex flex-1 bg-gray-100">
-      {/* Main content */}
       <div className="flex-1 p-4 md:p-6 bg-transparent">
         <div className="mx-auto max-w-4xl">
           <div className="mb-6">
@@ -57,10 +72,9 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
               Step {currentStepIndex + 1}: {steps[currentStepIndex].title}
             </h2>
             <p className="mt-1 text-gray-600">
-              {steps[currentStepIndex].description} {/* Use dynamic description */}
+              {steps[currentStepIndex].description}
             </p>
             
-            {/* Progress bar for mobile only */}
             <div className="mt-4 md:hidden">
               <div className="mb-1 flex justify-between text-sm">
                 <span className="font-medium text-gray-700">Step {currentStepIndex + 1} of {steps.length}</span>
@@ -75,26 +89,20 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
             </div>
           </div>
           
-          {/* Step Content */}
           <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             {children}
           </div>
           
-          {/* Footer Navigation Area */}
           <div className="mt-6 flex items-center justify-between gap-3">
-      
-            {/* Back Button on the left */}    
             <Button
                 variant="outline"
-                onClick={onPrevious}
-                disabled={isFirstStep}
+                onClick={handlePreviousClick}
+                disabled={isFirstStep || isSaving}
                 className="border-gray-600 text-gray-700 hover:bg-gray-700"
               >
                 Back
               </Button>
   
-            
-            {/* Next button on the right */}
             <div className="flex">
               <Button
                 variant="destructive"
@@ -109,7 +117,6 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
         </div>
       </div>
       
-      {/* Progress sidebar - hidden on mobile */}
       <div className="hidden w-80 border-l border-gray-200 bg-white p-4 md:block">
         <div className="sticky top-4">
           <h3 className="mb-4 text-base font-medium text-gray-900">Assessment Progress</h3>
@@ -125,7 +132,13 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
               />
             </div>
           </div>
-          <ProgressIndicator steps={steps} currentStepIndex={currentStepIndex} />
+          <ProgressIndicator
+             steps={steps}
+             currentStepIndex={currentStepIndex}
+             assessmentId={assessmentId ?? 0}
+             onSaveBeforeNavigate={onSaveBeforeNavigate}
+             maxReachedStepIndex={maxReachedStepIndex ?? currentStepIndex}
+            />
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from 'next/navigation'; 
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient"; 
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // --- Interfaces --- (Should ideally be in a types file)
 interface WizardStep {
@@ -53,11 +54,30 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const initialStep = initialAssessmentData?.stepData 
-      ? Object.keys(initialAssessmentData.stepData)[0] // Try to get first step from existing data
-      : wizardSteps[0].id; // Default to first step if no data or empty stepData
-  const currentStepParam = searchParams.get('step') || initialStep; 
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const initialStepIndex = useMemo(() => {
+      const stepId = searchParams.get('step');
+      if (stepId) {
+          const index = wizardSteps.findIndex(step => step.id === stepId);
+          return index !== -1 ? index : 0;
+      }
+      // If no step param, try finding the highest step with data in initialAssessmentData
+      if (initialAssessmentData?.stepData) {
+        const stepKeys = Object.keys(initialAssessmentData.stepData);
+        let highestIndex = 0;
+        stepKeys.forEach(key => {
+            const index = wizardSteps.findIndex(step => step.id === key);
+            if (index > highestIndex) highestIndex = index;
+        });
+        // If data exists, maybe start user at highest step + 1 (or last step if completed)?
+        // For now, let's just return highest index found, or 0
+        return highestIndex;
+      }
+      return 0; // Default to first step
+  }, [searchParams, initialAssessmentData]);
+
+  const [currentStepIndex, setCurrentStepIndex] = useState(initialStepIndex);
+  // Add state for max reached step, initialize with current
+  const [maxReachedStepIndex, setMaxReachedStepIndex] = useState(initialStepIndex);
   
   // --- State --- 
   const [assessment, setAssessment] = useState<AssessmentState>(() => {
@@ -153,20 +173,18 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   });
 
   // --- Effects --- 
-  // Sync state with URL step parameter
+  // Sync state with URL step parameter AND update maxReachedStepIndex if needed
   useEffect(() => {
-    const stepIndex = wizardSteps.findIndex(step => step.id === currentStepParam);
-    if (stepIndex !== -1) {
-      setCurrentStepIndex(stepIndex);
-    } else {
-      // Invalid step, navigate to the initial step determined above
-      const firstStepId = initialAssessmentData?.stepData 
-                          ? Object.keys(initialAssessmentData.stepData)[0] || wizardSteps[0].id
-                          : wizardSteps[0].id;
-      const basePath = initialAssessmentData?.id ? `/assessment/${initialAssessmentData.id}` : '/assessment/new';
-      router.replace(`${basePath}?step=${firstStepId}`);
-    }
-  }, [currentStepParam, router, initialAssessmentData]);
+    const stepIdFromUrl = searchParams.get('step') || wizardSteps[0].id;
+    const indexFromUrl = wizardSteps.findIndex(step => step.id === stepIdFromUrl);
+    const validIndex = indexFromUrl !== -1 ? indexFromUrl : 0;
+
+    setCurrentStepIndex(validIndex);
+    // Ensure maxReached is at least the current step index upon load/navigation
+    setMaxReachedStepIndex(prevMax => Math.max(prevMax, validIndex));
+
+    // --- This effect should ONLY run when the step parameter changes --- 
+  }, [searchParams]); // Dependency only on searchParams
 
   // --- Handlers --- 
   const saveCurrentStep = useCallback(async () => {
@@ -212,29 +230,34 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
 
   const handleNext = useCallback(async () => {
     await saveCurrentStep();
-    
-    // Give React a chance to fully update state before navigation
-    setTimeout(() => {
-      if (currentStepIndex < wizardSteps.length - 1) {
-        const nextStep = wizardSteps[currentStepIndex + 1].id;
-        const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
-        router.push(`${basePath}?step=${nextStep}`);
-      }
-    }, 100); // Small delay to ensure state updates complete
+    if (currentStepIndex < wizardSteps.length - 1) {
+      const nextIndex = currentStepIndex + 1;
+      const nextStepId = wizardSteps[nextIndex].id;
+      const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
+      router.push(`${basePath}?step=${nextStepId}`);
+      // Update max reached index AFTER successful navigation intent
+      setMaxReachedStepIndex(prevMax => Math.max(prevMax, nextIndex));
+    }
   }, [saveCurrentStep, currentStepIndex, router, assessment.id]);
 
-  const handlePrevious = useCallback(() => {
+  const handlePrevious = useCallback(async () => { // Make async
+    // Save before going back (logic added previously)
+    // Note: The actual saving happens in WizardLayout/ProgressIndicator now
+    // We just need to navigate
     if (currentStepIndex > 0) {
-      const prevStep = wizardSteps[currentStepIndex - 1].id;
+      const prevStepId = wizardSteps[currentStepIndex - 1].id;
       const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
-       router.push(`${basePath}?step=${prevStep}`);
+      router.push(`${basePath}?step=${prevStepId}`);
+      // No need to update maxReachedStepIndex when going back
     }
-  }, [currentStepIndex, router, assessment.id]);
+  }, [currentStepIndex, router, assessment.id]); // Removed saveCurrentStep dependency here
   
   const handleSubmit = useCallback(async () => {
-    await saveCurrentStep(); 
+     await saveCurrentStep();
     if (assessment.id) {
-      generateReportMutation.mutate(assessment.id);
+        // Mark final step as reached before submitting
+        setMaxReachedStepIndex(prevMax => Math.max(prevMax, wizardSteps.length -1));
+        generateReportMutation.mutate(assessment.id);
     }
   }, [saveCurrentStep, assessment.id, generateReportMutation]);
   
@@ -610,14 +633,23 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         );
       case "workVolume":
         const wvSelectedRoles = stepData.roles?.selectedRoles || [];
-        // Ensure workVolumeData is correctly typed
-        const workVolumeData: Record<number, {
-          taskVolume?: string;
-          taskComplexity?: string;
-          repetitiveness?: string;
+        const workVolumeData: Record<string, { // Explicitly type key as string
+          volume?: string;
+          complexity?: string;
+          repetitiveness?: number;
           notes?: string;
-        }> = stepData.workVolume || {};
-        
+          // Add other fields from schema if necessary
+          timeSpent?: string;
+          errorRisk?: string;
+          isDataDriven?: boolean;
+          dataDescription?: string;
+          hasPredictiveTasks?: boolean;
+          predictiveTasksDescription?: string;
+          needsContentGeneration?: boolean;
+          contentGenerationDescription?: string;
+          decisionComplexity?: string;
+        }> = stepData.workVolume?.roleWorkVolume || {}; // Access nested roleWorkVolume
+
         return (
           <React.Fragment>
             <h2 className="text-xl font-semibold mb-1">{title}</h2>
@@ -625,8 +657,8 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
             <div className="space-y-6">
               {wvSelectedRoles.length > 0 ? (
                 wvSelectedRoles.map((role) => {
-                   // Safe access using role ID
-const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] || {};
+                   const roleIdStr = String(role.id!); // Cast ID to string
+                   const roleWorkVolume = workVolumeData[roleIdStr] || {}; // Index with string
                   return (
                     <Card key={role.id}>
                       <CardHeader>
@@ -638,10 +670,9 @@ const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] |
                           <div>
                             <Label>Task Volume</Label>
                             <Select
-                              value={roleWorkVolume?.taskVolume || ''} // Use safely accessed data
-                              // Add explicit type for value
-                              onValueChange={(value: string) => 
-                                handleInputChange(`workVolume.${role.id}.taskVolume`, value)
+                              value={roleWorkVolume?.volume || ''} // Use 'volume'
+                              onValueChange={(value: string) =>
+                                handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.volume`, value) // Use string index in path
                               }
                             >
                               <SelectTrigger className="mt-1">
@@ -657,10 +688,9 @@ const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] |
                           <div>
                             <Label>Task Complexity</Label>
                             <Select
-                              value={roleWorkVolume?.taskComplexity || ''} // Use safely accessed data
-                               // Add explicit type for value
-                              onValueChange={(value: string) => 
-                                handleInputChange(`workVolume.${role.id}.taskComplexity`, value)
+                              value={roleWorkVolume?.complexity || ''} // Use 'complexity'
+                               onValueChange={(value: string) =>
+                                handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.complexity`, value) // Use string index in path
                               }
                              >
                                <SelectTrigger className="mt-1">
@@ -674,34 +704,29 @@ const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] |
                              </Select>
                            </div>
                           <div>
-                            <Label>Repetitiveness</Label>
-                            <Select
-                              value={roleWorkVolume?.repetitiveness || ''} // Use safely accessed data
-                               // Add explicit type for value
-                              onValueChange={(value: string) => 
-                                handleInputChange(`workVolume.${role.id}.repetitiveness`, value)
+                            <Label>Repetitiveness (1-5)</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="5"
+                              className="mt-1"
+                              value={roleWorkVolume?.repetitiveness || ""} // Use 'repetitiveness'
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.repetitiveness`, parseInt(e.target.value) || undefined) // Use string index in path
                               }
-                            >
-                              <SelectTrigger className="mt-1">
-                                <SelectValue placeholder="Select level..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="low">Low</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="high">High</SelectItem>
-                              </SelectContent>
-                            </Select>
+                              placeholder="1-5"
+                            />
                           </div>
                         </div>
                         <div>
-                          <Label>Notes (Optional)</Label>
+                          <Label>Data Description (Optional)</Label> { /* Changed from Notes */}
                           <Textarea
                             className="mt-1"
-                            value={roleWorkVolume?.notes || ""} // Use safely accessed data
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => 
-                              handleInputChange(`workVolume.${role.id}.notes`, e.target.value)
+                            value={roleWorkVolume?.dataDescription || ""} // Use 'dataDescription'
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                              handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.dataDescription`, e.target.value) // Use string index in path
                             }
-                            placeholder="Add any relevant details about work patterns..."
+                            placeholder="Describe the data used or generated by this role..."
                           />
                         </div>
                       </CardContent>
@@ -886,21 +911,269 @@ const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] |
            <React.Fragment>
              <h2 className="text-xl font-semibold mb-1">{title}</h2>
              <p className="text-muted-foreground mb-4">{description}</p>
-             <div className="space-y-4">
-               <p>Please review the information you have entered below. If everything looks correct, click 'Generate Report' to submit your assessment.</p>
-               
-               {/* Basic JSON preview of the assessment data */}
-               {/* TODO: Replace with a more user-friendly summary component */}
+             <p className="mb-6">Review and edit the information you entered below before generating the report.</p>
+
+             <div className="space-y-6">
+               {/* --- Basics Section --- */}
                <Card>
                  <CardHeader>
-                   <CardTitle>Assessment Data Summary</CardTitle>
+                   <CardTitle>Organization Info</CardTitle>
                  </CardHeader>
-                 <CardContent>
-                   <pre className="text-xs p-4 bg-muted rounded-md overflow-x-auto">
-                     {JSON.stringify(assessment.stepData, null, 2)}
-                   </pre>
+                 <CardContent className="space-y-4">
+                    <div>
+                        <Label>Organization Name</Label>
+                        <Input
+                          className="mt-1"
+                          value={stepData.basics?.companyName || ""}
+                          onChange={(e) => handleInputChange("basics.companyName", e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <Label>Industry</Label>
+                        <Select
+                           value={stepData.basics?.industry || ''}
+                           onValueChange={(v) => handleInputChange("basics.industry", v)}
+                         >
+                          <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="Software & Technology">Software & Technology</SelectItem>
+                             <SelectItem value="Finance & Banking">Finance & Banking</SelectItem>
+                             <SelectItem value="Healthcare">Healthcare</SelectItem>
+                             <SelectItem value="Retail & E-commerce">Retail & E-commerce</SelectItem>
+                             <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                             <SelectItem value="Education">Education</SelectItem>
+                             <SelectItem value="Professional Services">Professional Services</SelectItem>
+                             <SelectItem value="Media & Entertainment">Media & Entertainment</SelectItem>
+                             <SelectItem value="Other">Other</SelectItem>
+                           </SelectContent>
+                         </Select>
+                    </div>
+                    <div>
+                        <Label>Organization Size</Label>
+                         <Select
+                           value={stepData.basics?.size || ''}
+                           onValueChange={(v) => handleInputChange("basics.size", v)}
+                         >
+                          <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="Small (1-50 employees)">Small (1-50 employees)</SelectItem>
+                             <SelectItem value="Medium (51-500 employees)">Medium (51-500 employees)</SelectItem>
+                             <SelectItem value="Large (501-5000 employees)">Large (501-5000 employees)</SelectItem>
+                             <SelectItem value="Enterprise (5000+ employees)">Enterprise (5000+ employees)</SelectItem>
+                           </SelectContent>
+                         </Select>
+                    </div>
+                    <div>
+                        <Label>Primary Goals</Label>
+                        <Textarea
+                          className="mt-1"
+                          value={stepData.basics?.goals || ""}
+                          onChange={(e) => handleInputChange("basics.goals", e.target.value)}
+                         />
+                    </div>
+                    <div>
+                        <Label>Key Stakeholders</Label>
+                        <Input
+                          className="mt-1"
+                          value={(stepData.basics?.stakeholders || []).join(", ")}
+                          onChange={(e) => handleInputChange("basics.stakeholders", e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          placeholder="e.g., CEO, Head of Dept, IT Director"
+                         />
+                         <p className="text-xs text-muted-foreground mt-1">Edit the list using comma separation.</p>
+                    </div>
                  </CardContent>
                </Card>
+
+                {/* --- Role Selection Section --- */}
+               <Card>
+                 <CardHeader>
+                   <CardTitle>Selected Roles</CardTitle>
+                   <CardDescription>Roles included in this assessment.</CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                   {(stepData.roles?.selectedRoles || []).length > 0 ? (
+                     <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                       {(stepData.roles?.selectedRoles || []).map(role => (
+                         <li key={role.id}>{role.title} ({role.department})</li>
+                       ))}
+                     </ul>
+                   ) : (
+                     <p className="text-sm text-muted-foreground">No roles selected.</p>
+                   )}
+                   <p className="text-xs text-muted-foreground mt-2">To change selected roles, please navigate back to the 'Role Selection' step.</p>
+                 </CardContent>
+               </Card>
+
+               {/* --- Pain Points Section --- */}
+               <Card>
+                 <CardHeader>
+                   <CardTitle>Areas for Improvement</CardTitle>
+                 </CardHeader>
+                 <CardContent className="space-y-4">
+                   <div>
+                       <Label>General Organizational Pain Points</Label>
+                       <Textarea
+                         className="mt-1"
+                         value={stepData.painPoints?.generalPainPoints || ""}
+                         onChange={(e) => handleInputChange("painPoints.generalPainPoints", e.target.value)}
+                       />
+                   </div>
+                   {(stepData.roles?.selectedRoles || []).map((role) => {
+                     const rolePP = stepData.painPoints?.roleSpecificPainPoints?.[role.id!] || {};
+                     return (
+                       <div key={role.id} className="border-t pt-4 mt-4">
+                         <h4 className="font-medium text-sm mb-2">{role.title} Pain Points</h4>
+                         <div>
+                           <Label>Description</Label>
+                           <Textarea
+                             className="mt-1"
+                             value={rolePP.description || ""}
+                             onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.description`, e.target.value)}
+                           />
+                         </div>
+                         <div className="grid grid-cols-3 gap-4 mt-2">
+                            <div>
+                                <Label>Severity (1-5)</Label>
+                                <Input className="mt-1" type="number" min="1" max="5" value={rolePP.severity || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.severity`, parseInt(e.target.value) || undefined)} />
+                           </div>
+                           <div>
+                               <Label>Frequency (1-5)</Label>
+                               <Input className="mt-1" type="number" min="1" max="5" value={rolePP.frequency || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.frequency`, parseInt(e.target.value) || undefined)} />
+                           </div>
+                           <div>
+                               <Label>Impact (1-5)</Label>
+                               <Input className="mt-1" type="number" min="1" max="5" value={rolePP.impact || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.impact`, parseInt(e.target.value) || undefined)} />
+                           </div>
+                         </div>
+                       </div>
+                     );
+                   })}
+                 </CardContent>
+               </Card>
+
+                {/* --- Work Volume Section --- */}
+               <Card>
+                 <CardHeader>
+                    <CardTitle>Work Volume & Complexity</CardTitle>
+                 </CardHeader>
+                 <CardContent className="space-y-4">
+                     {(stepData.roles?.selectedRoles || []).map((role) => {
+                         const roleIdStr = String(role.id!); 
+                         const roleWV = stepData.workVolume?.roleWorkVolume?.[roleIdStr] || {}; 
+                         return (
+                             <div key={role.id} className="border-t pt-4 mt-4">
+                                 <h4 className="font-medium text-sm mb-2">{role.title} Work Patterns</h4>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                     <div>
+                                         <Label>Task Volume</Label>
+                                         <Select value={roleWV.volume || ''} onValueChange={(v) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.volume`, v)}>
+                                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                             <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent>
+                                         </Select>
+                                     </div>
+                                     <div>
+                                         <Label>Task Complexity</Label>
+                                          <Select value={roleWV.complexity || ''} onValueChange={(v) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.complexity`, v)}>
+                                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                              <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent>
+                                          </Select>
+                                     </div>
+                                     <div>
+                                         <Label>Repetitiveness (1-5)</Label>
+                                          <Input 
+                                            type="number" 
+                                            min="1" 
+                                            max="5" 
+                                            value={roleWV.repetitiveness || ""} 
+                                            onChange={(e) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.repetitiveness`, parseInt(e.target.value) || undefined)}
+                                            className="mt-1"
+                                            placeholder="1-5"
+                                           />
+                                     </div>
+                                 </div>
+                                 <div className="mt-4">
+                                     <Label>Data Description</Label>
+                                      <Textarea className="mt-1" value={roleWV.dataDescription || ""} onChange={(e) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.dataDescription`, e.target.value)} />
+                                 </div>
+                             </div>
+                         );
+                     })}
+                 </CardContent>
+               </Card>
+
+                {/* --- Tech Stack Section --- */}
+               <Card>
+                 <CardHeader>
+                   <CardTitle>Data & Systems</CardTitle>
+                 </CardHeader>
+                 <CardContent className="space-y-4">
+                    <div>
+                        <Label>Data Accessibility</Label>
+                        <Select value={stepData.techStack?.dataAccessibility || ''} onValueChange={(v) => handleInputChange('techStack.dataAccessibility', v)}>
+                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent><SelectItem value="easy">Easy</SelectItem><SelectItem value="moderate">Moderate</SelectItem><SelectItem value="difficult">Difficult</SelectItem></SelectContent>
+                        </Select>
+                    </div>
+                     <div>
+                         <Label>Data Quality</Label>
+                         <Select value={stepData.techStack?.dataQuality || ''} onValueChange={(v) => handleInputChange('techStack.dataQuality', v)}>
+                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent><SelectItem value="good">Good</SelectItem><SelectItem value="fair">Fair</SelectItem><SelectItem value="poor">Poor</SelectItem></SelectContent>
+                         </Select>
+                    </div>
+                     <div>
+                         <Label>Systems Integration</Label>
+                         <Select value={stepData.techStack?.systemsIntegration || ''} onValueChange={(v) => handleInputChange('techStack.systemsIntegration', v)}>
+                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent><SelectItem value="easy">Easy</SelectItem><SelectItem value="moderate">Moderate</SelectItem><SelectItem value="difficult">Difficult</SelectItem></SelectContent>
+                         </Select>
+                     </div>
+                    <div>
+                        <Label>Relevant Tools & Platforms</Label>
+                        <Textarea className="mt-1" value={stepData.techStack?.relevantTools || ""} onChange={(e) => handleInputChange("techStack.relevantTools", e.target.value)} />
+                    </div>
+                    <div>
+                        <Label>Notes</Label>
+                        <Textarea className="mt-1" value={stepData.techStack?.notes || ""} onChange={(e) => handleInputChange("techStack.notes", e.target.value)} />
+                    </div>
+                 </CardContent>
+               </Card>
+
+               {/* --- Adoption Section --- */}
+               <Card>
+                 <CardHeader>
+                   <CardTitle>Readiness & Expectations</CardTitle>
+                 </CardHeader>
+                 <CardContent className="space-y-4">
+                     <div>
+                         <Label>Organizational Readiness for Change</Label>
+                         <Select value={stepData.adoption?.changeReadiness || ''} onValueChange={(v) => handleInputChange('adoption.changeReadiness', v)}>
+                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                            <SelectContent><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
+                         </Select>
+                     </div>
+                      <div>
+                         <Label>Stakeholder Alignment on AI Goals</Label>
+                         <Select value={stepData.adoption?.stakeholderAlignment || ''} onValueChange={(v) => handleInputChange('adoption.stakeholderAlignment', v)}>
+                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                             <SelectContent><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
+                         </Select>
+                     </div>
+                      <div>
+                         <Label>Anticipated Training Needs</Label>
+                         <Textarea className="mt-1" value={stepData.adoption?.trainingNeeds || ""} onChange={(e) => handleInputChange("adoption.trainingNeeds", e.target.value)} />
+                     </div>
+                      <div>
+                         <Label>Expected Adoption Challenges</Label>
+                         <Textarea className="mt-1" value={stepData.adoption?.expectedChallenges || ""} onChange={(e) => handleInputChange("adoption.expectedChallenges", e.target.value)} />
+                     </div>
+                    <div>
+                         <Label>Key Success Metrics for AI Initiatives</Label>
+                         <Textarea className="mt-1" value={stepData.adoption?.successMetrics || ""} onChange={(e) => handleInputChange("adoption.successMetrics", e.target.value)} />
+                     </div>
+                 </CardContent>
+               </Card>
+
              </div>
            </React.Fragment>
         );
@@ -911,25 +1184,25 @@ const roleWorkVolume = workVolumeData[role.id! as keyof typeof workVolumeData] |
 
   // --- Render ---
   if (!wizardSteps[currentStepIndex]) {
-    return <div>Loading step...</div>; 
+    return <div>Loading step...</div>;
   }
 
-  // Final check of WizardLayout call
   return (
-    <WizardLayout 
+    <WizardLayout
       title={assessment.title || "Assessment"}
+      steps={wizardSteps}
       currentStepIndex={currentStepIndex}
       totalSteps={wizardSteps.length}
-      // Pass assessmentId to ProgressIndicator (likely via WizardLayout)
-      assessmentId={assessment.id}  
-      steps={wizardSteps} 
       onNext={handleNext}
       onPrevious={handlePrevious}
       isSaving={isSaving}
-      isSubmitting={isGeneratingReport} 
-      onSubmit={currentStepIndex === wizardSteps.length - 1 ? handleSubmit : undefined} 
+      isSubmitting={isGeneratingReport}
+      onSubmit={currentStepIndex === wizardSteps.length - 1 ? handleSubmit : undefined}
+      assessmentId={assessment.id}
+      onSaveBeforeNavigate={saveCurrentStep}
+      maxReachedStepIndex={maxReachedStepIndex}
     >
-      {renderStepContent()} 
+      {renderStepContent()}
     </WizardLayout>
   );
 } 

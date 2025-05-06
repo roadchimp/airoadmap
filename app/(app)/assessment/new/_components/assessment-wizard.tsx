@@ -87,14 +87,16 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
               stepData: initialAssessmentData.stepData || {}, // Ensure stepData is at least an empty object
           };
       } else {
+          // Revert back to using 'title' and original fields
           return {
-              title: "New AI Transformation Assessment",
+              title: "New AI Transformation Assessment", // Reverted from 'name'
               organizationId: 1, // Placeholder
               userId: 1, // Placeholder
               status: "draft",
               stepData: {},
-          };
-      }
+              updatedAt: new Date(),
+      };
+    }
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);

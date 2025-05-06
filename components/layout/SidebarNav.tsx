@@ -14,8 +14,12 @@ interface SidebarNavProps {
 const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
   const pathname = usePathname();
 
-  const isActive = (path: string) => {
+  const isActive = (path: string, exact: boolean = false) => {
     // Specific check for dashboard vs. others
+    if (exact) {
+      return pathname === path;
+    }
+    // Special handling for '/' to ensure it doesn't match everything
     if (path === '/' || path === '/dashboard') {
         return pathname === path; // Exact match for dashboard
     }
@@ -49,7 +53,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
           </div>
           {/* App Title */}
           <div>
-             {/* Adjusted title to match image */}
             <h1 className="font-bold text-gray-900 text-lg">AI Prioritize</h1>
             <p className="text-xs text-gray-500">Transformation Tool</p>
           </div>
@@ -60,30 +63,30 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
 
       <nav className="flex-grow overflow-y-auto py-6 px-3 space-y-1">
 
-        {/* Dashboard Link - Updated Active Style */}
+        {/* Dashboard Link - Use exact match for dashboard */}
         <Link
           href="/dashboard"
           onClick={onClose}
           className={`${baseLinkClasses} ${
-            isActive('/dashboard') 
+            isActive('/dashboard', true) 
             ? activeLinkClasses 
             : inactiveLinkClasses
           }`}
         >
           {/* Dashboard Icon - Color updates based on active state */}
-          <svg className={`mr-3 h-5 w-5 ${isActive('/dashboard') ? 'text-red-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className={`mr-3 h-5 w-5 ${isActive('/dashboard', true) ? 'text-red-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
              {/* Replaced with dashboard icon from image */}
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM3 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
           </svg>
           Dashboard
         </Link>
 
-        {/* New Assessment Link - Standard Active/Inactive Style */}
+        {/* New Assessment Link - Use exact match for assessment */}
         <Link
-          href="/assessment/new" // Simplified href, assuming query params handled elsewhere if needed
+          href="/assessment/new" 
           onClick={onClose}
            className={`${baseLinkClasses} ${
-            isActive('/assessment')
+            isActive('/assessment/new', true)
               ? `${activeLinkClasses} ${activeIconClasses}`
               : `${inactiveLinkClasses} ${inactiveIconClasses}`
           }`}
@@ -93,6 +96,24 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
           </svg>
           New Assessment
         </Link>
+
+        <Link
+          href="/assessment/current" 
+          onClick={onClose}
+          // Use startsWith (default) or exact:true if no nested routes under /current
+          className={`${baseLinkClasses} ${
+            isActive('/assessment/current')
+            ? activeLinkClasses
+            : inactiveLinkClasses
+          }`}
+        >
+          {/* Clipboard List Icon */}
+          <svg className={`${baseIconClasses} ${isActive('/assessment/current') ? activeIconClasses : inactiveIconClasses}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          Current Assessments {/* New text */}
+        </Link>
+
 
         {/* Previous Reports Link */}
         <Link
@@ -131,7 +152,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ onClose }) => {
           href="/"
           onClick={onClose}
            className={`${baseLinkClasses} ${
-            isActive('/') // Use '/' for the root path check
+            isActive('/', true) // Use exact match for root
               ? activeLinkClasses // Use red active style
               : inactiveLinkClasses
           }`}

@@ -6,6 +6,9 @@ A web application designed to help organizations assess their AI readiness and i
 
 - Interactive assessment wizard to gather detailed information about roles, processes, and tech stack.
 - Automated scoring and prioritization of AI opportunities based on value and ease of implementation.
+- Dashboard with assessment metrics and progress tracking.
+- Report generation with AI-powered recommendations.
+- Current assessments management (view, edit, delete).
 - Library management for Job Roles, AI Capabilities, and AI Tools.
 - Role-based access control (potential future feature).
 - Data storage using PostgreSQL with Drizzle ORM.
@@ -18,11 +21,14 @@ A web application designed to help organizations assess their AI readiness and i
 - **UI Library**: React
 - **Styling**: Tailwind CSS
 - **Component Library**: shadcn/ui (built on Radix UI)
-- **State Management**: TanStack React Query (for server state), potentially Zustand/Context for client state.
-- **Backend**: Next.js API Routes (preferred), legacy Express routes (`server/routes.ts`)
+- **State Management**: TanStack React Query (for data fetching), Zustand (for client state)
+- **Data Tables**: TanStack Table
+- **Backend**: Next.js API Routes (`app/api/`)
 - **Database**: PostgreSQL
 - **ORM**: Drizzle ORM
-- **Deployment**: Vercel (preferred), Local Development
+- **Deployment**: Vercel
+- **Icons**: Lucide React
+- **Form Handling**: React Hook Form with Zod validation
 
 ## Prerequisites
 
@@ -113,120 +119,128 @@ OPENAI_API_KEY="your_openai_api_key"
 ```
 airoadmap/
 ├── app/                    # Next.js App Router: Pages, Layouts, API Routes
-│   ├── api/                # API routes (e.g., /api/assessment/score)
-│   │   └── ...
-│   ├── (main)/             # Route group for main app pages
-│   │   ├── assessment/     # Assessment wizard pages/components
-│   │   ├── libraries/      # Library management pages/components
-│   │   └── ...             # Other main application sections
-│   ├── layout.tsx          # Root layout
-│   └── page.tsx            # Root page (likely landing page)
-├── client/                 # Legacy Client Code (potentially migrate to app/)
-│   ├── public/             # Static assets (images, fonts)
-│   ├── src/
-│   │   ├── components/     # Reusable React components (some might move to app/)
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── lib/            # Client-side utilities
-│   │   ├── pages/          # Legacy page components (consider migrating)
-│   │   └── styles/         # Global styles (if any)
-├── components/             # Shared UI components (used by app/ and client/)
-│   └── ui/                 # shadcn/ui components
-├── server/                 # Backend-specific logic
-│   ├── api/                # API Route handlers (used by server/routes.ts)
-│   ├── batch-processing/   # Batch job logic
-│   ├── lib/                # Server-side libraries (e.g., prioritization)
-│   ├── scripts/            # Database scripts (migrations, seeding)
-│   ├── routes.ts           # Legacy Express route definitions
+│   ├── (app)/              # Protected application routes requiring auth
+│   │   ├── dashboard/      # Dashboard with stats and overview
+│   │   ├── assessment/     # Assessment features
+│   │   │   ├── current/    # List of user's current assessments
+│   │   │   ├── new/        # New assessment creation
+│   │   │   └── [id]/       # Individual assessment views
+│   │   ├── reports/        # Assessment reports
+│   │   │   └── [id]/       # Individual report views
+│   │   └── library/        # Library management
+│   ├── api/                # API routes for data access
+│   │   ├── assessment/     # Assessment-related API endpoints
+│   │   ├── reports/        # Report-related API endpoints
+│   │   └── library/        # Library management API endpoints
+│   └── LandingPageContent.tsx  # Client component for landing page
+├── client/src/             # Legacy client-side code (React/Vite) - Less used now
+├── components/             # Reusable UI components
+│   ├── ui/                 # Shadcn UI components
+│   ├── assessment/         # Assessment-related components
+│   ├── report/             # Report-related components 
+│   ├── library/            # Library Management UI (DataTable, Dialogs, Layout)
+│   └── shared/             # Components shared across different features
+├── server/                 # Backend-specific logic (non-request handling)
+│   ├── storage.ts          # Storage abstraction layer interface
 │   ├── pg-storage.ts       # PostgreSQL storage implementation
-│   └── storage.ts          # Storage interface definition
-├── shared/                 # Code shared between frontend and backend
-│   ├── schema.ts           # Drizzle ORM schema, Zod schemas, TS types
-│   └── scoring.ts          # Scoring logic utilities
-├── public/                 # Static assets served from root
-├── .env                    # Local environment variables (DO NOT COMMIT)
-├── .env.example            # Example environment variables
-├── drizzle.config.ts       # Drizzle ORM configuration
-├── next.config.mjs         # Next.js configuration
-├── package.json            # Project dependencies and scripts
-├── tsconfig.json           # TypeScript configuration
-└── README.md               # This file
+│   ├── lib/                # Server-side libraries (e.g., prioritizationEngine)
+│   ├── scripts/            # Server-side utility scripts (migrations, scraping etc.)
+│   └── batch-processing/   # Batch processing logic
+├── shared/                 # Code shared between client and server
+│   └── schema.ts           # Database schema (Drizzle) and shared types
+├── lib/                    # General utility functions (client-side focus)
+├── hooks/                  # Custom React hooks (client-side focus)
+├── migrations/             # Database migrations (Drizzle Kit)
+├── public/                 # Static assets served by Next.js
+├── docs/                   # Project documentation
+└── memory-bank/            # AI Assistant project knowledge base
 ```
+
+## Client-Server Component Architecture
+
+The application follows a consistent pattern for implementing UI features:
+
+1. **Server Components (`app/(app)/[feature]/page.tsx`):**
+   - Focus exclusively on data fetching using `async`/`await`
+   - Minimal UI, typically just a container and headings
+   - Pass fetched data to client components as props
+   - No usage of refs, hooks, useState, or other client-only React features
+
+2. **Client Components (`app/(app)/[feature]/ComponentName.tsx`):**
+   - Marked with `'use client'` directive at the top
+   - Handle all UI rendering with Shadcn UI components (which use refs)
+   - Implement interactivity with hooks and state
+   - Typically colocated in the same directory as the server component
+   - Example: `ReportsTable.tsx`, `DashboardContent.tsx`, `LandingPageContent.tsx`
+
+This pattern prevents the "Refs cannot be used in Server Components" error while maintaining the performance benefits of Server Components for data fetching.
 
 ## API Endpoints
 
-This application uses a combination of legacy Express routes and newer Next.js API routes.
-
-### Legacy Express Routes (`server/routes.ts`)
-
-*   **Departments:**
-    *   `GET /api/departments`: List all departments.
-*   **Job Roles:**
-    *   `GET /api/job-roles`: List all job roles (includes `departmentName`).
-    *   `GET /api/job-roles/department/:departmentId`: List job roles for a specific department.
-    *   `POST /api/job-roles`: Create a new job role.
-*   **AI Capabilities:**
-    *   `GET /api/ai-capabilities`: List all AI capabilities.
-    *   `POST /api/ai-capabilities`: Create a new AI capability.
-*   **Assessments:**
-    *   `GET /api/assessments`: List all assessments.
-    *   `GET /api/assessments/user/:userId`: List assessments for a specific user.
-    *   `GET /api/assessments/:id`: Get a specific assessment by ID.
-    *   `POST /api/assessments`: Create a new assessment.
-    *   `PATCH /api/assessments/:id/step`: Update wizard step data for an assessment.
-    *   `PATCH /api/assessments/:id/status`: Update the status of an assessment.
-*   **Reports:**
-    *   `GET /api/reports`: List all reports.
-    *   `GET /api/reports/:id`: Get a specific report by ID.
-    *   `GET /api/reports/assessment/:assessmentId`: Get the report for a specific assessment.
-    *   `POST /api/reports`: Create a new report.
-    *   `PATCH /api/reports/:id/commentary`: Update the consultant commentary for a report.
-*   **Prioritization:**
-    *   `POST /api/prioritize`: Trigger prioritization calculation for an assessment and create a report.
-*   **AI Tools (`server/api/tools.ts`):**
-    *   `GET /api/tools`: List AI tools (supports `search`, `category`, `licenseType` query params). Returns `AiTool[]`.
-    *   `GET /api/tools/:id`: Get a specific AI tool by ID. Returns `AiTool`.
-    *   `POST /api/tools`: Create a new AI tool. Expects `InsertAiTool` body. Returns `AiTool`.
-    *   `PUT /api/tools/:id`: Update an existing AI tool. Expects `Partial<InsertAiTool>` body. Returns `AiTool`.
-    *   `DELETE /api/tools/:id`: Delete an AI tool. Returns 204 No Content.
-*   **Batch Processing:**
-    *   `POST /api/batch/export`: Export job descriptions ready for batch processing.
-    *   `POST /api/batch/results`: Process results from a completed batch job.
-*   **WebSocket:**
-    *   `/ws`: WebSocket endpoint for real-time communication (details TBD).
+The application uses Next.js API Routes for all backend functionality.
 
 ### Next.js API Routes (`app/api/`)
 
-*   **Assessment Scoring (`/api/assessment/score`):**
-    *   `POST`: Calculate and save (upsert) scores for an assessment step. Expects JSON body with scoring criteria and `wizardStepId`. Returns saved `AssessmentScoreData`.
-    *   `GET`: Retrieve saved scores for an assessment step. Requires `wizardStepId` query parameter. Returns `AssessmentScoreData`.
+*   **Assessments:**
+    *   `GET /api/assessment`: List all assessments.
+    *   `GET /api/assessment/[id]`: Get a specific assessment by ID.
+    *   `POST /api/assessment`: Create a new assessment.
+    *   `PATCH /api/assessment/[id]`: Update an assessment.
+    *   `DELETE /api/assessment/[id]`: Delete an assessment.
+
+*   **Assessment Scoring:**
+    *   `POST /api/assessment/score`: Calculate and save scores for an assessment step.
+    *   `GET /api/assessment/score`: Retrieve saved scores for an assessment step.
+
+*   **Reports:**
+    *   `GET /api/reports`: List all reports.
+    *   `GET /api/reports/[id]`: Get a specific report by ID.
+    *   `GET /api/reports/assessment/[assessmentId]`: Get the report for a specific assessment.
+    *   `POST /api/reports`: Create a new report.
+    *   `PATCH /api/reports/[id]`: Update a report.
+
+*   **Library Management:**
+    *   `GET /api/library/jobs`: List all job roles.
+    *   `GET /api/library/capabilities`: List all AI capabilities.
+    *   `GET /api/library/tools`: List all AI tools.
+    *   `POST/PATCH/DELETE` endpoints for each library entity.
 
 ## Development Guidelines
 
 ### Frontend Development
 
-*   Prioritize Next.js App Router features (Server Components, API Routes in `app/api/`) for new development.
-*   Minimize Client Components (`'use client'`). Use React Server Components (RSC) by default.
-*   Use TanStack React Query for managing server state and data fetching.
-*   Leverage shadcn/ui components for UI consistency.
-*   Follow responsive design principles (mobile-first recommended).
-*   Use TypeScript for type safety, referencing types from `shared/schema.ts` where applicable.
+*   **Client-Server Component Pattern:**
+    *   Use Server Components (`page.tsx`) for data fetching
+    *   Use Client Components (marked with `'use client'`) for UI rendering with interactivity
+    *   Colocate components in the same directory when they form a logical unit
+*   Use React Server Components (RSC) by default, only opt into Client Components when necessary
+*   Use TanStack React Query for data fetching and server state management
+*   Use Zustand for client-side state management when needed
+*   Leverage shadcn/ui components for UI consistency
+*   Follow responsive design principles (mobile-first recommended)
+*   Use TypeScript for type safety, referencing types from `shared/schema.ts` where applicable
 
 ### Backend Development
 
-*   Prefer Next.js API Routes (`app/api/.../route.ts`) over legacy Express routes.
-*   All database interactions should go through the storage layer (`server/storage.ts`, `server/pg-storage.ts`).
-*   Use Drizzle ORM for database queries and schema management (`shared/schema.ts`).
-*   Adhere to strict TypeScript practices.
-*   Use ES Modules (`import`/`export`).
+*   Use Next.js API Routes (`app/api/.../route.ts`) for all API endpoints
+*   All database interactions should go through the storage layer (`server/storage.ts`, `server/pg-storage.ts`)
+*   Use Drizzle ORM for database queries and schema management (`shared/schema.ts`)
+*   Adhere to strict TypeScript practices
+*   Use ES Modules (`import`/`export`)
 
 ### Code Style
 
-*   Follow standard TypeScript best practices.
-*   Use functional components with Hooks in React.
-*   Write clear, concise, and maintainable code.
-*   Add JSDoc comments for complex functions, components, and types.
-*   Ensure code is formatted according to project standards (likely Prettier/ESLint).
-*   Use path aliases defined in `tsconfig.json` for cleaner imports.
+*   Follow standard TypeScript best practices
+*   Use functional components with Hooks in React
+*   Write clear, concise, and maintainable code
+*   Add JSDoc comments for complex functions, components, and types
+*   Ensure code is formatted according to project standards (Prettier/ESLint)
+*   Use path aliases defined in `tsconfig.json` for cleaner imports:
+    *   `@/app/*` -> `./app/*`
+    *   `@shared/*` -> `./shared/*`
+    *   `@/server/*` -> `./server/*`
+    *   `@/components/*` -> `./components/*`
+    *   `@/lib/*` -> `./lib/*`
 
 ## Contributing
 

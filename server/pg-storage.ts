@@ -256,6 +256,12 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async deleteAssessment(id: number): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.delete(assessments).where(eq(assessments.id, id));
+    // Optional: Add logging or check result if needed
+    console.log(`Deleted assessment with ID: ${id}`);
+  }
   // Report methods
   async getReport(id: number): Promise<Report | undefined> {
     const result = await this.db.select().from(reports).where(eq(reports.id, id));

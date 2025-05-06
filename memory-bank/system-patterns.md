@@ -16,6 +16,7 @@ The project follows a modern full-stack web application architecture centered ar
 
 -   **Next.js App Router First:** New features and APIs should leverage the App Router structure (`app/`) over legacy patterns (`client/src/`, `server/routes.ts`).
 -   **Minimize Client Components:** Default to RSCs for performance and leverage Next.js server-side capabilities.
+-   **Server/Client Component Separation Pattern:** Separate data fetching (Server Components) from UI rendering with interactivity (Client Components).
 -   **Centralized Schema:** `shared/schema.ts` is the single source of truth for database and data structure definitions using Drizzle schema syntax.
 -   **Abstracted Data Access:** All direct database operations are handled through the `server/storage.ts` interface and its implementation (`server/pg-storage.ts`), promoting decoupling and maintainability.
 -   **Type Safety:** Strict TypeScript usage is enforced throughout the codebase, leveraging types generated from the schema.
@@ -24,6 +25,8 @@ The project follows a modern full-stack web application architecture centered ar
 ## Component & Directory Structure
 
 -   **`app/`**: Primary location for new development (pages, layouts, components, API routes). Components are often colocated with features.
+    - **`app/(app)/`**: Protected application routes requiring authentication
+    - **`app/api/`**: API routes for data access
 -   **`client/src/`**: Contains legacy React code. Modifications should be limited; prefer migrating or creating anew in `app/`.
 -   **`server/`**: Holds backend logic *not* directly related to request handling (e.g., storage implementation, database utilities, batch processing).
 -   **`shared/`**: For code shared across client and server (types, schemas, utilities).
@@ -36,6 +39,25 @@ The project follows a modern full-stack web application architecture centered ar
 -   **API Development:** New API endpoints are created as Next.js API Routes within `app/api/`. They should utilize the storage layer for data access.
 -   **Database Changes:** Schema modifications are defined in `shared/schema.ts`, and migrations are generated using Drizzle Kit (`npm run db:push` or similar migration generation commands) and stored in `migrations/`.
 -   **UI Development:** New UI features are built within the `app/` directory using React Server Components where possible, styled with Tailwind CSS, and potentially using Shadcn UI components.
+
+## Client-Server Component Pattern
+
+We've established a consistent pattern for implementing UI features that require interactivity:
+
+1. **Server Components (`page.tsx`):**
+   - Focus exclusively on data fetching using `async`/`await`
+   - Minimal UI, typically just a container and headings
+   - Pass fetched data to client components as props
+   - No usage of refs, hooks, useState, or other client-only React features
+
+2. **Client Components (`ComponentName.tsx`):**
+   - Marked with `'use client'` directive at the top
+   - Handle all UI rendering with Shadcn UI components (which use refs)
+   - Implement interactivity with hooks and state
+   - Typically colocated in the same directory as the server component
+   - Example: `ReportsTable.tsx`, `DashboardContent.tsx`, `LandingPageContent.tsx`
+
+This pattern prevents the "Refs cannot be used in Server Components" error while maintaining the performance benefits of Server Components for data fetching.
 
 ## Design Patterns
 - **Frontend:**

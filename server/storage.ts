@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { 
   User, InsertUser, 
   Organization, InsertOrganization,
@@ -58,6 +59,7 @@ export interface IStorage {
   createAssessment(assessment: InsertAssessment): Promise<Assessment>;
   updateAssessmentStep(id: number, stepData: Partial<WizardStepData>): Promise<Assessment>;
   updateAssessmentStatus(id: number, status: string): Promise<Assessment>;
+  deleteAssessment(id: number): Promise<void>;
   
   // Report methods
   getReport(id: number): Promise<Report | undefined>;
@@ -106,7 +108,7 @@ export class MemStorage implements IStorage {
   private jobScraperConfigs: Map<number, JobScraperConfig>;
   private aiTools: Map<number, AiTool>;
   private assessmentScores: Map<string, AssessmentScoreData>;
-  
+  private deletedAssessments: Map<number, Assessment>;
   private userIdCounter: number;
   private orgIdCounter: number;
   private deptIdCounter: number;
@@ -130,7 +132,7 @@ export class MemStorage implements IStorage {
     this.jobScraperConfigs = new Map();
     this.aiTools = new Map();
     this.assessmentScores = new Map();
-    
+    this.deletedAssessments = new Map();
     this.userIdCounter = 1;
     this.orgIdCounter = 1;
     this.deptIdCounter = 1;
@@ -295,8 +297,8 @@ export class MemStorage implements IStorage {
       status: assessment.status || 'draft',
       stepData: assessment.stepData || null
     };
-    this.assessments.set(id, newAssessment);
-    return newAssessment;
+    this.assessments.set(id, newAssessment as Assessment);
+    return newAssessment as Assessment;
   }
   
   async updateAssessmentStep(id: number, stepData: Partial<WizardStepData>): Promise<Assessment> {
@@ -328,10 +330,19 @@ export class MemStorage implements IStorage {
       status
     };
     
-    this.assessments.set(id, updatedAssessment);
-    return updatedAssessment;
+    this.assessments.set(id, updatedAssessment as Assessment);
+    return updatedAssessment as Assessment;
   }
   
+  async deleteAssessment(id: number): Promise<void> {
+    const assessment = this.assessments.get(id);
+    if (!assessment) {
+      throw new Error(`Assessment with id ${id} not found`);
+    }
+    this.deletedAssessments.set(id, assessment);
+    this.assessments.delete(id);
+  }
+
   // Report methods
   async getReport(id: number): Promise<Report | undefined> {
     return this.reports.get(id);

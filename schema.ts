@@ -53,7 +53,7 @@ export const insertDepartmentSchema = createInsertSchema(departments).pick({
 export const jobRoles = pgTable("job_roles", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  departmentId: integer("department_id").notNull().references(() => departments.id),
+  departmentId: integer("department_id").notNull(),
   description: text("description"),
   keyResponsibilities: text("key_responsibilities").array(),
   aiPotential: text("ai_potential"), // High, Medium, Low
@@ -129,9 +129,8 @@ export const assessmentStatusEnum = pgEnum('assessment_status', ['draft', 'submi
 export const assessments = pgTable("assessments", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  organizationId: integer("organization_id").notNull().references(() => organizations.id),
-  // ADD .references() HERE
-  userId: integer("user_id").notNull().references(() => users.id),
+  organizationId: integer("organization_id").notNull(),
+  userId: integer("user_id").notNull(),
   status: assessmentStatusEnum("status").default("draft").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -158,7 +157,7 @@ export const updateAssessmentSchema = insertAssessmentSchema.partial().extend({
 // Report model
 export const reports = pgTable("reports", {
   id: serial("id").primaryKey(),
-  assessmentId: integer("assessment_id").notNull().references(() => assessments.id),
+  assessmentId: integer("assessment_id").notNull(),
   generatedAt: timestamp("generated_at").defaultNow().notNull(),
   executiveSummary: text("executive_summary"),
   prioritizationData: jsonb("prioritization_data"), // Heatmap and prioritization list data

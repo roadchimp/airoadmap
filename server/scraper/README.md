@@ -90,20 +90,22 @@ For testing purposes, you can set `MAX_JOBS_PER_KEYWORD` to 1 and increase vario
 
 ### 4. API Endpoints
 
+The system exposes API endpoints through Next.js API Routes (`app/api/`):
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/job-descriptions` | GET | List all job descriptions with pagination |
-| `/api/job-descriptions/status/:status` | GET | List job descriptions by status |
-| `/api/job-descriptions/:id` | GET | Get a specific job description |
+| `/api/job-descriptions/status/[status]` | GET | List job descriptions by status |
+| `/api/job-descriptions/[id]` | GET | Get a specific job description |
 | `/api/job-descriptions` | POST | Create a new job description manually |
-| `/api/job-descriptions/:id/process` | PATCH | Update processed content for a job description |
-| `/api/job-descriptions/:id/status` | PATCH | Update status of a job description |
+| `/api/job-descriptions/[id]/process` | PATCH | Update processed content for a job description |
+| `/api/job-descriptions/[id]/status` | PATCH | Update status of a job description |
 | `/api/job-scraper-configs` | GET | List all scraper configurations |
 | `/api/job-scraper-configs/active` | GET | List active scraper configurations |
-| `/api/job-scraper-configs/:id` | GET | Get a specific scraper configuration |
+| `/api/job-scraper-configs/[id]` | GET | Get a specific scraper configuration |
 | `/api/job-scraper-configs` | POST | Create a new scraper configuration |
-| `/api/job-scraper-configs/:id/last-run` | PATCH | Update last run time for a configuration |
-| `/api/job-scraper-configs/:id/status` | PATCH | Update active status of a configuration |
+| `/api/job-scraper-configs/[id]/last-run` | PATCH | Update last run time for a configuration |
+| `/api/job-scraper-configs/[id]/status` | PATCH | Update active status of a configuration |
 | `/api/cron/run-job-scrapers` | POST | Trigger job scraping process |
 | `/api/cron/process-job-descriptions` | POST | Trigger job processing |
 
@@ -238,81 +240,13 @@ const browser = await puppeteer.launch({
 
 The prompt and output structure for Claude can be customized in the `JobProcessor` class to extract different or additional information from job descriptions.
 
-## Implementation Summary
+## Integration with AI Roadmap
 
-This implementation includes:
+The job scraping system is integrated with the main AI Roadmap application to enhance AI capability recommendations. The extracted data from job descriptions is used to:
 
-1. **Database Schema:**
-   - Added `jobDescriptions` and `jobScraperConfigs` tables with corresponding schemas
-   - Created TypeScript types and Zod schemas for validation
+1. Analyze current job market trends for different roles
+2. Identify in-demand skills related to AI capabilities
+3. Provide data-driven insights for prioritization of AI transformation initiatives
+4. Suggest specific AI tools and technologies based on industry and role relevance
 
-2. **Storage Layer:**
-   - Extended `IStorage` interface with methods for job descriptions and scraper configs
-   - Implemented methods in `MemStorage` class (in-memory storage)
-   - Added sample job scraper configurations
-
-3. **Job Scraper:**
-   - Created a modular web scraper system with support for LinkedIn and Indeed
-   - Implemented `ScraperFactory` pattern for extensibility
-   - Added error handling and logging
-
-4. **Job Processor:**
-   - Integrated Anthropic Claude API for job description analysis
-   - Created a structured prompt for extracting job details
-   - Implemented response parsing and error handling
-
-5. **API Routes:**
-   - Added CRUD endpoints for job descriptions and scraper configurations
-   - Created secure endpoints for cron job execution
-   - Implemented authentication for cron job endpoints
-
-6. **Vercel Integration:**
-   - Configured Vercel Cron Jobs for scheduled execution
-   - Set up serverless functions for job scraping and processing
-
-## Required Environment Variables
-
-```
-# API Keys
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-CRON_API_KEY=your_cron_secret_key_here
-
-# Server Configuration
-PORT=5000
-HOST=127.0.0.1
-
-# Client URL for CORS (in production)
-CLIENT_URL=https://your-client-url.vercel.app 
-
-## Batch Processing
-
-The system supports batch processing of job descriptions using OpenAI's API. This is useful for processing large numbers of job descriptions efficiently. The batch processing workflow consists of two steps:
-
-1. **Export for Batch Processing**
-   - Use the `/api/job-descriptions/batch/export` endpoint to export unprocessed job descriptions
-   - This creates a JSONL file in the `server/batch-processing/requests` directory
-   - A manifest file is also created to track job IDs and processing status
-
-2. **Process Batch Results**
-   - After processing the JSONL file through OpenAI's API
-   - Place the response file in the `server/batch-processing/responses` directory
-   - Use the `/api/job-descriptions/batch/process` endpoint with the response file path
-   - The system will update each job description with the processed content
-
-### Batch Processing Directory Structure
-
-```
-server/batch-processing/
-├── requests/          # Contains JSONL files for OpenAI batch processing
-│   ├── batch_*.jsonl  # Batch request files
-│   └── batch_*_manifest.json  # Manifest files with job IDs
-└── responses/         # Contains OpenAI API response files
-    └── batch_*.jsonl  # Processed response files
-```
-
-### Batch Processing API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/job-descriptions/batch/export` | POST | Export unprocessed job descriptions for batch processing |
-| `/api/job-descriptions/batch/process` | POST | Process batch results from OpenAI API | 
+This integration leverages the consistent client-server component architecture of the main application, with data fetching handled by Server Components and UI rendering by Client Components. 

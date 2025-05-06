@@ -4,16 +4,32 @@
 
 ```
 ├── app/                    # Next.js App Router: Pages, Layouts, Components, API Routes
-│   └── api/                # Next.js API Route handlers
+│   ├── (app)/              # Protected application routes requiring auth
+│   │   ├── dashboard/      # Dashboard with stats and overview
+│   │   ├── assessment/     # Assessment features
+│   │   │   ├── current/    # List of user's current assessments
+│   │   │   ├── new/        # New assessment creation
+│   │   │   └── [id]/       # Individual assessment views
+│   │   ├── reports/        # Assessment reports
+│   │   │   └── [id]/       # Individual report views
+│   │   └── library/        # Library management
+│   ├── api/                # Next.js API Route handlers
+│   │   ├── assessment/     # Assessment-related API endpoints
+│   │   ├── reports/        # Report-related API endpoints
+│   │   └── library/        # Library management API endpoints
+│   └── LandingPageContent.tsx  # Client component for landing page
 ├── client/src/             # Legacy client-side code (React/Vite) - Less used now
 ├── components/             # Reusable UI components
+│   ├── ui/                 # Shadcn UI components
+│   ├── assessment/         # Assessment-related components
+│   ├── report/             # Report-related components 
 │   ├── library/            # Library Management UI (DataTable, Dialogs, Layout)
-│   └── shared/             # Components shared across different features (e.g., ConfirmationDialog)
+│   └── shared/             # Components shared across different features
 ├── server/                 # Backend-specific logic (non-request handling)
 │   ├── storage.ts          # Storage abstraction layer interface
 │   ├── pg-storage.ts       # PostgreSQL storage implementation
 │   ├── lib/                # Server-side libraries (e.g., prioritizationEngine)
-│   └── scripts/            # Server-side utility scripts (migrations, scraping etc.)
+│   ├── scripts/            # Server-side utility scripts (migrations, scraping etc.)
 │   └── batch-processing/   # Batch processing logic
 ├── shared/                 # Code shared between client and server
 │   └── schema.ts           # Database schema (Drizzle) and shared types
@@ -27,12 +43,40 @@
 
 ## Recent Changes / Milestones
 
+*   **UI Client-Server Refactoring (August 2024):**
+    *   Refactored key pages to properly separate Server Components from Client Components
+    *   Fixed "Refs cannot be used in Server Components" errors across the application
+    *   Implemented a consistent pattern for data fetching and UI rendering
+    *   Created client components (`ReportsTable.tsx`, `DashboardContent.tsx`, `LandingPageContent.tsx`)
+    *   Enhanced dashboard UI with metrics and card-based layout
+    *   Added Current Assessments page with management capabilities
+    
 *   **Library UI Refactor (July 2024):**
     *   Refactored `components/library/DataTable.tsx` into a generic component using `@tanstack/react-table`, removing conditional logic and improving type safety.
     *   Updated `components/library/LibraryLayout.tsx` to define columns (`ColumnDef`) for Job Roles, AI Capabilities, and AI Tools, passing them to the appropriate `DataTable` instances or using `useReactTable` directly.
     *   Corrected usage of `AiTool` primary key (`tool_id` instead of `id`) throughout the library components.
     *   Created a reusable `components/shared/ConfirmationDialog.tsx`.
     *   Resolved various type errors related to `tsconfig.json` configuration and component prop mismatches.
+
+## UI Architecture Pattern
+
+The application now follows a consistent UI architecture pattern to properly separate server and client components:
+
+1. **Server Components (`app/(app)/[feature]/page.tsx`):**
+   - Focus on data fetching using `async`/`await`
+   - Minimal UI structure
+   - Pass data to client components
+
+2. **Client Components (`app/(app)/[feature]/ComponentName.tsx`):**
+   - Marked with `'use client'` directive
+   - Handle UI rendering with Shadcn UI components
+   - Implement interactive features
+
+Key implementations of this pattern:
+- **Dashboard:** `app/(app)/dashboard/page.tsx` + `DashboardContent.tsx`
+- **Reports:** `app/(app)/reports/page.tsx` + `ReportsTable.tsx`
+- **Landing Page:** `app/page.tsx` + `LandingPageContent.tsx`
+- **Current Assessments:** `app/(app)/assessment/current/page.tsx` + `CurrentAssessmentsTable.tsx`
 
 ## Environment Information
 
@@ -159,6 +203,7 @@ CREATE TABLE assessments (
   user_id INTEGER NOT NULL, -- REFERENCES users(id)
   status TEXT NOT NULL DEFAULT 'draft', -- e.g., draft, completed
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(), -- Added for sorting current assessments
   step_data JSONB -- Stores wizard step data
 );
 ```
@@ -199,24 +244,18 @@ CREATE TABLE assessment_scores (
 );
 ```
 
-#### Assessment Results (`assessment_results`)
-*(Stores the processed output/analysis of a completed assessment)*
+#### Reports (`reports`)
+*(Stores the generated reports for assessments)*
 ```sql
-CREATE TABLE assessment_results (
-  result_id SERIAL PRIMARY KEY,
+CREATE TABLE reports (
+  id SERIAL PRIMARY KEY,
   assessment_id INTEGER NOT NULL UNIQUE REFERENCES assessments(id) ON DELETE CASCADE,
-  identified_themes JSONB,
-  ranked_priorities JSONB,
-  recommended_capabilities JSONB,
-  capability_rationale JSONB,
-  existing_tool_analysis TEXT,
-  recommended_tools JSONB,
-  rollout_commentary TEXT,
-  heatmap_data JSONB,
-  processing_status TEXT NOT NULL DEFAULT 'Pending', -- Pending, Processing, Success, Failed
-  error_message TEXT,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  completed_at TIMESTAMP
+  generated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  executive_summary TEXT,
+  prioritization_data JSONB, -- Stores heatmap and prioritized items
+  ai_suggestions JSONB, -- Stores AI solution recommendations
+  performance_impact JSONB, -- Stores role impacts and ROI
+  consultant_commentary TEXT -- Optional commentary from consultant
 );
 ```
 
@@ -334,6 +373,7 @@ export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 1. `0000_needy_tomas.sql` - Initial schema setup
 2. `0001_early_johnny_storm.sql` - First schema update
 3. `0002_lazy_silver_samurai.sql` - Second schema update
+4. `0003_client_server_updates.sql` - Updates for client-server pattern
 
 ## Tech Stack
 
@@ -341,3 +381,5 @@ export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 - **Backend:** Next.js API Routes (`app/api/`), Node.js
 - **Database:** PostgreSQL with Drizzle ORM
 - **Deployment:** Vercel
+- **State Management:** TanStack Query for data fetching, Zustand for client state
+- **Data Visualization:** React-based charting libraries (heatmaps, etc.)

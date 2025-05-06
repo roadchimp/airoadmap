@@ -39,7 +39,8 @@
       "@/hooks/*": ["hooks/*"],
       "@shared/*": ["shared/*"],
       "@/server/*": ["server/*"],
-      "@/*": ["client/src/*"]
+      "@/*": ["client/src/*"],
+      "@components/*": ["components/*"]
     },
     "allowJs": true,
     "resolveJsonModule": true,

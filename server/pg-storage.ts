@@ -204,7 +204,27 @@ export class PgStorage implements IStorage {
   }
 
   async listAssessments(): Promise<Assessment[]> {
-    return await this.db.select().from(assessments);
+    // Try to get assessments, but handle missing updated_at column
+    try {
+      return await this.db.select().from(assessments);
+    } catch (error) {
+      // If error is about missing updated_at column
+      if (error instanceof Error && error.message.includes('updated_at')) {
+        console.error('Missing updated_at column in assessments table. Fetching with workaround.');
+        // Use SQL query to select all columns except updated_at
+        const result = await this.db.execute(
+          sql`SELECT id, title, organization_id, user_id, status, created_at, step_data 
+              FROM assessments`
+        );
+        // Add a default updated_at value to match the schema
+        return result.rows.map((row: any) => ({
+          ...row,
+          updatedAt: row.created_at || new Date(),
+        }));
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async listAssessmentsByUser(userId: number): Promise<Assessment[]> {

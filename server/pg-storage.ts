@@ -199,8 +199,31 @@ export class PgStorage implements IStorage {
 
   // Assessment methods
   async getAssessment(id: number): Promise<Assessment | undefined> {
-    const result = await this.db.select().from(assessments).where(eq(assessments.id, id));
-    return result[0];
+    // Try to get assessment, but handle missing updated_at column
+    try {
+      const result = await this.db.select().from(assessments).where(eq(assessments.id, id));
+      return result[0];
+    } catch (error) {
+      // If error is about missing updated_at column
+      if (error instanceof Error && error.message.includes('updated_at')) {
+        console.error('Missing updated_at column in assessments table. Fetching with workaround.');
+        // Use SQL query to select all columns except updated_at
+        const result = await this.db.execute(
+          sql`SELECT id, title, organization_id, user_id, status, created_at, step_data 
+              FROM assessments
+              WHERE id = ${id}`
+        );
+        // Add a default updated_at value to match the schema
+        if (result.rows.length === 0) return undefined;
+        
+        return {
+          ...result.rows[0],
+          updatedAt: result.rows[0].created_at || new Date(),
+        };
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async listAssessments(): Promise<Assessment[]> {
@@ -228,7 +251,28 @@ export class PgStorage implements IStorage {
   }
 
   async listAssessmentsByUser(userId: number): Promise<Assessment[]> {
-    return await this.db.select().from(assessments).where(eq(assessments.userId, userId));
+    // Try to get assessments, but handle missing updated_at column
+    try {
+      return await this.db.select().from(assessments).where(eq(assessments.userId, userId));
+    } catch (error) {
+      // If error is about missing updated_at column
+      if (error instanceof Error && error.message.includes('updated_at')) {
+        console.error('Missing updated_at column in assessments table. Fetching with workaround.');
+        // Use SQL query to select all columns except updated_at
+        const result = await this.db.execute(
+          sql`SELECT id, title, organization_id, user_id, status, created_at, step_data 
+              FROM assessments
+              WHERE user_id = ${userId}`
+        );
+        // Add a default updated_at value to match the schema
+        return result.rows.map((row: any) => ({
+          ...row,
+          updatedAt: row.created_at || new Date(),
+        }));
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   async createAssessment(assessment: InsertAssessment): Promise<Assessment> {
@@ -463,26 +507,13 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
-  // AITool methods (Reverted to use snake_case AiTool type)
-
-  /**
-   * Retrieves a single AI tool by its ID.
-   * @param id The numeric ID of the AI tool.
-   * @returns A promise that resolves to the AiTool object or undefined if not found.
-   */
+  // AITool methods
   async getAITool(id: number): Promise<AiTool | undefined> {
     await this.ensureInitialized();
-    const result: AiTool[] = await this.db.select().from(aiTools).where(eq(aiTools.tool_id, id));
+    const result = await this.db.select().from(aiTools).where(eq(aiTools.tool_id, id));
     return result[0];
   }
 
-  /**
-   * Lists AI tools, optionally filtering by search term, category, and license type.
-   * @param search Optional search term to filter by tool name or description.
-   * @param category Optional category to filter by.
-   * @param licenseType Optional license type to filter by.
-   * @returns A promise that resolves to an array of AiTool objects.
-   */
   async listAITools(search?: string, category?: string, licenseType?: string): Promise<AiTool[]> {
     await this.ensureInitialized();
     let query = this.db.select().from(aiTools).$dynamic(); 
@@ -505,11 +536,6 @@ export class PgStorage implements IStorage {
     return await query.orderBy(asc(aiTools.tool_name));
   }
 
-  /**
-   * Creates a new AI tool in the database.
-   * @param tool An object conforming to InsertAiTool (snake_case, excluding db-generated fields like created_at, updated_at).
-   * @returns A promise that resolves to the newly created AiTool object (including db-generated fields).
-   */
   async createAITool(tool: InsertAiTool): Promise<AiTool> { 
     await this.ensureInitialized();
     
@@ -518,7 +544,7 @@ export class PgStorage implements IStorage {
         tool_name: tool.tool_name, 
     };
 
-    const result: AiTool[] = await this.db.insert(aiTools).values(dbInsertData).returning();
+    const result = await this.db.insert(aiTools).values(dbInsertData).returning();
     const newDbTool = result[0];
 
     if (!newDbTool) {
@@ -528,13 +554,6 @@ export class PgStorage implements IStorage {
     return newDbTool;
   }
 
-  /**
-   * Updates an existing AI tool by its ID.
-   * @param id The numeric ID of the AI tool to update.
-   * @param toolUpdate A partial object conforming to InsertAiTool (snake_case) containing the fields to update.
-   * @returns A promise that resolves to the updated AiTool object.
-   * @throws Error if the tool is not found or if no fields are provided for update.
-   */
   async updateAITool(id: number, toolUpdate: Partial<InsertAiTool>): Promise<AiTool> { 
     await this.ensureInitialized();
 
@@ -550,7 +569,7 @@ export class PgStorage implements IStorage {
        throw new Error("No fields provided to update for AI Tool.");
     }
     
-    const result: AiTool[] = await this.db.update(aiTools)
+    const result = await this.db.update(aiTools)
       .set(finalUpdateData)
       .where(eq(aiTools.tool_id, id))
       .returning();
@@ -564,11 +583,6 @@ export class PgStorage implements IStorage {
     return updatedDbTool;
   }
 
-  /**
-   * Deletes an AI tool by its ID.
-   * @param id The numeric ID of the AI tool to delete.
-   * @returns A promise that resolves when the deletion is attempted. Logs a warning if the tool was not found.
-   */
   async deleteAITool(id: number): Promise<void> { 
     await this.ensureInitialized();
     const result = await this.db.delete(aiTools).where(eq(aiTools.tool_id, id)).returning({ deletedId: aiTools.tool_id });
@@ -576,38 +590,6 @@ export class PgStorage implements IStorage {
     if (result.length === 0) {
        console.warn(`Attempted to delete AI Tool with ID ${id}, but it was not found.`);
     }
-  }
-
-  // CapabilityToolMapping methods
-  // These seem okay as they use the specific InsertCapabilityToolMapping type
-  async getCapabilityToolMappings(capabilityId: number): Promise<CapabilityToolMapping[]> {
-    await this.ensureInitialized();
-    return await this.db.select()
-      .from(capabilityToolMapping)
-      .where(eq(capabilityToolMapping.capability_id, capabilityId));
-  }
-
-  async getToolCapabilityMappings(toolId: number): Promise<CapabilityToolMapping[]> {
-    await this.ensureInitialized();
-    return await this.db.select()
-      .from(capabilityToolMapping)
-      .where(eq(capabilityToolMapping.tool_id, toolId));
-  }
-
-  async createCapabilityToolMapping(mapping: InsertCapabilityToolMapping): Promise<CapabilityToolMapping> {
-    await this.ensureInitialized();
-    const result = await this.db.insert(capabilityToolMapping)
-      .values({
-        ...mapping,
-      })
-      .returning();
-    return result[0];
-  }
-
-  async deleteCapabilityToolMapping(capabilityId: number, toolId: number): Promise<void> {
-    await this.ensureInitialized();
-    await this.db.delete(capabilityToolMapping)
-      .where(sql`${capabilityToolMapping.capability_id} = ${capabilityId} and ${capabilityToolMapping.tool_id} = ${toolId}`);
   }
 
   // Assessment Score methods
@@ -640,4 +622,4 @@ export class PgStorage implements IStorage {
     
     return result[0];
   }
-} 
+}

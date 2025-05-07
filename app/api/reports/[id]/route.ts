@@ -18,7 +18,13 @@ export async function GET(request: Request, { params }: { params: Params }) {
       return NextResponse.json({ message: 'Report not found' }, { status: 404 });
     }
     
-    return NextResponse.json(report);
+    // Also fetch the associated assessment
+    let assessment = null;
+    if (report.assessmentId) {
+      assessment = await storage.getAssessment(report.assessmentId);
+    }
+    
+    return NextResponse.json({ report, assessment });
   } catch (error) {
     console.error('Error fetching report by ID:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';

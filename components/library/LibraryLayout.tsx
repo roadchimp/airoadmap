@@ -877,13 +877,14 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
           <form onSubmit={(e) => {
             e.preventDefault();
             const formData = new FormData(e.currentTarget);
+            const potentialValue = formData.get('aiPotential') as string;
             const data: Partial<InsertJobRole> = {
               title: formData.get('title') as string,
               departmentId: parseInt(formData.get('departmentId') as string, 10),
               keyResponsibilities: formData.get('keyResponsibilities') ? 
                 (formData.get('keyResponsibilities') as string).split(',').map(r => r.trim()) : 
                 [],
-              aiPotential: formData.get('aiPotential') as string,
+              aiPotential: potentialValue as 'Low' | 'Medium' | 'High',
               description: formData.get('description') as string || undefined,
             };
             

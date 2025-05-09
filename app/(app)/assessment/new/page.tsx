@@ -1,15 +1,41 @@
 import AssessmentWizard from "./_components/assessment-wizard";
 import { Suspense } from 'react';
 import LoadingSpinner from '../../../../components/ui/LoadingSpinner'; // Assuming a loading spinner component exists
+import { storage } from '@/server/storage';
+import { Assessment } from '@shared/schema';
 
-export default function NewAssessmentPage() {
-  // This Server Component simply renders the main client component for the wizard.
-  // Any initial data needed by the wizard that *can* be fetched server-side 
-  // could potentially be fetched here and passed down as props, but given the
-  // dynamic nature of the wizard, most logic will live in the client component.
+interface NewAssessmentPageProps {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
+// Function to fetch assessment data if an ID is provided
+async function getInitialAssessmentData(id: string | undefined): Promise<Assessment | null> {
+  if (!id) return null;
+  const assessmentId = parseInt(id, 10);
+  if (isNaN(assessmentId)) return null;
+  
+  try {
+    const assessment = await storage.getAssessment(assessmentId);
+    return assessment || null;
+  } catch (error) {
+    console.error(`Error fetching assessment ${assessmentId} for wizard:`, error);
+    return null;
+  }
+}
+
+export default async function NewAssessmentPage({ searchParams }: NewAssessmentPageProps) {
+  const assessmentId = searchParams?.id as string | undefined;
+  let initialAssessmentData: Assessment | null = null;
+
+  if (assessmentId) {
+    initialAssessmentData = await getInitialAssessmentData(assessmentId);
+    // Optional: if assessment data is not found for a given ID, you might want to redirect or show an error
+    // For now, the wizard will start fresh if initialAssessmentData is null.
+  }
+
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <AssessmentWizard />
+      <AssessmentWizard initialAssessmentData={initialAssessmentData} />
     </Suspense>
   );
 } 

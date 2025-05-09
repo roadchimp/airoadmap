@@ -50,22 +50,21 @@ export const insertDepartmentSchema = createInsertSchema(departments).pick({
 });
 
 // Job Role model
+export const aiPotentialEnum = pgEnum('ai_potential_enum', ['Low', 'Medium', 'High']); // Ensure enum is defined
+
 export const jobRoles = pgTable("job_roles", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   departmentId: integer("department_id").notNull().references(() => departments.id),
   description: text("description"),
   keyResponsibilities: text("key_responsibilities").array(),
-  aiPotential: text("ai_potential"), // High, Medium, Low
+  aiPotential: aiPotentialEnum("ai_potential").default("Medium"), // Use enum, default "Medium", nullable (no .notNull())
 });
 
-export const insertJobRoleSchema = createInsertSchema(jobRoles).pick({
-  title: true,
-  departmentId: true,
-  description: true,
-  keyResponsibilities: true,
-  aiPotential: true,
-}).extend({
+// Let createInsertSchema infer all fields, then omit 'id'
+export const insertJobRoleSchema = createInsertSchema(jobRoles, {
+  // Make aiPotential optional in Zod schema as DB has a default and it's nullable
+  aiPotential: z.enum(aiPotentialEnum.enumValues).optional(), 
   keyResponsibilities: z.union([
     z.string().transform(str => 
       str.split('\n')
@@ -73,7 +72,9 @@ export const insertJobRoleSchema = createInsertSchema(jobRoles).pick({
         .filter(s => s.length > 0)
     ),
     z.array(z.string())
-  ]).default([])
+  ]).optional().default([]), // also ensure this is optional if it can be omitted
+}).omit({ 
+  id: true 
 });
 
 // AI Capability model - UPDATED
@@ -220,6 +221,7 @@ export type AssessmentScores = {
 export const wizardStepDataSchema = z.object({
   basics: z.object({
     companyName: z.string(),
+    reportName: z.string().optional(),
     industry: z.string(),
     size: z.string(),
     goals: z.string(),

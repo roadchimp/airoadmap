@@ -18,7 +18,8 @@ import {
   AiTool,
   AssessmentScoreData,
   InsertAiTool,
- 
+  AssessmentResponse,
+  InsertAssessmentResponse
 } from "../shared/schema.ts";
 
 import { PgStorage } from './pg-storage.ts';
@@ -59,6 +60,7 @@ export interface IStorage {
   createAssessment(assessment: InsertAssessment): Promise<Assessment>;
   updateAssessmentStep(id: number, stepData: Partial<WizardStepData>): Promise<Assessment>;
   updateAssessmentStatus(id: number, status: string): Promise<Assessment>;
+  updateAssessmentUserID(id: number, userId: number): Promise<Assessment>;
   deleteAssessment(id: number): Promise<void>;
   
   // Report methods
@@ -67,6 +69,11 @@ export interface IStorage {
   listReports(): Promise<Report[]>;
   createReport(report: InsertReport): Promise<Report>;
   updateReportCommentary(id: number, commentary: string): Promise<Report>;
+  
+  // Assessment Response methods
+  createAssessmentResponse(response: InsertAssessmentResponse): Promise<AssessmentResponse>;
+  batchCreateAssessmentResponses(responses: InsertAssessmentResponse[]): Promise<AssessmentResponse[]>;
+  getAssessmentResponsesByAssessment(assessmentId: number): Promise<AssessmentResponse[]>;
   
   // Job Description methods
   getJobDescription(id: number): Promise<JobDescription | undefined>;
@@ -108,6 +115,7 @@ export class MemStorage implements IStorage {
   private jobScraperConfigs: Map<number, JobScraperConfig>;
   private aiTools: Map<number, AiTool>;
   private assessmentScores: Map<string, AssessmentScoreData>;
+  private assessmentResponses: Map<number, AssessmentResponse>;
   private deletedAssessments: Map<number, Assessment>;
   private userIdCounter: number;
   private orgIdCounter: number;
@@ -119,6 +127,7 @@ export class MemStorage implements IStorage {
   private jobDescriptionIdCounter: number;
   private jobScraperConfigIdCounter: number;
   private aiToolIdCounter: number;
+  private assessmentResponseIdCounter: number;
   
   constructor() {
     this.users = new Map();
@@ -132,6 +141,7 @@ export class MemStorage implements IStorage {
     this.jobScraperConfigs = new Map();
     this.aiTools = new Map();
     this.assessmentScores = new Map();
+    this.assessmentResponses = new Map();
     this.deletedAssessments = new Map();
     this.userIdCounter = 1;
     this.orgIdCounter = 1;
@@ -143,6 +153,7 @@ export class MemStorage implements IStorage {
     this.jobDescriptionIdCounter = 1;
     this.jobScraperConfigIdCounter = 1;
     this.aiToolIdCounter = 1;
+    this.assessmentResponseIdCounter = 1;
     
     // Initialize with sample data
     this.initializeSampleData();
@@ -328,6 +339,21 @@ export class MemStorage implements IStorage {
     const updatedAssessment = {
       ...assessment,
       status
+    };
+    
+    this.assessments.set(id, updatedAssessment as Assessment);
+    return updatedAssessment as Assessment;
+  }
+  
+  async updateAssessmentUserID(id: number, userId: number): Promise<Assessment> {
+    const assessment = this.assessments.get(id);
+    if (!assessment) {
+      throw new Error(`Assessment with id ${id} not found`);
+    }
+    
+    const updatedAssessment = {
+      ...assessment,
+      userId
     };
     
     this.assessments.set(id, updatedAssessment as Assessment);
@@ -605,6 +631,39 @@ export class MemStorage implements IStorage {
 
   async getAssessmentScore(wizardStepId: string): Promise<AssessmentScoreData | undefined> {
     return this.assessmentScores.get(wizardStepId);
+  }
+
+  // Assessment Response methods
+  async createAssessmentResponse(response: InsertAssessmentResponse): Promise<AssessmentResponse> {
+    const responseId = this.assessmentResponseIdCounter++;
+    const newResponse: AssessmentResponse = {
+      ...response,
+      responseId,
+      createdAt: new Date(),
+      // Ensure all response fields have null as default when undefined
+      responseText: response.responseText ?? null,
+      responseNumeric: response.responseNumeric ?? null,
+      responseBoolean: response.responseBoolean ?? null,
+      responseJson: response.responseJson ?? null
+    };
+    this.assessmentResponses.set(responseId, newResponse);
+    return newResponse;
+  }
+
+  async batchCreateAssessmentResponses(responses: InsertAssessmentResponse[]): Promise<AssessmentResponse[]> {
+    const createdResponses: AssessmentResponse[] = [];
+    
+    for (const response of responses) {
+      const createdResponse = await this.createAssessmentResponse(response);
+      createdResponses.push(createdResponse);
+    }
+    
+    return createdResponses;
+  }
+
+  async getAssessmentResponsesByAssessment(assessmentId: number): Promise<AssessmentResponse[]> {
+    return Array.from(this.assessmentResponses.values())
+      .filter(response => response.assessmentId === assessmentId);
   }
 
   private initializeSampleData() {

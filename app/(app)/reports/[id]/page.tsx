@@ -8,10 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PriorityMatrix } from "./priority-matrix"
 import { OpportunitiesTable } from "./opportunities-table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import { addPrintStyles } from "../../../../utils/print-styles"
+import { toast } from "@/hooks/use-toast"
 
 // Import existing report components for fallback
 import ReportView from '@/components/report/ReportView'
@@ -33,9 +33,6 @@ export default function ReportPage({ params }: ReportPageProps) {
   const reportId = parseInt(params.id, 10)
   
   const [activeTab, setActiveTab] = useState("overview")
-  const [department, setDepartment] = useState("All Departments")
-  const [priority, setPriority] = useState("All Priorities")
-  const [valueThreshold, setValueThreshold] = useState("All Values")
   const [matrixVisible, setMatrixVisible] = useState(false)
 
   // State for report data
@@ -97,26 +94,8 @@ export default function ReportPage({ params }: ReportPageProps) {
     prioritizedItems: PrioritizedItem[] 
   } | undefined
 
-  // Filter opportunities based on selected filters
-  const filteredOpportunities = prioritizationData?.prioritizedItems
-    ? prioritizationData.prioritizedItems.filter((opp) => {
-        if (department !== "All Departments" && opp.department !== department) return false
-        
-        // Convert priority for comparison (assuming priority field uses PriorityLevel format)
-        const itemPriority = typeof opp.priority === 'string' ? 
-          (opp.priority === "high" ? "High" : 
-           opp.priority === "medium" ? "Medium" : "Low") : "Medium"
-        
-        if (priority !== "All Priorities" && itemPriority !== priority) return false
-
-        // Filter by value score
-        if (valueThreshold === "High Value (75+)" && (opp.valueScore || 0) < 75) return false
-        if (valueThreshold === "Medium Value (50-74)" && ((opp.valueScore || 0) < 50 || (opp.valueScore || 0) >= 75)) return false
-        if (valueThreshold === "Low Value (<50)" && (opp.valueScore || 0) >= 50) return false
-
-        return true
-      })
-    : []
+  // Filtered opportunities are now handled directly by the OpportunitiesTab component
+  const opportunities = prioritizationData?.prioritizedItems || []
 
   const handleExportPDF = () => {
     // In a real implementation, this would use a library like jsPDF
@@ -170,44 +149,42 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   const saveCommentary = async () => {
     try {
-      // In a real implementation, this would update the commentary via API
-      // For now, we'll just update the local state
-      setCommentary(tempCommentary)
-      setIsEditing(false)
-      
-      // Here you would make an API call to save the commentary
-      /* Example:
-      await fetch(`/api/reports/${reportId}/commentary`, {
-        method: 'PUT',
+      const response = await fetch(`/api/reports/${reportId}/commentary`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commentary: tempCommentary })
-      })
-      */
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save commentary');
+      }
+
+      setCommentary(tempCommentary);
+      setIsEditing(false);
+      toast({ title: "Success", description: "Commentary saved." });
     } catch (err) {
-      console.error("Error saving commentary:", err)
+      console.error("Error saving commentary:", err);
+      toast({ 
+        title: "Error saving commentary", 
+        description: err instanceof Error ? err.message : "An unknown error occurred.", 
+        variant: "destructive" 
+      });
     }
-  }
+  };
 
   const cancelEditing = () => {
     setTempCommentary(commentary)
     setIsEditing(false)
   }
 
-  // Generate department options from the actual data
-  const departmentSet = new Set<string>()
-  departmentSet.add("All Departments")
-  prioritizationData?.prioritizedItems?.forEach(item => {
-    if (item.department) {
-      departmentSet.add(item.department)
-    }
-  })
-  const departments = Array.from(departmentSet)
-
   // If still loading, show a loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e84c2b]"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#e84c2b]"></div>
+        <p className="mt-4 font-medium text-gray-700">Loading your AI Transformation Assessment...</p>
+        <p className="mt-2 text-sm text-gray-500">This may take a moment as we analyze your assessment data.</p>
       </div>
     )
   }
@@ -297,11 +274,11 @@ export default function ReportPage({ params }: ReportPageProps) {
                     <FileText className="mr-2 h-4 w-4" />
                     Export PDF
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportExcel(prioritizationData?.prioritizedItems || [])} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => handleExportExcel(opportunities)} className="cursor-pointer">
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     Export Excel
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportCSV(prioritizationData?.prioritizedItems || [])} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => handleExportCSV(opportunities)} className="cursor-pointer">
                     <FileText className="mr-2 h-4 w-4" />
                     Export CSV
                   </DropdownMenuItem>
@@ -439,60 +416,7 @@ export default function ReportPage({ params }: ReportPageProps) {
 
           {/* Opportunities Tab */}
           <TabsContent value="opportunities" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Prioritized Opportunities</CardTitle>
-                <p className="text-sm text-gray-500">
-                  Ranked list of roles and functions based on transformation potential.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col lg:flex-row gap-4 mb-6">
-                  <div className="flex-1">
-                    <Select value={department} onValueChange={setDepartment}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="All Departments" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1">
-                    <Select value={priority} onValueChange={setPriority}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="All Priorities" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="All Priorities">All Priorities</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="Low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex-1">
-                    <Select value={valueThreshold} onValueChange={setValueThreshold}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="All Values" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="All Values">All Values</SelectItem>
-                        <SelectItem value="High Value (75+)">High Value (75+)</SelectItem>
-                        <SelectItem value="Medium Value (50-74)">Medium Value (50-74)</SelectItem>
-                        <SelectItem value="Low Value (<50)">Low Value (&lt;50)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <OpportunitiesTable prioritizedItems={prioritizationData?.prioritizedItems} />
-              </CardContent>
-            </Card>
+            <OpportunitiesTable prioritizedItems={opportunities} />
           </TabsContent>
         </Tabs>
       </div>

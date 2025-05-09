@@ -1,7 +1,7 @@
 // src/components/assessment/CurrentAssessmentsTable.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -9,6 +9,8 @@ import {
   getSortedRowModel,
   SortingState,
   useReactTable,
+  ColumnFiltersState,
+  getFilteredRowModel,
 } from '@tanstack/react-table';
 import {
   Table,
@@ -24,6 +26,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -35,16 +40,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Eye, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Eye, MoreHorizontal, Pencil, Trash2, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Assessment } from '@shared/schema'; // Import the Assessment type
-import { useToast } from "@/hooks/use-toast"; // For user feedback
+import { Assessment, assessmentStatusEnum } from '@shared/schema';
+import { useToast } from "@/hooks/use-toast";
 
-// Define a type that includes the reportId ---
-// This type should ideally match the data structure returned by your updated server-side fetch
 type AssessmentWithReportId = Assessment & {
-    reportId?: number | null; // Add optional reportId
+    reportId?: number | null;
     title?: string;
   };
 
@@ -52,45 +55,25 @@ interface CurrentAssessmentsTableProps {
   initialAssessments: AssessmentWithReportId[];
 }
 
+const capitalizeFirstLetter = (string: string) => {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
 export default function CurrentAssessmentsTable({ initialAssessments }: CurrentAssessmentsTableProps) {
   const [assessments, setAssessments] = useState<AssessmentWithReportId[]>(initialAssessments);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [assessmentToDelete, setAssessmentToDelete] = useState<AssessmentWithReportId | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
-
   const handleDeleteAssessment = async () => {
     if (!assessmentToDelete) return;
-
-    console.log(`Attempting to delete assessment: ${assessmentToDelete.id}`);
-    // Replace with your actual API endpoint call
-    // try {
-    //   const response = await fetch(`/api/assessment/${assessmentToDelete.id}`, {
-    //     method: 'DELETE',
-    //   });
-    //   if (!response.ok) {
-    //     throw new Error('Failed to delete assessment');
-    //   }
-    //   setAssessments(assessments.filter(a => a.id !== assessmentToDelete.id));
-    //   toast({ title: "Success", description: "Assessment deleted." });
-    // } catch (error) {
-    //   console.error("Error deleting assessment:", error);
-    //   toast({ title: "Error", description: "Could not delete assessment.", variant: "destructive" });
-    // } finally {
-    //   setIsDeleteDialogOpen(false);
-    //   setAssessmentToDelete(null);
-    //   // Optionally refresh server data if needed, though client-side removal is faster UI feedback
-    //   // router.refresh();
-    // }
-
-    // --- Placeholder Logic ---
     setAssessments(assessments.filter(a => a.id !== assessmentToDelete.id));
-     toast({ title: "Success (Placeholder)", description: `Assessment '${assessmentToDelete.title}' deleted.` });
-     setIsDeleteDialogOpen(false);
-     setAssessmentToDelete(null);
-     // --- End Placeholder ---
+    toast({ title: "Success (Placeholder)", description: `Assessment '${assessmentToDelete.title}' deleted.` });
+    setIsDeleteDialogOpen(false);
+    setAssessmentToDelete(null);
   };
 
   const openDeleteDialog = (assessment: AssessmentWithReportId) => {
@@ -101,13 +84,17 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
   const columns: ColumnDef<AssessmentWithReportId>[] = useMemo(() => [
     {
       accessorKey: 'title',
-      header: 'Assessment Title',
+      header: 'Assessment Name',
       cell: ({ row }) => <div className="font-medium">{row.getValue('title')}</div>,
     },
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => row.getValue('status'),
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        return capitalizeFirstLetter(status);
+      },
+      enableColumnFilter: true,
     },
     {
       accessorKey: 'updatedAt',
@@ -121,7 +108,7 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
       id: 'actions',
       cell: ({ row }) => {
         const assessment = row.original;
-        const canEdit = assessment.status === 'draft'; // Only allow editing drafts
+        const canEdit = assessment.status === 'draft';
 
         return (
           <DropdownMenu>
@@ -139,15 +126,20 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
                    </Link>
                  </DropdownMenuItem>
               ) : (
-                 <DropdownMenuItem asChild disabled={!assessment.reportId}>
-                   <Link href={assessment.reportId ? `/reports/${assessment.reportId}` : '#'} className='flex items-center cursor-pointer'>
-
-                    <Eye className="mr-2 h-4 w-4" /> View Report
-                    {!assessment.reportId && assessment.status !== 'draft' && ' (Missing)'}
-                   </Link>
-                 </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem asChild disabled={!assessment.reportId}>
+                    <Link href={assessment.reportId ? `/reports/${assessment.reportId}` : '#'} className='flex items-center cursor-pointer'>
+                      <Eye className="mr-2 h-4 w-4" /> View Report
+                      {!assessment.reportId && assessment.status !== 'draft' && ' (Missing)'}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href={`/assessment/${assessment.id}/view`} className='flex items-center cursor-pointer'>
+                      <Eye className="mr-2 h-4 w-4" /> View Assessment
+                    </Link>
+                  </DropdownMenuItem>
+                </>
               )}
-
               <DropdownMenuItem
                 className="text-red-600 focus:text-red-700 focus:bg-red-50 flex items-center cursor-pointer"
                 onClick={() => openDeleteDialog(assessment)}
@@ -159,7 +151,7 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
         );
       },
     },
-  ], [assessments]); // Recompute columns if assessment data changes
+  ], []);
 
   const table = useReactTable({
     data: assessments,
@@ -167,30 +159,61 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnFiltersChange: setColumnFilters,
     state: {
       sorting,
+      columnFilters,
     },
   });
 
+  const statusOptions = ["all", ...assessmentStatusEnum.enumValues];
+
+  const selectedStatusFilter = table.getColumn('status')?.getFilterValue() as string || "all";
+
   return (
     <>
+      <div className="flex items-center py-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto">
+              Status: {capitalizeFirstLetter(selectedStatusFilter)}
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {statusOptions.map((status) => (
+              <DropdownMenuCheckboxItem
+                key={status}
+                checked={selectedStatusFilter === status}
+                onCheckedChange={() => {
+                  const newFilterValue = status === "all" ? undefined : status;
+                  table.getColumn('status')?.setFilterValue(newFilterValue);
+                }}
+              >
+                {capitalizeFirstLetter(status)}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -211,7 +234,7 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No assessments found.
+                  No assessments found matching your filters.
                 </TableCell>
               </TableRow>
             )}
@@ -219,8 +242,7 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
         </Table>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>

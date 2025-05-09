@@ -48,11 +48,41 @@ const wizardSteps: WizardStep[] = [
   { id: "review", title: "Review & Submit", description: "Review and generate report" }
 ];
 
+// Helper functions for client-side caching
+const CACHE_KEY_PREFIX = 'ai_assessment_wizard_';
+
+const saveToLocalCache = (assessmentId: number | undefined, stepData: Partial<WizardStepData>) => {
+  if (!assessmentId) return; // Only cache if we have an ID
+  try {
+    localStorage.setItem(`${CACHE_KEY_PREFIX}${assessmentId}`, JSON.stringify(stepData));
+    console.log('Saved assessment data to local cache');
+  } catch (e) {
+    console.error('Failed to save assessment data to cache:', e);
+  }
+};
+
+const getFromLocalCache = (assessmentId: number | undefined): Partial<WizardStepData> | null => {
+  if (!assessmentId) return null;
+  try {
+    const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${assessmentId}`);
+    if (cached) {
+      console.log('Retrieved assessment data from local cache');
+      return JSON.parse(cached);
+    }
+  } catch (e) {
+    console.error('Failed to retrieve assessment data from cache:', e);
+  }
+  return null;
+};
+
 // --- Main Wizard Component --- 
 export default function AssessmentWizard({ initialAssessmentData }: AssessmentWizardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  
+  // Add a loading state for step transitions
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   const initialStepIndex = useMemo(() => {
       const stepId = searchParams.get('step');
@@ -82,9 +112,26 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   // --- State --- 
   const [assessment, setAssessment] = useState<AssessmentState>(() => {
       if (initialAssessmentData) {
+          // Extract stepData and ensure it's not null/undefined
+          const stepData = initialAssessmentData.stepData || {};
+          
+          // Extract reportName from basics if available - ensure string type
+          let reportName = "";
+          if (stepData && 
+              typeof stepData === 'object' && 
+              'basics' in stepData && 
+              stepData.basics && 
+              typeof stepData.basics === 'object' &&
+              'reportName' in stepData.basics && 
+              typeof stepData.basics.reportName === 'string') {
+            reportName = stepData.basics.reportName;
+          }
+          
           return {
               ...initialAssessmentData,
-              stepData: initialAssessmentData.stepData || {}, // Ensure stepData is at least an empty object
+              // Use reportName as title if available, ensuring a string result
+              title: reportName || initialAssessmentData.title || "New AI Transformation Assessment",
+              stepData, 
           };
       } else {
           // Revert back to using 'title' and original fields
@@ -154,27 +201,98 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   });
   
   const generateReportMutation = useMutation({
-    mutationFn: async (assessmentId: number): Promise<Report> => {
-       setIsGeneratingReport(true);
-      const response = await apiRequest("POST", "/api/prioritize", { assessmentId });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json() as Promise<Report>;
+    mutationFn: async (assessmentId: number) => {
+      console.log("Generating report for assessment:", assessmentId);
+      setIsGeneratingReport(true); // Set generation loading state
+      const res = await fetch(`/api/reports/assessment/${assessmentId}`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to generate report");
+      const data = await res.json();
+      return data.reportId;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/assessments/${assessment.id}`] });
-      toast({ title: "Report Generated", description: "Redirecting to your report..." });
-      router.push(`/reports/${data.id}`);
+    onSuccess: (reportId) => {
+      console.log("Report generated:", reportId);
+      setIsGeneratingReport(false); // Clear generation loading state
+      // Navigate to the report page
+      router.push(`/reports/${reportId}`);
     },
-    onError: (error: Error) => {
-      toast({ title: "Error generating report", description: error.message, variant: "destructive" });
+    onError: (error) => {
+      console.error("Failed to generate report:", error);
+      setIsGeneratingReport(false); // Clear generation loading state
+      toast({
+        title: "Error generating report",
+        description: "Please try again. If the problem persists, contact support.",
+        variant: "destructive",
+      });
     },
-    onSettled: () => {
-      setIsGeneratingReport(false);
-    }
   });
 
-  // --- Effects --- 
+  // --- Effects ---
+  
+  // Effect to load from local cache when assessment ID becomes available
+  useEffect(() => {
+    if (assessment.id) {
+      const cachedData = getFromLocalCache(assessment.id);
+      if (cachedData) {
+        // Only update if we have data in the cache that's not already in state
+        setAssessment(prev => {
+          // Merge cached data with existing state, preferring state data if it exists
+          const mergedStepData = { ...cachedData, ...prev.stepData };
+          if (JSON.stringify(mergedStepData) !== JSON.stringify(prev.stepData)) {
+            console.log('Updating assessment with cached data');
+            return { ...prev, stepData: mergedStepData };
+          }
+          return prev;
+        });
+      }
+    }
+  }, [assessment.id]);
+  
+  // Effect to save to local cache when step data changes
+  useEffect(() => {
+    if (assessment.id && Object.keys(assessment.stepData).length > 0) {
+      saveToLocalCache(assessment.id, assessment.stepData);
+    }
+  }, [assessment.stepData, assessment.id]);
+  
+  // Effect to handle prefetching data for the next step
+  useEffect(() => {
+    const currentStepId = wizardSteps[currentStepIndex]?.id;
+    
+    // If moving to the painPoints step, ensure roles are properly prefetched
+    if (currentStepId === 'painPoints') {
+      const selectedRoles = assessment.stepData.roles?.selectedRoles || [];
+      if (selectedRoles.length > 0 && !assessment.stepData.painPoints?.roleSpecificPainPoints) {
+        // Initialize pain points structure for selected roles if not already done
+        setAssessment(prev => {
+          const newStepData = { ...prev.stepData };
+          if (!newStepData.painPoints) {
+            newStepData.painPoints = { roleSpecificPainPoints: {}, generalPainPoints: '' };
+          } else if (!newStepData.painPoints.roleSpecificPainPoints) {
+            newStepData.painPoints.roleSpecificPainPoints = {};
+          }
+          
+          // Create empty pain point entries for each selected role
+          selectedRoles.forEach(role => {
+            if (role.id && !newStepData.painPoints?.roleSpecificPainPoints[role.id]) {
+              if (newStepData.painPoints?.roleSpecificPainPoints) {
+                newStepData.painPoints.roleSpecificPainPoints[role.id] = {
+                  description: '',
+                  severity: undefined,
+                  frequency: undefined,
+                  impact: undefined
+                };
+              }
+            }
+          });
+          
+          return { ...prev, stepData: newStepData };
+        });
+      }
+    }
+  }, [currentStepIndex, assessment.stepData]);
+
   // Sync state with URL step parameter AND update maxReachedStepIndex if needed
   useEffect(() => {
     const stepIdFromUrl = searchParams.get('step') || wizardSteps[0].id;
@@ -189,78 +307,159 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   }, [searchParams]); // Dependency only on searchParams
 
   // --- Handlers --- 
-  const saveCurrentStep = useCallback(async () => {
+  const saveCurrentStep = useCallback(async (onSuccess?: () => void) => {
     if (isSaving) return;
     setIsSaving(true);
     
     const currentStepId = wizardSteps[currentStepIndex].id as keyof WizardStepData;
-    // Ensure we have the most recent step data from state
-    const stepPayload = { [currentStepId]: assessment.stepData[currentStepId] }; 
+    // FIXED: Send the complete assessment.stepData object, not just the current step
+    // This will ensure all steps are retained in the DB
 
     try {
       let currentAssessment = assessment; // Use state directly
       if (!currentAssessment.id) {
-        console.log("Attempting to create assessment:", { ...currentAssessment, stepData: stepPayload });
+        // Use default user ID 1 since we don't have auth yet
+        console.log("Attempting to create assessment with default user ID:", { 
+          ...currentAssessment,
+          userId: 1 
+        });
+        
         const created = await createAssessmentMutation.mutateAsync({
-            ...currentAssessment, // Use current state
-            createdAt: undefined, // Don't send createdAt on create
-            stepData: stepPayload 
+          ...currentAssessment,
+          userId: 1 // Default user ID
         });
-        // Update local state immediately with returned ID if successful
-        // The onSuccess handler for the mutation also updates state, but this can be faster
-        if (created) {
-            setAssessment(prev => ({ ...prev, id: created.id })); 
-        }
+        
+        console.log("Created assessment:", created);
+        // Update the current assessment with created data while preserving step data
+        currentAssessment = { 
+          ...currentAssessment, 
+          id: created.id,
+          userId: created.userId || 1,
+          status: created.status,
+          createdAt: created.createdAt,
+          updatedAt: created.updatedAt
+        };
+        setAssessment(currentAssessment);
+        
+        // Save to local cache after getting ID
+        saveToLocalCache(created.id, assessment.stepData);
       } else {
-         console.log("Attempting to update assessment:", assessment.id, stepPayload);
-        await updateAssessmentStepMutation.mutateAsync({ 
-            id: currentAssessment.id, 
-            stepData: stepPayload
-        });
+        console.log("Attempting to update assessment:", assessment.id, assessment.stepData);
+      }
+
+      // Save changes to step data
+      console.log("Saving step data:", { stepId: currentStepId, data: assessment.stepData[currentStepId] });
+      await updateAssessmentStepMutation.mutateAsync({
+        id: currentAssessment.id!, // Add non-null assertion since we know it exists at this point
+        stepData: assessment.stepData
+      });
+      
+      // Save individual responses to assessment_responses table via API
+      if (currentAssessment.id) {
+        try {
+          // Always use a default user ID of 1 until auth is implemented
+          const userIdToUse: number = currentAssessment.userId ? 
+            (currentAssessment.userId > 0 ? currentAssessment.userId : 1) : 
+            1;
+          
+          console.log("Saving assessment responses:", {
+            assessmentId: currentAssessment.id,
+            userId: userIdToUse,
+            stepId: currentStepId,
+            stepData: assessment.stepData[currentStepId]
+          });
+          
+          // Updated URL to match the Next.js route structure
+          const response = await fetch(`/api/assessment-responses/${currentAssessment.id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: userIdToUse,
+              stepId: currentStepId,
+              stepData: assessment.stepData[currentStepId]
+            }),
+          });
+          
+          if (!response.ok) {
+            console.warn("Warning saving assessment responses:", await response.text());
+          } else {
+            console.log("Successfully saved assessment responses");
+          }
+        } catch (error) {
+          console.warn("Warning saving assessment responses:", error);
+        }
+      }
+      
+      // Call success callback if provided
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error) { 
         console.error("Save failed:", error);
          // Let mutation onError handle toast
     } finally {
-        // Even if mutation fails, we stop showing saving indicator after attempt
-        // Or rely on mutation's onSettled/onError ? For now, let's just stop it here.
-        // Reconsider this: maybe onSuccess/onError should handle setIsSaving(false)?
-        // For now: let mutation handle it
-        // setIsSaving(false); 
+        setIsSaving(false);
     }
   }, [assessment, currentStepIndex, isSaving, createAssessmentMutation, updateAssessmentStepMutation]);
 
+  // --- Enhance navigation handlers with transition state ---
   const handleNext = useCallback(async () => {
-    await saveCurrentStep();
-    if (currentStepIndex < wizardSteps.length - 1) {
-      const nextIndex = currentStepIndex + 1;
-      const nextStepId = wizardSteps[nextIndex].id;
-      const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
-      router.push(`${basePath}?step=${nextStepId}`);
-      // Update max reached index AFTER successful navigation intent
-      setMaxReachedStepIndex(prevMax => Math.max(prevMax, nextIndex));
-    }
-  }, [saveCurrentStep, currentStepIndex, router, assessment.id]);
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    
+    await saveCurrentStep(() => {
+      if (currentStepIndex < wizardSteps.length - 1) {
+        const nextIndex = currentStepIndex + 1;
+        const nextStepId = wizardSteps[nextIndex].id;
+        const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
+        
+        // Update max reached index AFTER successful navigation intent
+        setMaxReachedStepIndex(prevMax => Math.max(prevMax, nextIndex));
+        
+        // Navigate after a short delay to allow UI to update
+        router.push(`${basePath}?step=${nextStepId}`);
+        
+        // Reset transition state after navigation
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 300);
+      } else {
+        setIsTransitioning(false);
+      }
+    });
+  }, [saveCurrentStep, currentStepIndex, router, assessment.id, isTransitioning]);
 
-  const handlePrevious = useCallback(async () => { // Make async
-    // Save before going back (logic added previously)
-    // Note: The actual saving happens in WizardLayout/ProgressIndicator now
-    // We just need to navigate
-    if (currentStepIndex > 0) {
-      const prevStepId = wizardSteps[currentStepIndex - 1].id;
-      const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
-      router.push(`${basePath}?step=${prevStepId}`);
-      // No need to update maxReachedStepIndex when going back
-    }
-  }, [currentStepIndex, router, assessment.id]); // Removed saveCurrentStep dependency here
+  const handlePrevious = useCallback(async () => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    
+    // Save current state before navigating back
+    await saveCurrentStep(() => {
+      if (currentStepIndex > 0) {
+        const prevStepId = wizardSteps[currentStepIndex - 1].id;
+        const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
+        router.push(`${basePath}?step=${prevStepId}`);
+        
+        // Reset transition state after navigation
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 300);
+      } else {
+        setIsTransitioning(false);
+      }
+    });
+  }, [currentStepIndex, router, assessment.id, saveCurrentStep, isTransitioning]);
   
   const handleSubmit = useCallback(async () => {
-     await saveCurrentStep();
-    if (assessment.id) {
+    await saveCurrentStep(() => {
+      if (assessment.id) {
         // Mark final step as reached before submitting
-        setMaxReachedStepIndex(prevMax => Math.max(prevMax, wizardSteps.length -1));
+        setMaxReachedStepIndex(prevMax => Math.max(prevMax, wizardSteps.length - 1));
         generateReportMutation.mutate(assessment.id);
-    }
+      }
+    });
   }, [saveCurrentStep, assessment.id, generateReportMutation]);
   
   // Generic input change handler - deep updates for nested stepData
@@ -316,6 +515,21 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange("basics.companyName", e.target.value)}
                   placeholder="Enter your company name"
                 />
+              </div>
+
+              <div className="section-card">
+                <h3 className="text-base font-medium mb-3 text-slate-800">What is the name of this assessment? <span className="text-red-500">*</span></h3>
+                <Input 
+                  className="max-w-md border-slate-300 focus:border-primary focus:ring-primary"
+                  value={stepData.basics?.reportName || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    // Update both the reportName in stepData and the assessment title
+                    handleInputChange("basics.reportName", e.target.value);
+                    setAssessment(prev => ({ ...prev, title: e.target.value || "New AI Transformation Assessment" }));
+                  }}
+                  placeholder="Enter a name for this assessment"
+                />
+                <p className="text-sm text-slate-500 mt-1">This name will be used as the title for your assessment and generated report.</p>
               </div>
 
               <div className="section-card">
@@ -931,6 +1145,18 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                         />
                     </div>
                     <div>
+                        <Label>Assessment Name</Label>
+                        <Input
+                          className="mt-1"
+                          value={stepData.basics?.reportName || ""}
+                          onChange={(e) => {
+                            // Update both the stepData and the title
+                            handleInputChange("basics.reportName", e.target.value);
+                            setAssessment(prev => ({ ...prev, title: e.target.value || "New AI Transformation Assessment" }));
+                          }}
+                        />
+                    </div>
+                    <div>
                         <Label>Industry</Label>
                         <Select
                            value={stepData.basics?.industry || ''}
@@ -1189,22 +1415,46 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     return <div>Loading step...</div>;
   }
 
+  const isLastStep = currentStepIndex === wizardSteps.length - 1;
+
   return (
     <WizardLayout
       title={assessment.title || "Assessment"}
       steps={wizardSteps}
       currentStepIndex={currentStepIndex}
       totalSteps={wizardSteps.length}
-      onNext={handleNext}
       onPrevious={handlePrevious}
-      isSaving={isSaving}
-      isSubmitting={isGeneratingReport}
+      onNext={handleNext}
       onSubmit={currentStepIndex === wizardSteps.length - 1 ? handleSubmit : undefined}
+      isSaving={isSaving || isTransitioning}
+      isSubmitting={isGeneratingReport}
       assessmentId={assessment.id}
       onSaveBeforeNavigate={saveCurrentStep}
       maxReachedStepIndex={maxReachedStepIndex}
     >
-      {renderStepContent()}
+      <Card className="mb-8">
+        <CardContent className="pt-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {wizardSteps[currentStepIndex].title}
+              </h1>
+              <p className="text-slate-600">
+                {wizardSteps[currentStepIndex].description}
+              </p>
+            </div>
+            
+            {isGeneratingReport && (
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                <span className="text-slate-600 font-medium">Generating report...</span>
+              </div>
+            )}
+          </div>
+          
+          {renderStepContent()}
+        </CardContent>
+      </Card>
     </WizardLayout>
   );
 } 

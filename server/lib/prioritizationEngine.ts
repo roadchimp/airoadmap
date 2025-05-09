@@ -58,21 +58,14 @@ export async function calculatePrioritization(stepData: WizardStepData) {
   
   // Process each selected role in priority order
   for (let i = 0; i < roleRankings.length; i++) {
-    const roleRanking = roleRankings[i];
-    const roleId = typeof roleRanking === 'number' ? roleRanking : 
-                  'id' in roleRanking ? roleRanking.id || i + 1 : i + 1;
-    // Use actual role data or create placeholder
-    const role: { 
-      id: number, 
-      title: string, 
-      department: string, 
-      departmentId: number
-    } = {
-      id: roleId,
-      title: `Role ${roleId}`,
-      department: "General",
-      departmentId: 1
-    };
+    const roleRankingItem = roleRankings[i] as { id?: number, title?: string, department?: string }; // Type assertion
+    
+    // Ensure roleId has a fallback if id is somehow missing, though it shouldn't be
+    const roleId = roleRankingItem.id || (typeof roleRankingItem === 'number' ? roleRankingItem : i + 1);
+    
+    // Use actual role data from roleRankingItem if available, otherwise placeholder
+    const roleTitle = roleRankingItem.title || `Role ${roleId}`;
+    const roleDepartment = roleRankingItem.department || "General";
     
     // Get pain point data for this role
     const rolePainPoints = painPoints[roleId.toString()] || {};
@@ -106,8 +99,8 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     // Create prioritized item
     const prioritizedItem: PrioritizedItem = {
       id: roleId,
-      title: role.title,
-      department: role.department,
+      title: roleTitle,
+      department: roleDepartment,
       valueScore: Math.round(valueScore * 10) / 10,
       effortScore: Math.round(effortScore * 10) / 10,
       priority,
@@ -121,8 +114,8 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     // Add to heatmap
     heatmapData.matrix[valueLevel][effortLevel].items.push({
       id: roleId,
-      title: role.title,
-      department: role.department
+      title: roleTitle,
+      department: roleDepartment
     });
   }
   

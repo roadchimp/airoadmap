@@ -8,8 +8,14 @@ async function getReportsAndAssessments(): Promise<{ reports: Report[], assessme
   try {
     const reports = await storage.listReports() || [];
     const assessments = await storage.listAssessments() || []; 
+    
+    // Sort reports by generatedAt timestamp (most recent first)
+    const sortedReports = Array.isArray(reports) 
+      ? [...reports].sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()) 
+      : [];
+    
     return {
-      reports: Array.isArray(reports) ? reports : [],
+      reports: sortedReports,
       assessments: Array.isArray(assessments) ? assessments : []
     };
   } catch (error) {

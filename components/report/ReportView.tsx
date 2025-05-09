@@ -1,10 +1,11 @@
 'use client';
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SummaryCard from "./SummaryCard";
 import HeatmapDisplay from "./HeatmapDisplay";
-import PrioritizationList from "./PrioritizationList";
+import OpportunitiesTab from "./OpportunitiesTab";
 import AISuggestionCard from "./AISuggestionCard";
 import KPIPlaceholderCard from "./KPIPlaceholderCard";
 import CommentaryBox from "./CommentaryBox";
@@ -36,6 +37,9 @@ const ReportView: React.FC<ReportViewProps> = ({
   onUpdateCommentary,
   isEditable = false
 }) => {
+  // State for active tab
+  const [activeTab, setActiveTab] = useState("overview");
+
   const handlePrint = () => {
     window.print();
   };
@@ -79,42 +83,55 @@ const ReportView: React.FC<ReportViewProps> = ({
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <SummaryCard title="Executive Summary" content={executiveSummary} />
-          
+      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="priority-matrix">Priority Matrix</TabsTrigger>
+          <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <SummaryCard title="Executive Summary" content={executiveSummary} />
+            </div>
+            <div>
+              <AISuggestionCard
+                aiSuggestions={aiSuggestions}
+                title="AI Solution Recommendations"
+              />
+              
+              <KPIPlaceholderCard
+                performanceImpact={performanceImpact}
+                title="Expected Performance Impact"
+              />
+              
+              <CommentaryBox
+                commentary={consultantCommentary}
+                title="Consultant Commentary"
+                onUpdate={onUpdateCommentary}
+                isEditable={isEditable}
+              />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="priority-matrix">
           <HeatmapDisplay
             heatmapData={prioritizationData.heatmap}
             title="AI Transformation Priority Matrix"
             description="This heatmap shows the relative priority of different roles/functions based on potential value and implementation ease."
           />
-          
-          <PrioritizationList
+        </TabsContent>
+
+        <TabsContent value="opportunities">
+          <OpportunitiesTab
             prioritizedItems={prioritizationData.prioritizedItems}
             title="Prioritized Opportunities"
             description="Ranked list of roles and functions based on transformation potential."
           />
-        </div>
-        
-        <div>
-          <AISuggestionCard
-            aiSuggestions={aiSuggestions}
-            title="AI Solution Recommendations"
-          />
-          
-          <KPIPlaceholderCard
-            performanceImpact={performanceImpact}
-            title="Expected Performance Impact"
-          />
-          
-          <CommentaryBox
-            commentary={consultantCommentary}
-            title="Consultant Commentary"
-            onUpdate={onUpdateCommentary}
-            isEditable={isEditable}
-          />
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

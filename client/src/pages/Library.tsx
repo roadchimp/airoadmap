@@ -196,7 +196,7 @@ const Library: React.FC = () => {
   // Create AI tool mutation
   const createAIToolMutation = useMutation({
     mutationFn: async (data: InsertAiTool) => {
-      const response = await apiRequest("POST", "/api/tools", data);
+      const response = await apiRequest("POST", "/api/ai-tools", data);
       if (!response.ok) throw new Error('Failed to create AI tool');
       return response.json() as Promise<AiTool>;
     },
@@ -205,7 +205,7 @@ const Library: React.FC = () => {
         title: "Success",
         description: "AI tool created successfully"
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-tools"] });
       setAIToolDialogOpen(false);
       setEditingAITool(null);
     },
@@ -221,7 +221,7 @@ const Library: React.FC = () => {
   // Update AI tool mutation
   const updateAIToolMutation = useMutation({
       mutationFn: async ({ id, data }: { id: number, data: Partial<InsertAiTool> }) => {
-          const response = await apiRequest("PUT", `/api/tools/${id}`, data);
+          const response = await apiRequest("PUT", `/api/ai-tools/${id}`, data);
           if (!response.ok) {
               const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
               throw new Error(errData?.message || `Request failed with status ${response.status}`);
@@ -230,7 +230,7 @@ const Library: React.FC = () => {
       },
       onSuccess: () => {
           toast({ title: "Success", description: "AI tool updated successfully" });
-          queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/ai-tools"] });
           setAIToolDialogOpen(false);
           setEditingAITool(null);
       },
@@ -284,7 +284,7 @@ const Library: React.FC = () => {
 
   const deleteAIToolMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest("DELETE", `/api/tools/${id}`);
+      const response = await apiRequest("DELETE", `/api/ai-tools/${id}`);
       if (!response.ok) throw new Error('Failed to delete AI tool');
     },
     onSuccess: () => {
@@ -292,7 +292,7 @@ const Library: React.FC = () => {
         title: "Success",
         description: "AI tool deleted successfully"
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/tools"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-tools"] });
     },
     onError: (error) => {
       toast({
@@ -303,80 +303,13 @@ const Library: React.FC = () => {
     }
   });
   
-  // Handle job role form submission
-  const onSubmitJobRole = (data: z.infer<typeof insertJobRoleSchema>) => {
-    createJobRoleMutation.mutate(data);
-  };
-  
-  // Handle AI capability form submission
-  const onSubmitAICapability = (values: AICapabilityFormValues) => {
-    createAICapabilityMutation.mutate(values);
-  };
-  
-  // Open job role dialog
-  const handleAddJobRole = () => {
-    setEditingJobRole(null);
-    const defaultDeptId = departmentsData.length > 0 ? departmentsData[0].id : undefined;
-    jobRoleForm.reset({ 
-        title: "", 
-        departmentId: defaultDeptId,
-        description: "",
-        keyResponsibilities: [],
-        aiPotential: "Medium"
-    });
-    setJobRoleDialogOpen(true);
-  };
-  
-  // Open AI capability dialog
-  const handleAddAICapability = () => {
-    setEditingAICapability(null);
-    aiCapabilityForm.reset();
-    setAICapabilityDialogOpen(true);
-  };
-  
-  // Edit job role
-  const handleEditJobRole = (role: JobRoleWithDepartment) => {
-    setEditingJobRole(role);
-    jobRoleForm.reset({
-      title: role.title,
-      departmentId: role.departmentId,
-      description: role.description || "",
-      keyResponsibilities: Array.isArray(role.keyResponsibilities) ? role.keyResponsibilities : [],
-      aiPotential: role.aiPotential || "Medium"
-    });
-    setJobRoleDialogOpen(true);
-  };
-  
-  // Edit AI capability
-  const handleEditAICapability = (capability: AICapability) => {
-    setEditingAICapability(capability);
-    aiCapabilityForm.reset({
-      name: capability.name || "",
-      category: capability.category || "",
-      description: capability.description || "",
-      implementationEffort: (capability.implementationEffort || "Medium") as AICapabilityFormValues['implementationEffort'],
-      businessValue: (capability.businessValue || "Medium") as AICapabilityFormValues['businessValue']
-    });
-    setAICapabilityDialogOpen(true);
-  };
-  
-  // Open AI tool dialog
-  const handleAddAITool = () => {
-    setEditingAITool(null);
-    setAIToolDialogOpen(true);
-  };
-  
-  // Edit AI tool
-  const handleEditAITool = (tool: AiTool) => {
-    setEditingAITool(tool);
-    setAIToolDialogOpen(true);
-  };
-  
   // Handle AI tool submission
   const handleAIToolSubmit = (data: Partial<InsertAiTool>) => {
     if (editingAITool) {
-      const apiUpdateData = { ...data };
-      updateAIToolMutation.mutate({ id: editingAITool.tool_id, data: apiUpdateData });
+      updateAIToolMutation.mutate({ 
+        id: editingAITool.tool_id, 
+        data 
+      });
     } else {
       if (!data.tool_name) {
          toast({ title: "Error", description: "Tool Name is required.", variant: "destructive" });
@@ -399,9 +332,10 @@ const Library: React.FC = () => {
     }
   };
 
-  const handleDeleteAITool = (id: number) => {
-    if (confirm("Are you sure you want to delete this AI tool?")) {
-      deleteAIToolMutation.mutate(id);
+  const handleDeleteTool = (tool: AiTool) => { 
+    console.log("Delete Tool:", tool.tool_id); 
+    if (confirm("Are you sure you want to delete this tool?")) {
+      deleteAIToolMutation.mutate(tool.tool_id);
     }
   };
   
@@ -423,7 +357,17 @@ const Library: React.FC = () => {
           </DialogHeader>
           
           <Form {...jobRoleForm}>
-            <form onSubmit={jobRoleForm.handleSubmit(onSubmitJobRole)} className="space-y-4">
+            <form onSubmit={jobRoleForm.handleSubmit((data) => {
+              if (editingJobRole) {
+                // Update logic - needs implementation
+                toast({ 
+                  title: "Update job role", 
+                  description: "This feature is not fully implemented yet." 
+                });
+              } else {
+                createJobRoleMutation.mutate(data);
+              }
+            })} className="space-y-4">
               <FormField
                 control={jobRoleForm.control}
                 name="title"
@@ -556,7 +500,17 @@ const Library: React.FC = () => {
           </DialogHeader>
           
           <Form {...aiCapabilityForm}>
-            <form onSubmit={aiCapabilityForm.handleSubmit(onSubmitAICapability)} className="space-y-4">
+            <form onSubmit={aiCapabilityForm.handleSubmit((data) => {
+              if (editingAICapability) {
+                // Update logic - needs implementation
+                toast({ 
+                  title: "Update AI capability", 
+                  description: "This feature is not fully implemented yet." 
+                });
+              } else {
+                createAICapabilityMutation.mutate(data);
+              }
+            })} className="space-y-4">
               <FormField
                 control={aiCapabilityForm.control}
                 name="name"

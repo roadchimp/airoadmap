@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query"; // Import mutation hook
 import { apiRequest } from "@/lib/queryClient"; // Corrected import path
+import { queryClient } from "@/lib/queryClient"; // Import queryClient
 import { useToast } from "@/hooks/use-toast"; // Use our custom hook
 import {
   ColumnDef,
@@ -57,6 +58,8 @@ import {
 import AIToolDialog from "./AIToolDialog"; // Assuming this exists and props match
 import ConfirmationDialog from "@/components/shared/ConfirmationDialog"; // Corrected path assuming standard structure
 import { Badge } from "@/components/ui/badge"; // Import Badge for status rendering
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 /**
  * Props for the LibraryLayout component.
@@ -125,7 +128,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
   initialAiTools,
 }) => {
   const { toast } = useToast(); // Use the hook to get the toast function
-  const [activeTab, setActiveTab] = useState("aiTools"); // Default to AI Tools
+  const [activeTab, setActiveTab] = useState("jobRoles"); // Change default to Job Roles
 
   // --- Internal State for Displayed Data --- 
   const [jobRoles, setJobRoles] = useState<JobRoleWithDepartment[]>(initialJobRoles);
@@ -159,107 +162,244 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
   // useEffect(() => setAiTools(initialAiTools), [initialAiTools]); // Remove this, table state handles it
 
   // --- TODO: Implement Actual Mutations using TanStack Query --- 
-  // Example structure (replace placeholders)
-  /*
   const createToolMutation = useMutation({
-    mutationFn: (newTool: InsertAiTool) => apiRequest('POST', '/api/ai-tools', newTool),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/ai-tools'] }); // Or update cache directly
-      toast({ title: "Success", description: "AI Tool created." });
-      setAIToolDialogOpen(false);
+    mutationFn: async (newTool: InsertAiTool) => {
+      const response = await apiRequest("POST", "/api/ai-tools", newTool);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Failed to create tool`);
+      }
+      return response.json() as Promise<AiTool>;
     },
-    onError: (error) => {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-tools"] });
+      toast({ title: "Success", description: "AI Tool created successfully" });
+      setAIToolDialogOpen(false);
+      setEditingAITool(null);
+    },
+    onError: (error: Error) => {
       toast({ title: "Error", description: `Failed to create tool: ${error.message}`, variant: 'destructive' });
     },
   });
 
   const updateToolMutation = useMutation({
-     mutationFn: ({ tool_id, toolData }: { tool_id: number; toolData: Partial<InsertAiTool> }) => 
-       apiRequest('PUT', `/api/ai-tools/${tool_id}`, toolData),
-     // ... onSuccess, onError ...
-   });
+    mutationFn: async ({ tool_id, toolData }: { tool_id: number; toolData: Partial<InsertAiTool> }) => {
+      const response = await apiRequest("PUT", `/api/ai-tools/${tool_id}`, toolData);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Request failed with status ${response.status}`);
+      }
+      return response.json() as Promise<AiTool>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-tools"] });
+      toast({ title: "Success", description: "AI Tool updated successfully" });
+      setAIToolDialogOpen(false);
+      setEditingAITool(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to update tool: ${error.message}`, variant: 'destructive' });
+    },
+  });
 
-   const deleteToolMutation = useMutation({
-     mutationFn: (tool_id: number) => apiRequest('DELETE', `/api/ai-tools/${tool_id}`),
-     // ... onSuccess, onError ...
-   });
-   */
+  const deleteToolMutation = useMutation({
+    mutationFn: async (tool_id: number) => {
+      const response = await apiRequest("DELETE", `/api/ai-tools/${tool_id}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Request failed with status ${response.status}`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-tools"] });
+      toast({ title: "Success", description: "AI Tool deleted successfully" });
+      setToolToDelete(null); // Close confirmation dialog
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to delete tool: ${error.message}`, variant: 'destructive' });
+      setToolToDelete(null); // Close confirmation dialog on error too
+    },
+  });
 
-  // Placeholder handlers (replace with mutation calls)
+  // -- Job Role Mutations -- 
+  const createJobRoleMutation = useMutation({
+    mutationFn: async (data: InsertJobRole) => {
+      const response = await apiRequest("POST", "/api/job-roles", data);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Failed to create job role`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-roles"] });
+      toast({ title: "Success", description: "Job Role created successfully" });
+      setJobRoleDialogOpen(false);
+      setEditingJobRole(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to create job role: ${error.message}`, variant: 'destructive' });
+    },
+  });
+
+  const updateJobRoleMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertJobRole> }) => {
+      const response = await apiRequest("PUT", `/api/job-roles/${id}`, data);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Failed to update job role`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-roles"] });
+      toast({ title: "Success", description: "Job Role updated successfully" });
+      setJobRoleDialogOpen(false);
+      setEditingJobRole(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to update job role: ${error.message}`, variant: 'destructive' });
+    },
+  });
+
+  const deleteJobRoleMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/job-roles/${id}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Failed to delete job role`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/job-roles"] });
+      toast({ title: "Success", description: "Job Role deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to delete job role: ${error.message}`, variant: 'destructive' });
+    },
+  });
+
+  // -- AI Capability Mutations --
+  const createCapabilityMutation = useMutation({
+    mutationFn: async (data: InsertAICapability) => {
+      const response = await apiRequest("POST", "/api/capabilities", data);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Failed to create capability`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
+      toast({ title: "Success", description: "AI Capability created successfully" });
+      setAICapabilityDialogOpen(false);
+      setEditingAICapability(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to create capability: ${error.message}`, variant: 'destructive' });
+    },
+  });
+
+  const updateCapabilityMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertAICapability> }) => {
+      const response = await apiRequest("PUT", `/api/capabilities/${id}`, data);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Failed to update capability`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
+      toast({ title: "Success", description: "AI Capability updated successfully" });
+      setAICapabilityDialogOpen(false);
+      setEditingAICapability(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to update capability: ${error.message}`, variant: 'destructive' });
+    },
+  });
+
+  const deleteCapabilityMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/capabilities/${id}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ message: `Request failed with status ${response.status}` }));
+        throw new Error(errData?.message || `Failed to delete capability`);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/capabilities"] });
+      toast({ title: "Success", description: "AI Capability deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: `Failed to delete capability: ${error.message}`, variant: 'destructive' });
+    },
+  });
+
+  // Placeholder handlers with real implementations
   const handleCreateTool = (data: InsertAiTool) => {
-     console.log("Create Tool:", data);
-     toast({ title: "Not Implemented", description: "Create Tool mutation needs implementation." });
-     // createToolMutation.mutate(data);
-   };
-   const handleUpdateTool = (id: number, data: Partial<InsertAiTool>) => {
-     console.log("Update Tool:", id, data);
-     toast({ title: "Not Implemented", description: "Update Tool mutation needs implementation." });
-     // updateToolMutation.mutate({ tool_id: id, toolData: data });
-   };
-   const handleDeleteTool = (tool: AiTool) => { 
-     console.log("Delete Tool:", tool.tool_id); 
-     toast({ title: "Not Implemented", description: "Delete Tool mutation needs implementation." });
-     // deleteToolMutation.mutate(tool.tool_id);
-     setToolToDelete(null); // Close confirmation
-   };
-  const handleDeleteCapability = (capability: AICapability) => { // Accept AICapability
-      console.log("Delete Capability:", capability.id);
-      toast({ title: "Not Implemented", description: "Delete Capability mutation needs implementation." });
-      // Placeholder: Call actual delete mutation
-      // deleteCapabilityMutation.mutate(capability.id);
-   };
-   const handleDeleteJobRole = (role: JobRoleWithDepartment) => { // Accept JobRoleWithDepartment
-      console.log("Delete Job Role:", role.id);
-      toast({ title: "Not Implemented", description: "Delete Job Role mutation needs implementation." });
-      // Placeholder: Call actual delete mutation
-      // deleteJobRoleMutation.mutate(role.id);
-   };
+    createToolMutation.mutate(data);
+  };
+  
+  const handleUpdateTool = (id: number, data: Partial<InsertAiTool>) => {
+    updateToolMutation.mutate({ tool_id: id, toolData: data });
+  };
+  
+  const handleDeleteTool = (tool: AiTool) => { 
+    deleteToolMutation.mutate(tool.tool_id);
+  };
 
+  const handleDeleteCapability = (capability: AICapability) => {
+    if (confirm("Are you sure you want to delete this capability?")) {
+      deleteCapabilityMutation.mutate(capability.id);
+    }
+  };
+  
+  const handleDeleteJobRole = (role: JobRoleWithDepartment) => {
+    if (confirm("Are you sure you want to delete this job role?")) {
+      deleteJobRoleMutation.mutate(role.id);
+    }
+  };
 
-  // --- Dialog Control Handlers --- 
+  // Dialog Control Handlers
   const handleAddJobRole = () => {
     setEditingJobRole(null);
-    // setJobRoleDialogOpen(true);
-     toast({ title: "Not Implemented", description: "Add Job Role dialog needs implementation." });
+    setJobRoleDialogOpen(true);
   };
+  
   const handleAddAICapability = () => {
     setEditingAICapability(null);
-     // setAICapabilityDialogOpen(true);
-     toast({ title: "Not Implemented", description: "Add AI Capability dialog needs implementation." });
+    setAICapabilityDialogOpen(true);
   };
+  
   const handleAddAITool = () => {
-    setEditingAITool(null); // Clear any editing state
-    setAIToolDialogOpen(true); // Open the dialog for adding
+    setEditingAITool(null);
+    setAIToolDialogOpen(true);
   };
 
   const handleEditJobRole = (role: JobRoleWithDepartment) => {
-     setEditingJobRole(role);
-     // setJobRoleDialogOpen(true);
-     toast({ title: "Not Implemented", description: "Edit Job Role dialog needs implementation." });
+    setEditingJobRole(role);
+    setJobRoleDialogOpen(true);
   };
+  
   const handleEditAICapability = (capability: AICapability) => {
-     setEditingAICapability(capability);
-      // setAICapabilityDialogOpen(true);
-     toast({ title: "Not Implemented", description: "Edit AI Capability dialog needs implementation." });
+    setEditingAICapability(capability);
+    setAICapabilityDialogOpen(true);
   };
+  
   const handleEditAITool = (tool: AiTool) => {
     setEditingAITool(tool);
     setAIToolDialogOpen(true);
   };
   
-  // Submit handler for AI Tool Dialog (calls placeholder mutations)
+  // Submit handler for AI Tool Dialog
   const handleAIToolDialogSubmit = (data: Partial<InsertAiTool>) => {
-     if (editingAITool?.tool_id) {
-        // Call update mutation placeholder
-        handleUpdateTool(editingAITool.tool_id, data); // Data is already Partial<InsertAiTool>
-     } else {
-        // Call create mutation placeholder
-        // Data should conform to InsertAiTool
-        // We might need to add required fields validation here or in the form itself
-        handleCreateTool(data as InsertAiTool); // Cast carefully or transform data
-     }
-     // Closing the dialog should ideally happen in the mutation's onSuccess callback
-     // setAIToolDialogOpen(false); 
+    if (editingAITool?.tool_id) {
+      handleUpdateTool(editingAITool.tool_id, data);
+    } else {
+      handleCreateTool(data as InsertAiTool);
+    }
   };
 
   // --- Get Add Button Handler --- 
@@ -339,7 +479,10 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
           else if (potential === "Medium") colorClasses = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
           else if (potential === "Low") colorClasses = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
           
-          return <Badge variant="secondary" className={`${colorClasses} border-none`}>{potential || "N/A"}</Badge>;
+          // Only display N/A if the value is null, undefined or empty string
+          const displayValue = (!potential || potential === "") ? "N/A" : potential;
+          
+          return <Badge variant="secondary" className={`${colorClasses} border-none`}>{displayValue}</Badge>;
       },
       // Add filterFn if needed
     },
@@ -721,7 +864,204 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
         // Ensure initialData type matches what AIToolDialog expects (AiTool | null)
         initialData={editingAITool} 
       />
-      {/* TODO: Add JobRoleDialog and AICapabilityDialog instances with their own state/handlers */}
+      
+      {/* Job Role Dialog */}
+      <Dialog open={jobRoleDialogOpen} onOpenChange={setJobRoleDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingJobRole ? 'Edit Job Role' : 'Add New Job Role'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const data: Partial<InsertJobRole> = {
+              title: formData.get('title') as string,
+              departmentId: parseInt(formData.get('departmentId') as string, 10),
+              keyResponsibilities: formData.get('keyResponsibilities') ? 
+                (formData.get('keyResponsibilities') as string).split(',').map(r => r.trim()) : 
+                [],
+              aiPotential: formData.get('aiPotential') as string,
+              description: formData.get('description') as string || undefined,
+            };
+            
+            if (editingJobRole) {
+              updateJobRoleMutation.mutate({ id: editingJobRole.id, data });
+            } else {
+              createJobRoleMutation.mutate(data as InsertJobRole);
+            }
+          }}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="title" className="text-right">Title</Label>
+                <Input
+                  id="title"
+                  name="title"
+                  defaultValue={editingJobRole?.title || ''}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="departmentId" className="text-right">Department</Label>
+                <select 
+                  id="departmentId" 
+                  name="departmentId"
+                  defaultValue={editingJobRole?.departmentId || ''}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
+                  required
+                >
+                  <option value="">Select a department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>{dept.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="keyResponsibilities" className="text-right">Key Responsibilities</Label>
+                <textarea
+                  id="keyResponsibilities"
+                  name="keyResponsibilities"
+                  defaultValue={editingJobRole?.keyResponsibilities?.join(', ') || ''}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
+                  placeholder="Enter responsibilities separated by commas"
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="aiPotential" className="text-right">AI Potential</Label>
+                <select 
+                  id="aiPotential" 
+                  name="aiPotential"
+                  defaultValue={editingJobRole?.aiPotential || 'Medium'}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
+                >
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">Description</Label>
+                <textarea
+                  id="description"
+                  name="description"
+                  defaultValue={editingJobRole?.description || ''}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
+                  placeholder="Enter description"
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setJobRoleDialogOpen(false)}>Cancel</Button>
+              <Button type="submit">{editingJobRole ? 'Update' : 'Create'} Job Role</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* AI Capability Dialog */}
+      <Dialog open={aiCapabilityDialogOpen} onOpenChange={setAICapabilityDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingAICapability ? 'Edit AI Capability' : 'Add New AI Capability'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const data: Partial<InsertAICapability> = {
+              name: formData.get('name') as string,
+              category: formData.get('category') as string,
+              description: formData.get('description') as string || undefined,
+              businessValue: formData.get('businessValue') as "High" | "Medium" | "Low" | "Very High",
+              implementationEffort: formData.get('implementationEffort') as "High" | "Medium" | "Low",
+            };
+            
+            if (editingAICapability) {
+              updateCapabilityMutation.mutate({ id: editingAICapability.id, data });
+            } else {
+              createCapabilityMutation.mutate(data as InsertAICapability);
+            }
+          }}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  defaultValue={editingAICapability?.name || ''}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="category" className="text-right">Category</Label>
+                <Input
+                  id="category"
+                  name="category"
+                  defaultValue={editingAICapability?.category || ''}
+                  className="col-span-3"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">Description</Label>
+                <textarea
+                  id="description"
+                  name="description"
+                  defaultValue={editingAICapability?.description || ''}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
+                  placeholder="Enter description"
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="businessValue" className="text-right">Business Value</Label>
+                <select 
+                  id="businessValue" 
+                  name="businessValue"
+                  defaultValue={editingAICapability?.businessValue || 'Medium'}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
+                >
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="implementationEffort" className="text-right">Implementation Effort</Label>
+                <select 
+                  id="implementationEffort" 
+                  name="implementationEffort"
+                  defaultValue={editingAICapability?.implementationEffort || 'Medium'}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
+                >
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAICapabilityDialogOpen(false)}>Cancel</Button>
+              <Button type="submit">{editingAICapability ? 'Update' : 'Create'} AI Capability</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       {toolToDelete !== null && (

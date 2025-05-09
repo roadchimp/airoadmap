@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 import { 
   assessments, departments, organizations, users, reports, 
   aiCapabilities, jobRoles, jobDescriptions, jobScraperConfigs,
-  aiTools, capabilityToolMapping, assessmentScores
+  aiTools, capabilityToolMapping, assessmentScores, assessmentResponses
 } from '../shared/schema.ts';
 
 // Import types
@@ -28,7 +28,8 @@ import type {
   AiTool, // DB Type (snake_case) - THIS IS THE ONE TO USE
   InsertAiTool, // DB Insert Type (snake_case)
   CapabilityToolMapping, InsertCapabilityToolMapping,
-  AssessmentScoreData
+  AssessmentScoreData,
+  AssessmentResponse, InsertAssessmentResponse
   // AITool // REMOVE References to this non-existent type
 } from '../shared/schema.ts';
 
@@ -291,17 +292,39 @@ export class PgStorage implements IStorage {
       throw new Error(`Assessment with ID ${id} not found`);
     }
 
-    // Merge stepData with existing data safely
+    // Merge stepData with existing data using deep merge
     let updatedStepData: any = {};
     
-    // Only spread if there's existing data and it's an object
+    // Only use existing data if it's an object
     if (current.stepData && typeof current.stepData === 'object') {
-      updatedStepData = { ...current.stepData };
+      updatedStepData = JSON.parse(JSON.stringify(current.stepData)); // Deep clone
     }
     
-    // Add the new step data
-    updatedStepData = { ...updatedStepData, ...stepData };
-
+    // Function to perform deep merge
+    const deepMerge = (target: any, source: any) => {
+      for (const key in source) {
+        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+          // Initialize target key if it doesn't exist
+          if (!target[key] || typeof target[key] !== 'object') {
+            target[key] = {};
+          }
+          // Recursively merge
+          deepMerge(target[key], source[key]);
+        } else {
+          // For arrays or primitives, replace
+          target[key] = source[key];
+        }
+      }
+      return target;
+    };
+    
+    // Perform deep merge of step data
+    updatedStepData = deepMerge(updatedStepData, stepData);
+    
+    console.log("Original data:", current.stepData);
+    console.log("Input data:", stepData);
+    console.log("Merged data:", updatedStepData);
+    
     // Update assessment
     const result = await this.db.update(assessments)
       .set({ stepData: updatedStepData })
@@ -314,6 +337,16 @@ export class PgStorage implements IStorage {
   async updateAssessmentStatus(id: number, status: string): Promise<Assessment> {
     const result = await this.db.update(assessments)
       .set({ status })
+      .where(eq(assessments.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
+  async updateAssessmentUserID(id: number, userId: number): Promise<Assessment> {
+    console.log(`Updating assessment ID ${id} with default user ID ${userId}`);
+    const result = await this.db.update(assessments)
+      .set({ userId })
       .where(eq(assessments.id, id))
       .returning();
     
@@ -621,5 +654,40 @@ export class PgStorage implements IStorage {
       .where(eq(assessmentScores.wizardStepId, wizardStepId));
     
     return result[0];
+  }
+
+  // Assessment Response methods
+  async createAssessmentResponse(response: InsertAssessmentResponse): Promise<AssessmentResponse> {
+    await this.ensureInitialized();
+    
+    const result = await this.db.insert(assessmentResponses)
+      .values(response)
+      .returning();
+    
+    return result[0];
+  }
+
+  async batchCreateAssessmentResponses(responses: InsertAssessmentResponse[]): Promise<AssessmentResponse[]> {
+    await this.ensureInitialized();
+    
+    if (responses.length === 0) {
+      return [];
+    }
+    
+    const result = await this.db.insert(assessmentResponses)
+      .values(responses)
+      .returning();
+    
+    return result;
+  }
+
+  async getAssessmentResponsesByAssessment(assessmentId: number): Promise<AssessmentResponse[]> {
+    await this.ensureInitialized();
+    
+    const result = await this.db.select()
+      .from(assessmentResponses)
+      .where(eq(assessmentResponses.assessmentId, assessmentId));
+    
+    return result;
   }
 }

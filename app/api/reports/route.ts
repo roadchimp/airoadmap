@@ -4,10 +4,27 @@ import { insertReportSchema } from '@shared/schema';
 import { ZodError } from 'zod';
 
 // GET /api/reports
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const assessmentId = url.searchParams.get('assessmentId');
+
+    if (assessmentId) {
+      // Convert to number
+      const assessmentIdNum = parseInt(assessmentId, 10);
+      
+      if (isNaN(assessmentIdNum)) {
+        return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
+      }
+      
+      // Find report by assessment ID
+      const report = await storage.getReportByAssessment(assessmentIdNum);
+      return NextResponse.json({ reports: report ? [report] : [] });
+    }
+    
+    // Fetch all reports
     const reports = await storage.listReports();
-    return NextResponse.json(reports);
+    return NextResponse.json({ reports });
   } catch (error) {
     console.error('Error fetching reports:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';

@@ -55,11 +55,11 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
     if (onPrevious) {
       try {
         await onSaveBeforeNavigate?.();
+        onPrevious();
       } catch (error) {
         console.error("Error saving before navigating back:", error);
         toast({ title: "Save Error", description: "Could not save progress before going back.", variant: "destructive" });
       }
-      onPrevious();
     }
   };
 
@@ -98,7 +98,7 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
                 variant="outline"
                 onClick={handlePreviousClick}
                 disabled={isFirstStep || isSaving}
-                className="border-gray-600 text-gray-700 hover:bg-gray-700"
+                className="border-gray-600 text-gray-700 hover:bg-gray-400"
               >
                 Back
               </Button>

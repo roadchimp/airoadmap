@@ -125,19 +125,26 @@ export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick(
 });
 
 // Assessment model
-export const assessmentStatusEnum = pgEnum('assessment_status', ['draft', 'submitted', 'completed']); // Added 'submitted' as a potential state
+export const assessmentStatusEnum = pgEnum('assessment_status', ['draft', 'submitted', 'completed']);
+export const industryMaturityEnum = pgEnum('industry_maturity_enum', ['Mature', 'Immature']);
+export const companyStageEnum = pgEnum('company_stage_enum', ['Startup', 'Early Growth', 'Scaling', 'Mature']);
 
 export const assessments = pgTable("assessments", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id),
-  // ADD .references() HERE
   userId: integer("user_id").notNull().references(() => users.id),
   status: assessmentStatusEnum("status").default("draft").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  stepData: jsonb("step_data"), // Store all wizard step data as a JSON object
+  stepData: jsonb("step_data"),
 
+  // NEW FIELDS (FR1.x, FR3.1)
+  industry: text("industry").notNull(), // FR1.1.2 - selected during setup
+  industryMaturity: industryMaturityEnum("industry_maturity").notNull(), // FR1.1.3 - selected during setup
+  companyStage: companyStageEnum("company_stage").notNull(), // FR1.2.2 - selected during setup
+  strategicFocus: text("strategic_focus").array(), // Array of strings, allows for 'Other', can be empty array if not specified
+  aiAdoptionScoreInputs: jsonb("ai_adoption_score_inputs"), // Store inputs for AI Adoption Score
 });
 
 // Schema for selecting/retrieving assessments
@@ -166,6 +173,10 @@ export const reports = pgTable("reports", {
   aiSuggestions: jsonb("ai_suggestions"), // AI capability suggestions
   performanceImpact: jsonb("performance_impact"), // KPI estimates
   consultantCommentary: text("consultant_commentary"),
+
+  // NEW FIELDS (FR4.1, FR4.5)
+  aiAdoptionScoreDetails: jsonb("ai_adoption_score_details"), // Store calculated score and components
+  roiDetails: jsonb("roi_details"), // Store calculated ROI and its inputs
 });
 
 export const insertReportSchema = createInsertSchema(reports).pick({
@@ -175,6 +186,9 @@ export const insertReportSchema = createInsertSchema(reports).pick({
   aiSuggestions: true,
   performanceImpact: true,
   consultantCommentary: true,
+  // Add new fields to pick if they are set during report creation
+  aiAdoptionScoreDetails: true,
+  roiDetails: true,
 });
 
 // Scoring types
@@ -220,12 +234,20 @@ export type AssessmentScores = {
 // Update the Wizard Step Data schema
 export const wizardStepDataSchema = z.object({
   basics: z.object({
-    companyName: z.string(),
-    reportName: z.string().optional(),
-    industry: z.string(),
-    size: z.string(),
-    goals: z.string(),
-    stakeholders: z.array(z.string()),
+    companyName: z.string().min(1, "Company Name is required"),
+    reportName: z.string().min(1, "Report Name is required"),
+    industry: z.string().min(1, "Industry is required"),
+    size: z.string().min(1, "Company Size is required"),
+    goals: z.string().optional(),
+    stakeholders: z.array(z.string()).optional(),
+    industryMaturity: z.enum(industryMaturityEnum.enumValues, { 
+      required_error: "Industry Maturity is required",
+      invalid_type_error: "Please select a valid Industry Maturity",
+    }),
+    companyStage: z.enum(companyStageEnum.enumValues, {
+      required_error: "Company Stage is required",
+      invalid_type_error: "Please select a valid Company Stage",
+    }),
   }).optional(),
   
   roles: z.object({
@@ -334,6 +356,12 @@ export type NewAssessment = typeof assessments.$inferInsert;
 
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
+
+// New type for Report joined with Assessment details
+export type ReportWithAssessmentDetails = Report & Pick<
+  Assessment,
+  'industry' | 'industryMaturity' | 'companyStage' | 'strategicFocus' | 'title' // Added assessment title for context
+> & { organizationName?: string }; // Optionally add organization name if needed
 
 export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 
@@ -589,3 +617,30 @@ export interface AssessmentScoreResponse {
 export type JobRoleWithDepartment = JobRole & {
   departmentName: string;
 };
+
+// Performance Metrics model (NEW)
+export const performanceMetricsRelevanceEnum = pgEnum('performance_metrics_relevance_enum', ['low', 'medium', 'high']);
+
+export const performanceMetrics = pgTable("performance_metrics", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  unit: text("unit"),
+  description: text("description"),
+  // Example: { "Startup": "high", "Early Growth": "medium", ... } or { "Product Focused": "high", ...}
+  // This will store how relevance varies by company stage and strategic focus.
+  relevanceConfig: jsonb("relevance_config").$type<Record<string, 'low' | 'medium' | 'high'>>() // FR2.4.1, FR5.1.6 (Changed from array to single object)
+});
+
+export const insertPerformanceMetricSchema = createInsertSchema(performanceMetrics).omit({ id: true });
+export const selectPerformanceMetricSchema = createSelectSchema(performanceMetrics);
+
+// Job Role - Performance Metric Link Table (NEW)
+export const jobRolePerformanceMetrics = pgTable("job_role_performance_metrics", {
+  jobRoleId: integer("job_role_id").notNull().references(() => jobRoles.id, { onDelete: 'cascade' }),
+  performanceMetricId: integer("performance_metric_id").notNull().references(() => performanceMetrics.id, { onDelete: 'cascade' }),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.jobRoleId, table.performanceMetricId] }),
+}));
+
+export const insertJobRolePerformanceMetricSchema = createInsertSchema(jobRolePerformanceMetrics);
+export const selectJobRolePerformanceMetricSchema = createSelectSchema(jobRolePerformanceMetrics);

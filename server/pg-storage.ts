@@ -11,7 +11,9 @@ import dotenv from 'dotenv';
 import { 
   assessments, departments, organizations, users, reports, 
   aiCapabilities, jobRoles, jobDescriptions, jobScraperConfigs,
-  aiTools, capabilityToolMapping, assessmentScores, assessmentResponses
+  aiTools, capabilityToolMapping, assessmentScores, assessmentResponses,
+  insertAssessmentSchema,
+  ReportWithAssessmentDetails
 } from '../shared/schema.ts';
 
 // Import types
@@ -276,61 +278,69 @@ export class PgStorage implements IStorage {
     }
   }
 
-  async createAssessment(assessment: InsertAssessment): Promise<Assessment> {
+  async createAssessment(assessmentInput: InsertAssessment): Promise<Assessment> {
     const result = await this.db.insert(assessments).values({
-      ...assessment,
-      status: assessment.status || 'draft',
-      stepData: assessment.stepData || null
+      ...assessmentInput,
+      status: assessmentInput.status || 'draft',
+      stepData: assessmentInput.stepData || {},
+      updatedAt: new Date(), // Explicitly set updatedAt on creation too, or ensure schema default handles it
+      createdAt: new Date(), // Explicitly set createdAt, or ensure schema default handles it
     }).returning();
     return result[0];
   }
 
-  async updateAssessmentStep(id: number, stepData: Partial<WizardStepData>): Promise<Assessment> {
-    // Get current assessment
+  async updateAssessmentStep(id: number, partialStepData: Partial<WizardStepData>): Promise<Assessment> {
+    await this.ensureInitialized();
     const current = await this.getAssessment(id);
     if (!current) {
       throw new Error(`Assessment with ID ${id} not found`);
     }
 
-    // Merge stepData with existing data using deep merge
-    let updatedStepData: any = {};
+    // Initialize the main update payload for the assessment record
+    const assessmentUpdatePayload: Partial<Omit<Assessment, 'id' | 'createdAt' | 'stepData'> & { updatedAt?: Date }> = {
+        updatedAt: new Date(), // Always update the timestamp
+    };
+
+    // Deep clone existing step_data to merge with new partial data
+    const newStepDataJson = current.stepData ? JSON.parse(JSON.stringify(current.stepData)) : {};
     
-    // Only use existing data if it's an object
-    if (current.stepData && typeof current.stepData === 'object') {
-      updatedStepData = JSON.parse(JSON.stringify(current.stepData)); // Deep clone
+    // Iterate over the keys in the provided partialStepData (e.g., 'basics', 'roles')
+    for (const stepKey in partialStepData) {
+        if (Object.prototype.hasOwnProperty.call(partialStepData, stepKey)) {
+            const key = stepKey as keyof WizardStepData;
+            const dataForThisStep = partialStepData[key];
+            newStepDataJson[key] = dataForThisStep; // Update the JSON for this specific step
+
+            // If this is the 'basics' step, extract data for dedicated columns
+            if (key === 'basics' && dataForThisStep) {
+                const basicsData = dataForThisStep as WizardStepData['basics'];
+                if (basicsData) {
+                    if (basicsData.industry !== undefined) assessmentUpdatePayload.industry = basicsData.industry;
+                    if (basicsData.industryMaturity !== undefined) assessmentUpdatePayload.industryMaturity = basicsData.industryMaturity;
+                    if (basicsData.companyStage !== undefined) assessmentUpdatePayload.companyStage = basicsData.companyStage;
+                    // Assuming 'stakeholders' from wizard basics maps to 'strategicFocus' dedicated column
+                    // If 'strategicFocus' is a distinct field in `basicsData`, use that instead.
+                    if (basicsData.stakeholders !== undefined) assessmentUpdatePayload.strategicFocus = basicsData.stakeholders;
+                    if (basicsData.reportName !== undefined) assessmentUpdatePayload.title = basicsData.reportName; // Update title if reportName changes
+                    // Note: organizationId would likely be set at creation and not change here.
+                    // status might be updated elsewhere or through a specific field in a step
+                }
+            }
+             // If any step data includes a status update (less common for this specific function)
+            if (typeof dataForThisStep === 'object' && dataForThisStep !== null && 'status' in dataForThisStep) {
+                assessmentUpdatePayload.status = (dataForThisStep as any).status;
+            }
+        }
     }
     
-    // Function to perform deep merge
-    const deepMerge = (target: any, source: any) => {
-      for (const key in source) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-          // Initialize target key if it doesn't exist
-          if (!target[key] || typeof target[key] !== 'object') {
-            target[key] = {};
-          }
-          // Recursively merge
-          deepMerge(target[key], source[key]);
-        } else {
-          // For arrays or primitives, replace
-          target[key] = source[key];
-        }
-      }
-      return target;
-    };
-    
-    // Perform deep merge of step data
-    updatedStepData = deepMerge(updatedStepData, stepData);
-    
-    console.log("Original data:", current.stepData);
-    console.log("Input data:", stepData);
-    console.log("Merged data:", updatedStepData);
-    
-    // Update assessment
+    // Add the merged step_data to the main payload
+    (assessmentUpdatePayload as any).stepData = newStepDataJson;
+
     const result = await this.db.update(assessments)
-      .set({ stepData: updatedStepData })
+      .set(assessmentUpdatePayload)
       .where(eq(assessments.id, id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -360,26 +370,65 @@ export class PgStorage implements IStorage {
     console.log(`Deleted assessment with ID: ${id}`);
   }
   // Report methods
-  async getReport(id: number): Promise<Report | undefined> {
-    const result = await this.db.select().from(reports).where(eq(reports.id, id));
-    return result[0];
+  async getReport(id: number): Promise<ReportWithAssessmentDetails | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .select({
+        // Select all fields from reports table
+        ...reports,
+        // Select specific fields from assessments table
+        assessmentTitle: assessments.title,
+        industry: assessments.industry,
+        industryMaturity: assessments.industryMaturity,
+        companyStage: assessments.companyStage,
+        strategicFocus: assessments.strategicFocus,
+        // Select organization name from organizations table
+        organizationName: organizations.name,
+      })
+      .from(reports)
+      .leftJoin(assessments, eq(reports.assessmentId, assessments.id))
+      .leftJoin(organizations, eq(assessments.organizationId, organizations.id))
+      .where(eq(reports.id, id));
+    
+    return result[0] as ReportWithAssessmentDetails | undefined;
   }
 
-  async getReportByAssessment(assessmentId: number): Promise<Report | undefined> {
-    const result = await this.db.select().from(reports).where(eq(reports.assessmentId, assessmentId));
-    return result[0];
+  async getReportByAssessment(assessmentId: number): Promise<ReportWithAssessmentDetails | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .select({
+        // Select all fields from reports table
+        ...reports,
+        // Select specific fields from assessments table
+        assessmentTitle: assessments.title,
+        industry: assessments.industry,
+        industryMaturity: assessments.industryMaturity,
+        companyStage: assessments.companyStage,
+        strategicFocus: assessments.strategicFocus,
+        // Select organization name from organizations table
+        organizationName: organizations.name,
+      })
+      .from(reports)
+      .leftJoin(assessments, eq(reports.assessmentId, assessments.id))
+      .leftJoin(organizations, eq(assessments.organizationId, organizations.id))
+      .where(eq(reports.assessmentId, assessmentId));
+      
+    return result[0] as ReportWithAssessmentDetails | undefined;
   }
 
   async listReports(): Promise<Report[]> {
+    await this.ensureInitialized();
     return await this.db.select().from(reports);
   }
 
   async createReport(report: InsertReport): Promise<Report> {
+    await this.ensureInitialized();
     const result = await this.db.insert(reports).values(report).returning();
     return result[0];
   }
 
   async updateReportCommentary(id: number, commentary: string): Promise<Report> {
+    await this.ensureInitialized();
     const result = await this.db.update(reports)
       .set({ commentary })
       .where(eq(reports.id, id))

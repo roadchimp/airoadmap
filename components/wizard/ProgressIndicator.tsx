@@ -30,12 +30,12 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   const handleStepClick = async (stepId: string, stepIndex: number) => {
     // Allow navigation if:
     // 1. It's not the current step
-    // 2. An assessment ID exists
-    // 3. The target step index is less than OR EQUAL to the maximum reached step index
-    if (stepIndex !== currentStepIndex && assessmentId && stepIndex <= maxReachedStepIndex) {
+    // 2. The target step index is less than OR EQUAL to the maximum reached step index
+    if (stepIndex !== currentStepIndex && stepIndex <= maxReachedStepIndex) {
       try {
         await onSaveBeforeNavigate?.();
-        router.push(`/assessment/${assessmentId}?step=${stepId}`);
+        // Use a fixed route for local wizard navigation
+        router.push(`/assessment/new?step=${stepId}`);
       } catch (error) {
         console.error("Error saving before navigating via progress indicator:", error);
         toast({ title: "Save Error", description: "Could not save progress before navigating.", variant: "destructive" });
@@ -60,7 +60,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 
           // Determine if the step should be clickable
           // Allow clicking any step UP TO AND INCLUDING the maximum reached step
-          const isClickable = index <= maxReachedStepIndex && !!assessmentId;
+          const isClickable = index <= maxReachedStepIndex;
 
           return (
             <div

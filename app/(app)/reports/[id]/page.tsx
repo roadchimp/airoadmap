@@ -15,10 +15,10 @@ import { toast } from "@/hooks/use-toast"
 
 // Import existing report components for fallback
 import ReportView from '@/components/report/ReportView'
-import { Report, Assessment, HeatmapData, PrioritizedItem, AISuggestion, PerformanceImpact } from '@shared/schema'
+import { Report, Assessment, HeatmapData, PrioritizedItem, AISuggestion, PerformanceImpact, ReportWithAssessmentDetails } from '@shared/schema'
 
 // Keep the fetching function as server action
-async function getReportData(id: number): Promise<{ report: Report | null, assessment: Assessment | null }> {
+async function getReportData(id: number): Promise<{ report: ReportWithAssessmentDetails | null, assessment: Assessment | null }> {
   // This is a placeholder. In the implementation, we'll use the server's getReportData
   return { report: null, assessment: null }
 }
@@ -36,7 +36,7 @@ export default function ReportPage({ params }: ReportPageProps) {
   const [matrixVisible, setMatrixVisible] = useState(false)
 
   // State for report data
-  const [reportData, setReportData] = useState<Report | null>(null)
+  const [reportData, setReportData] = useState<ReportWithAssessmentDetails | null>(null)
   const [assessment, setAssessment] = useState<Assessment | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -248,50 +248,72 @@ export default function ReportPage({ params }: ReportPageProps) {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Header */}
-      <div className="border-b border-gray-200 bg-white">
-        <div className="container mx-auto py-6 px-4 md:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="bg-white shadow-sm print:shadow-none">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold">Report for {assessment?.title || `Assessment ${reportData.assessmentId}`}</h1>
-              <p className="text-gray-500">
+              <h1 className="text-3xl font-bold leading-tight text-gray-900 print:text-2xl">
+                {reportData.title || `AI Transformation Report`}
+              </h1>
+              <p className="mt-1 text-sm text-gray-500 print:text-xs">
                 Generated on {new Date(reportData.generatedAt).toLocaleString()}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex space-x-3 print:hidden">
+              <Button variant="outline" size="sm" onClick={handleExportPDF}><Printer className="mr-2 h-4 w-4" /> Print/PDF</Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-gray-700 border-gray-300">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export
-                  </Button>
+                  <Button variant="outline" size="sm"><Share2 className="mr-2 h-4 w-4" /> Export</Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="bg-white border-gray-200 text-gray-700">
-                  <DropdownMenuItem onClick={() => window.print()} className="cursor-pointer">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handleExportCSV(opportunities)}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" /> Export CSV
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportPDF()} className="cursor-pointer">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Export PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportExcel(opportunities)} className="cursor-pointer">
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    Export Excel
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExportCSV(opportunities)} className="cursor-pointer">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Export CSV
+                  <DropdownMenuItem onClick={() => handleExportExcel(opportunities)}>
+                    <FileText className="mr-2 h-4 w-4" /> Export Excel (CSV)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button size="sm" className="bg-[#e84c2b] hover:bg-[#d43c1b] text-white">
-                <Share2 className="mr-2 h-4 w-4" />
-                Share
-              </Button>
             </div>
           </div>
+
+          {/* Assessment Details Section */}
+          <Card className="mt-6 bg-slate-50 print:border print:shadow-none">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-lg font-medium text-slate-800">Assessment Context</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 py-3 text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+              <div>
+                <span className="font-semibold text-slate-600">Assessment For: </span>
+                {reportData.title || 'N/A'}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-600">Organization: </span>
+                {reportData.organizationName || 'N/A'}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-600">Industry: </span>
+                {reportData.industry || 'N/A'}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-600">Industry Maturity: </span>
+                {reportData.industryMaturity || 'N/A'}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-600">Company Stage: </span>
+                {reportData.companyStage || 'N/A'}
+              </div>
+              <div>
+                <span className="font-semibold text-slate-600">Strategic Focus: </span>
+                {Array.isArray(reportData.strategicFocus) && reportData.strategicFocus.length > 0 
+                  ? reportData.strategicFocus.join(', ') 
+                  : reportData.strategicFocus || 'N/A'}
+              </div>
+            </CardContent>
+          </Card>
+
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
       <div className="container mx-auto py-8 px-4 md:px-6">

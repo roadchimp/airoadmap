@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
+import { assessments, wizardStepDataSchema, WizardStepData } from '@shared/schema';
+import { PgStorage } from '@/server/pg-storage';
+import { z } from 'zod';
 
 interface Params {
   id: string;
@@ -10,37 +13,36 @@ interface Params {
  * Updates step data for a specific assessment
  */
 export async function PATCH(request: Request, { params }: { params: Params }) {
-  const assessmentId = parseInt(params.id);
-  if (isNaN(assessmentId)) {
-    return NextResponse.json({ 
-      success: false,
-      message: 'Invalid assessment ID' 
-    }, { status: 400 });
-  }
-  
+  const storage = new PgStorage();
   try {
-    const stepData = await request.json();
-    console.log(`Updating assessment ID ${assessmentId} with step data:`, stepData);
-    
-    // Get the current assessment to check if userId exists
-    const currentAssessment = await storage.getAssessment(assessmentId);
-    
-    // If no userId is present, add the default user ID (1)
-    if (currentAssessment && (!currentAssessment.userId || currentAssessment.userId <= 0)) {
-      // Update the assessment with default user ID
-      await storage.updateAssessmentUserID(assessmentId, 1);
-      console.log(`Set default user ID (1) for assessment ${assessmentId}`);
+    await (storage as any).ensureInitialized();
+    const assessmentId = parseInt(params.id, 10);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json({ error: "Invalid assessment ID" }, { status: 400 });
     }
+
+    const body = await request.json();
+
+    // The body here is Partial<WizardStepData>
+    // For example: { basics: { companyName: "New Name", ... } } or { roles: { ... } }
     
-    const assessment = await storage.updateAssessmentStep(assessmentId, stepData);
-    
-    return NextResponse.json(assessment);
+    // Validate the incoming partial step data against the corresponding part of the main schema.
+    // This is a bit more complex because we don't know which step it is beforehand without a stepId in path.
+    // However, wizardStepDataSchema.partial() can validate that the structure is a valid partial of WizardStepData.
+    const validatedPartialStepData = wizardStepDataSchema.partial().parse(body);
+
+    // The updated pg-storage.updateAssessmentStep method now handles extracting data for
+    // dedicated columns if 'basics' is present in validatedPartialStepData.
+    const updatedAssessment = await storage.updateAssessmentStep(assessmentId, validatedPartialStepData);
+
+    return NextResponse.json(updatedAssessment);
   } catch (error) {
-    console.error(`Error updating assessment step:`, error);
-    const errorMessage = error instanceof Error ? error.message : 'Error updating assessment step';
-    return NextResponse.json({ 
-      success: false,
-      message: errorMessage 
-    }, { status: 500 });
+    console.error(`Failed to update assessment step for ID ${params.id}:`, error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid input for step", details: error.errors }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Failed to update assessment step" }, { status: 500 });
+  } finally {
+    await storage.disconnect();
   }
 } 

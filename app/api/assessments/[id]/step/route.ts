@@ -4,9 +4,9 @@ import { assessments, wizardStepDataSchema, WizardStepData } from '@shared/schem
 import { PgStorage } from '@/server/pg-storage';
 import { z } from 'zod';
 
-interface Params {
+type Params = {
   id: string;
-}
+};
 
 /**
  * PATCH /api/assessments/:id/step
@@ -15,13 +15,26 @@ interface Params {
 export async function PATCH(request: Request, { params }: { params: Params }) {
   const storage = new PgStorage();
   try {
-    await (storage as any).ensureInitialized();
     const assessmentId = parseInt(params.id, 10);
     if (isNaN(assessmentId)) {
       return NextResponse.json({ error: "Invalid assessment ID" }, { status: 400 });
     }
 
+    const assessment = await storage.getAssessment(assessmentId);
+    if (!assessment) {
+      return NextResponse.json({ error: "Assessment not found" }, { status: 404 });
+    }
+
     const body = await request.json();
+    
+    // Handle special case for aiAdoptionScoreInputs if it exists
+    if (body.aiAdoptionScoreInputs) {
+      const updatedAssessment = await storage.updateAssessmentStep(assessmentId, {
+        aiAdoptionScoreInputs: body.aiAdoptionScoreInputs
+      });
+      
+      return NextResponse.json(updatedAssessment);
+    }
 
     // The body here is Partial<WizardStepData>
     // For example: { basics: { companyName: "New Name", ... } } or { roles: { ... } }

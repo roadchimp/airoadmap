@@ -15,6 +15,20 @@
       "when": 1746790945897,
       "tag": "0001_talented_wildside",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1746882561749,
+      "tag": "0002_graceful_mauler",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1747010198216,
+      "tag": "0003_safe_champions",
+      "breakpoints": true
     }
   ]
 }

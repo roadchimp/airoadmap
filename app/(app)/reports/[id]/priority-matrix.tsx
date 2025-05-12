@@ -9,6 +9,7 @@ interface MatrixItem {
   y: number
   value: string
   priority: string
+  aiPotential?: "High" | "Medium" | "Low" // Add AI Potential field
 }
 
 interface PriorityMatrixProps {
@@ -193,6 +194,29 @@ export function PriorityMatrix({ data, heatmapData, isVisible }: PriorityMatrixP
       }
     }
 
+    // Assign AI potential based on position in the matrix
+    const getAIPotential = (x: number, y: number): "High" | "Medium" | "Low" => {
+      // Top-right corner (low effort, high value) has highest potential
+      if (x === 2 && y === 2) return "High";
+      if (x === 1 && y === 2) return "High";
+      if (x === 2 && y === 1) return "High";
+      
+      // Middle and middle-right have medium potential
+      if (x === 1 && y === 1) return "Medium";
+      if (x === 2 && y === 0) return "Medium";
+      if (x === 0 && y === 2) return "Medium";
+      
+      // The rest have low potential
+      return "Low";
+    }
+
+    // Update matrixData with AI potential
+    matrixData.forEach(item => {
+      if (!item.aiPotential) {
+        item.aiPotential = getAIPotential(item.x, item.y);
+      }
+    });
+
     // Create the main group
     const g = svg.append("g").attr("transform", `translate(${margin.left}, ${margin.top})`)
 
@@ -212,19 +236,33 @@ export function PriorityMatrix({ data, heatmapData, isVisible }: PriorityMatrixP
       .attr("ry", 4)
       .attr("opacity", 0.9)
 
-    // Add text labels
+    // Add text labels (Priority)
     g.selectAll("text.cell-label")
       .data(matrixData)
       .enter()
       .append("text")
       .attr("class", "cell-label")
       .attr("x", (d) => d.x * cellWidth + cellWidth / 2)
-      .attr("y", (d) => (2 - d.y) * cellHeight + cellHeight / 2)
+      .attr("y", (d) => (2 - d.y) * cellHeight + cellHeight / 3) // Position label in the upper third
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
       .attr("fill", (d) => (d.priority.toLowerCase() === "low" ? "#4b5563" : "white"))
       .attr("font-weight", "bold")
       .text((d) => d.value)
+
+    // Add AI Potential labels
+    g.selectAll("text.ai-potential-label")
+      .data(matrixData)
+      .enter()
+      .append("text")
+      .attr("class", "ai-potential-label")
+      .attr("x", (d) => d.x * cellWidth + cellWidth / 2)
+      .attr("y", (d) => (2 - d.y) * cellHeight + cellHeight * 2/3) // Position in the lower third
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("fill", (d) => (d.priority.toLowerCase() === "low" ? "#4b5563" : "white"))
+      .attr("font-size", "12px")
+      .text((d) => `AI Potential: ${d.aiPotential}`)
 
     // Add x-axis labels with better positioning
     const xLabels = ["High Effort", "Medium Effort", "Low Effort"]
@@ -278,6 +316,49 @@ export function PriorityMatrix({ data, heatmapData, isVisible }: PriorityMatrixP
       .attr("font-weight", "bold")
       .attr("font-size", "16px")
       .text("Business Value")
+
+    // Add a legend title
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 30)
+      .attr("text-anchor", "middle")
+      .attr("font-size", "14px")
+      .attr("font-weight", "bold")
+      .attr("fill", "#4b5563")
+      .text("AI Potential Legend")
+
+    // Create legend group
+    const legend = svg.append("g")
+      .attr("transform", `translate(${width / 2 - 150}, ${height - 20})`)
+
+    // Add legend items
+    const aiPotentialLevels = [
+      { level: "High", color: "#e84c2b" },
+      { level: "Medium", color: "#f8a97a" },
+      { level: "Low", color: "#e2e8f0" }
+    ]
+
+    legend.selectAll("rect")
+      .data(aiPotentialLevels)
+      .enter()
+      .append("rect")
+      .attr("x", (d, i) => i * 100)
+      .attr("y", 0)
+      .attr("width", 16)
+      .attr("height", 16)
+      .attr("fill", d => d.color)
+      .attr("rx", 2)
+      .attr("ry", 2)
+
+    legend.selectAll("text")
+      .data(aiPotentialLevels)
+      .enter()
+      .append("text")
+      .attr("x", (d, i) => i * 100 + 20)
+      .attr("y", 12)
+      .attr("fill", "#4b5563")
+      .attr("font-size", "12px")
+      .text(d => d.level)
 
     setIsInitialized(true)
   }

@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { calculatePrioritization } from '@/server/lib/prioritizationEngine';
-import type { WizardStepData, AssessmentResponse } from '@shared/schema';
+import { calculateAiAdoptionScore, type CalculatedAiAdoptionScore } from '@/server/lib/aiAdoptionScoreEngine';
+import type { 
+  WizardStepData, 
+  AssessmentResponse, 
+  AiAdoptionScoreInputComponents,
+  OrganizationScoreWeights
+} from '@shared/schema';
 
 interface Params {
   assessmentId: string;
@@ -43,6 +49,53 @@ export async function POST(request: Request, { params }: { params: Params }) {
       return NextResponse.json({ message: 'Assessment not found' }, { status: 404 });
     }
 
+    // Ensure organizationId is present for fetching weights
+    if (!assessment.organizationId) {
+      console.error(`Assessment ${assessmentId} is missing organizationId.`);
+      return NextResponse.json({ message: 'Assessment is missing organization ID, cannot calculate adoption score.' }, { status: 400 });
+    }
+
+    // 1. Fetch Organization Score Weights
+    // It's assumed getOrganizationScoreWeights returns valid default weights if no specific ones are found.
+    const organizationWeights = await storage.getOrganizationScoreWeights(assessment.organizationId);
+    if (!organizationWeights) {
+      // This case should ideally be handled by getOrganizationScoreWeights returning defaults.
+      // If it can truly be undefined, we might need to log and use hardcoded emergency defaults or fail.
+      console.error(`Organization score weights not found for organization ${assessment.organizationId}. Report generation might be inaccurate.`);
+      // For now, let's allow proceeding but this is a point of concern if it happens.
+      // A more robust solution might be to throw an error or use a globally defined default set of weights.
+      // return NextResponse.json({ message: `Organization score weights not found for organization ${assessment.organizationId}.` }, { status: 500 });
+    }
+    
+    // 2. Get AI Adoption Score Inputs from assessment
+    // Assuming assessment.aiAdoptionScoreInputs is of type AiAdoptionScoreInputComponents | null | undefined
+    const scoreInputs = assessment.aiAdoptionScoreInputs as AiAdoptionScoreInputComponents | null;
+
+    if (!scoreInputs) {
+      console.warn(`Assessment ${assessmentId} is missing AI adoption score inputs. Score will not be calculated.`);
+      // Proceed without adoption score if inputs are missing, or return an error
+      // return NextResponse.json({ message: 'Assessment is missing AI adoption score inputs.' }, { status: 400 });
+    }
+    
+    let calculatedAdoptionScore: CalculatedAiAdoptionScore | undefined = undefined;
+    if (scoreInputs && assessment.industry && assessment.companyStage && assessment.industryMaturity) {
+        try {
+            calculatedAdoptionScore = await calculateAiAdoptionScore(
+                scoreInputs,
+                assessment.industry,
+                assessment.companyStage,
+                assessment.industryMaturity,
+                assessment.organizationId
+            );
+        } catch (calcError) {
+            console.error('Error calculating AI Adoption Score:', calcError);
+            // Decide if report generation should fail or proceed without score
+            // For now, proceed without it, but log the error.
+        }
+    } else {
+        console.warn(`Cannot calculate AI Adoption Score due to missing required fields: ${!scoreInputs ? 'scoreInputs' : ''} ${!assessment.industry ? 'industry' : ''} ${!assessment.companyStage ? 'companyStage' : ''} ${!assessment.industryMaturity ? 'industryMaturity' : ''}`);
+    }
+
     // Get assessment responses for this assessment
     const assessmentResponses = await storage.getAssessmentResponsesByAssessment(assessmentId);
     
@@ -65,7 +118,10 @@ export async function POST(request: Request, { params }: { params: Params }) {
       prioritizationData: results.prioritizationData,
       aiSuggestions: results.aiSuggestions,
       performanceImpact: results.performanceImpact,
-      consultantCommentary: "" // Default empty commentary
+      consultantCommentary: "", // Default empty commentary
+      // Add the new fields from AI Adoption Score calculation
+      aiAdoptionScoreDetails: calculatedAdoptionScore ? calculatedAdoptionScore : null, // Store the full score object or null
+      roiDetails: calculatedAdoptionScore ? calculatedAdoptionScore.roiDetails : null, // Store ROI details or null
     });
 
     // Update assessment status to completed

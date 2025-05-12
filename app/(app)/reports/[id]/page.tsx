@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PriorityMatrix } from "./priority-matrix"
 import { OpportunitiesTable } from "./opportunities-table"
+import { AIAdoptionScoreTab } from "./ai-adoption-score"
+import { PerformanceMetricsTable } from "./performance-metrics"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import { addPrintStyles } from "../../../../utils/print-styles"
@@ -338,6 +340,18 @@ export default function ReportPage({ params }: ReportPageProps) {
               >
                 Opportunities
               </TabsTrigger>
+              <TabsTrigger
+                value="performance-metrics"
+                className="text-gray-700 data-[state=active]:bg-[#e84c2b] data-[state=active]:text-white"
+              >
+                Performance Metrics
+              </TabsTrigger>
+              <TabsTrigger
+                value="ai-adoption-score"
+                className="text-gray-700 data-[state=active]:bg-[#e84c2b] data-[state=active]:text-white"
+              >
+                AI Adoption Score
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -439,6 +453,25 @@ export default function ReportPage({ params }: ReportPageProps) {
           {/* Opportunities Tab */}
           <TabsContent value="opportunities" className="space-y-6">
             <OpportunitiesTable prioritizedItems={opportunities} />
+          </TabsContent>
+
+          {/* Performance Metrics Tab */}
+          <TabsContent value="performance-metrics" className="space-y-6">
+            <PerformanceMetricsTable />
+          </TabsContent>
+          
+          {/* AI Adoption Score Tab */}
+          <TabsContent value="ai-adoption-score" className="space-y-6">
+            <AIAdoptionScoreTab 
+              aiAdoptionScoreDetails={reportData?.aiAdoptionScoreDetails as any}
+              roiDetails={reportData?.roiDetails as any}
+              companyProfile={{
+                industry: reportData?.industry || undefined,
+                industryMaturity: reportData?.industryMaturity || undefined,
+                companyStage: reportData?.companyStage || undefined,
+                strategicFocus: reportData?.strategicFocus || undefined
+              }}
+            />
           </TabsContent>
         </Tabs>
       </div>

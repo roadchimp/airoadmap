@@ -40,7 +40,8 @@
       "@shared/*": ["shared/*"],
       "@/server/*": ["server/*"],
       "@/*": ["client/src/*"],
-      "@components/*": ["components/*"]
+      "@components/*": ["components/*"],
+      "@utils/*": ["utils/*"],
     },
     "allowJs": true,
     "resolveJsonModule": true,

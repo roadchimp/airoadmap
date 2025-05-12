@@ -78,6 +78,7 @@ const wizardSteps: WizardStep[] = [
   { id: "workVolume", title: "Work Volume & Complexity", description: "Assess work patterns" },
   { id: "techStack", title: "Data & Systems", description: "Evaluate technical readiness" },
   { id: "adoption", title: "Readiness & Expectations", description: "Assess adoption readiness" },
+  { id: "aiAdoptionScoreInputs", title: "ROI Inputs", description: "Provide inputs for AI Adoption Score calculation" },
   { id: "review", title: "Review & Submit", description: "Review and generate report" }
 ];
 
@@ -243,6 +244,11 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
+  // Add a state for strategicFocus, which is stored at the assessment level, not in stepData
+  const [strategicFocus, setStrategicFocus] = useState<string[]>(
+    initialAssessmentData?.strategicFocus || []
+  );
+
   // --- Data Fetching --- 
   const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
@@ -293,13 +299,20 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   });
   
   const updateAssessmentStepMutation = useMutation({
-    mutationFn: async ({ id, stepData }: { id: number, stepData: Partial<WizardStepData> }) => {
-      const response = await apiRequest("PATCH", `/api/assessments/${id}/step`, stepData);
+    mutationFn: async ({ id, stepData, strategicFocus }: { id: number, stepData: Partial<WizardStepData>, strategicFocus?: string[] }) => {
+      const response = await apiRequest("PATCH", `/api/assessments/${id}/step`, { 
+        ...stepData,
+        strategicFocus
+      });
        if (!response.ok) throw new Error(await response.text());
       return response.json() as Promise<Assessment>;
     },
     onSuccess: (data) => {
-      setAssessment(prev => ({ ...prev, stepData: data.stepData || {} }));
+      setAssessment(prev => ({ 
+        ...prev, 
+        stepData: data.stepData || {},
+        strategicFocus: data.strategicFocus || prev.strategicFocus 
+      }));
       queryClient.invalidateQueries({ queryKey: [`/api/assessments/${data.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/assessments"] });
       toast({ title: "Progress Saved", description: "Your changes have been saved.", duration: 2000 });
@@ -452,6 +465,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       ...prev,
       stepData: wizardFormData,
       updatedAt: new Date().toISOString(),
+      // Important: We're not including strategicFocus here as it's managed separately
     }));
     if (assessment.id) {
       saveToLocalCache(assessment.id, wizardFormData);
@@ -466,7 +480,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     // Handle validation
     let isValid = true;
     let fieldsToValidate: Path<WizardStepData>[] = [];
-    if (currentStepIndex >= 0) {
+    if (currentStepId === 'basics') {
       fieldsToValidate.push(...[
         'basics.companyName',
         'basics.reportName',
@@ -542,6 +556,8 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         stepData: wizardFormData,
         organizationId: 1, // Placeholder, adjust as needed
         userId: 1, // Placeholder, adjust as needed
+        strategicFocus: strategicFocus, // Include the strategicFocus field
+        aiAdoptionScoreInputs: wizardFormData.aiAdoptionScoreInputs, // Include aiAdoptionScoreInputs
       });
       if (!response.ok) throw new Error(await response.text());
       const createdAssessment = await response.json();
@@ -572,7 +588,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     } finally {
       setIsGeneratingReport(false);
     }
-  }, [form, toast, generateReportMutation]);
+  }, [form, toast, generateReportMutation, strategicFocus]);
   
   // Generic input change handler - deep updates for nested stepData
   const handleInputChange = (path: string, value: any) => {
@@ -826,6 +842,42 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                 </FormItem>
               )}
             />
+            
+            <FormItem>
+              <FormLabel>Strategic Focus (select all that apply)</FormLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                {[
+                  "Efficiency & Productivity",
+                  "Cost Reduction",
+                  "Revenue Growth",
+                  "Customer Experience",
+                  "Innovation & New Products",
+                  "Operational Excellence",
+                  "Data-Driven Decision Making",
+                  "Talent & Workforce Development"
+                ].map((option) => (
+                  <div key={option} className={`checkbox-option ${strategicFocus.includes(option) ? 'selected' : ''}`}>
+                    <Checkbox
+                      id={`strategic-focus-${option}`}
+                      checked={strategicFocus.includes(option)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setStrategicFocus(prev => [...prev, option]);
+                        } else {
+                          setStrategicFocus(prev => prev.filter(v => v !== option));
+                        }
+                      }}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor={`strategic-focus-${option}`} className="cursor-pointer flex-1 font-normal text-slate-700">
+                      {option}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <FormDescription>Select the strategic focus areas for your AI initiatives.</FormDescription>
+            </FormItem>
+            
             <FormField
               control={form.control}
               name="basics.goals"
@@ -1351,6 +1403,136 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
             </div>
           </React.Fragment>
         );
+      case "aiAdoptionScoreInputs":
+        // Get current AI Adoption Score inputs or initialize with empty object
+        const aiAdoptionScoreInputs = stepData.aiAdoptionScoreInputs || {};
+        
+        return (
+          <React.Fragment>
+            <h2 className="text-xl font-semibold mb-1">{title}</h2>
+            <p className="text-muted-foreground mb-4">{description}</p>
+            <div className="space-y-6">
+              <div>
+                <Label>Adoption Rate Forecast (%)</Label>
+                <Input 
+                  placeholder="Enter percentage (e.g., 75)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.adoptionRateForecast || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.adoptionRateForecast", value);
+                  }}
+                  min={0}
+                  max={100}
+                />
+                <FormDescription>Estimated percentage of potential users who will adopt the AI solution</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Time Savings (hours/week/user)</Label>
+                <Input 
+                  placeholder="Enter hours (e.g., 5)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.timeSavingsPerUserHours || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.timeSavingsPerUserHours", value);
+                  }}
+                  min={0}
+                  step={0.5}
+                />
+                <FormDescription>Estimated hours saved per user per week</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Affected Users (count)</Label>
+                <Input 
+                  placeholder="Enter number of users (e.g., 50)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.affectedUserCount || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.affectedUserCount", value);
+                  }}
+                  min={0}
+                />
+                <FormDescription>Number of users who will be affected by the AI solution</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Cost Efficiency Gains ($)</Label>
+                <Input 
+                  placeholder="Enter dollar amount (e.g., 10000)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.costEfficiencyGainsAmount || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.costEfficiencyGainsAmount", value);
+                  }}
+                  min={0}
+                />
+                <FormDescription>Estimated direct cost savings per year</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Performance Improvement (%)</Label>
+                <Input 
+                  placeholder="Enter percentage (e.g., 20)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.performanceImprovementPercentage || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.performanceImprovementPercentage", value);
+                  }}
+                  min={0}
+                  max={100}
+                />
+                <FormDescription>Estimated percentage improvement in a key performance metric</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Tool Sprawl Reduction (1-5)</Label>
+                <Select
+                  value={aiAdoptionScoreInputs.toolSprawlReductionScore?.toString() || ""}
+                  onValueChange={(value) => {
+                    handleInputChange("aiAdoptionScoreInputs.toolSprawlReductionScore", parseInt(value, 10));
+                  }}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a value..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 - Minimal</SelectItem>
+                    <SelectItem value="2">2 - Below Average</SelectItem>
+                    <SelectItem value="3">3 - Average</SelectItem>
+                    <SelectItem value="4">4 - Above Average</SelectItem>
+                    <SelectItem value="5">5 - Significant</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>Estimated benefit from consolidating or replacing existing tools</FormDescription>
+              </div>
+              
+              <Card className="bg-slate-50 mt-4">
+                <CardContent className="pt-6">
+                  <div className="text-sm text-slate-700">
+                    <p className="font-medium mb-2">AI Adoption Score Formula:</p>
+                    <p className="mb-1">AIAdoption Score = (α·U + β·I + γ·E + δ·S - ε·B) / IB</p>
+                    <p className="text-xs mb-4">Where weights (α, β, γ, δ, ε) vary based on industry and company stage.</p>
+                    
+                    <p className="text-xs">
+                      <span className="font-semibold">U</span> = User factors (adoption rate, affected users)<br/>
+                      <span className="font-semibold">I</span> = Impact factors (time savings, performance improvement)<br/>
+                      <span className="font-semibold">E</span> = Efficiency factors (cost savings)<br/>
+                      <span className="font-semibold">S</span> = Strategic factors (tool sprawl reduction)<br/>
+                      <span className="font-semibold">B</span> = Barriers<br/>
+                      <span className="font-semibold">IB</span> = Industry-specific normalization factor
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </React.Fragment>
+        );
       case "review":
         return (
            <React.Fragment>
@@ -1436,10 +1618,18 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                             : <span className="text-muted-foreground">No stakeholders selected.</span>}
                         </div>
                     </div>
+                    <div>
+                        <Label>Strategic Focus Areas</Label>
+                        <div className="mt-1">
+                          {Array.isArray(strategicFocus) && strategicFocus.length > 0
+                            ? strategicFocus.join(", ")
+                            : <span className="text-muted-foreground">No strategic focus areas selected.</span>}
+                        </div>
+                    </div>
                  </CardContent>
                </Card>
 
-                {/* --- Role Selection Section --- */}
+               {/* --- Role Selection Section --- */}
                <Card>
                  <CardHeader>
                    <CardTitle>Selected Roles</CardTitle>
@@ -1456,6 +1646,67 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                      <p className="text-sm text-muted-foreground">No roles selected.</p>
                    )}
                    <p className="text-xs text-muted-foreground mt-2">To change selected roles, please navigate back to the 'Role Selection' step.</p>
+                 </CardContent>
+               </Card>
+
+               {/* --- AI Adoption Score Inputs Section --- */}
+               <Card>
+                 <CardHeader>
+                   <CardTitle>AI Adoption Score Inputs</CardTitle>
+                   <CardDescription>ROI calculation inputs.</CardDescription>
+                 </CardHeader>
+                 <CardContent className="space-y-2">
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <Label>Adoption Rate Forecast</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.adoptionRateForecast ? 
+                           `${stepData.aiAdoptionScoreInputs.adoptionRateForecast}%` : 
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Time Savings</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.timeSavingsPerUserHours ?
+                           `${stepData.aiAdoptionScoreInputs.timeSavingsPerUserHours} hours/week/user` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Affected Users</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.affectedUserCount ?
+                           stepData.aiAdoptionScoreInputs.affectedUserCount :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Cost Efficiency Gains</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.costEfficiencyGainsAmount ?
+                           `$${stepData.aiAdoptionScoreInputs.costEfficiencyGainsAmount}` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Performance Improvement</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.performanceImprovementPercentage ?
+                           `${stepData.aiAdoptionScoreInputs.performanceImprovementPercentage}%` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Tool Sprawl Reduction</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.toolSprawlReductionScore ?
+                           `${stepData.aiAdoptionScoreInputs.toolSprawlReductionScore}/5` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                   </div>
+                   <p className="text-xs text-muted-foreground mt-2">To modify these values, please navigate to the 'ROI Inputs' step.</p>
                  </CardContent>
                </Card>
 
@@ -1505,130 +1756,6 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                    })}
                  </CardContent>
                </Card>
-
-                {/* --- Work Volume Section --- */}
-               <Card>
-                 <CardHeader>
-                    <CardTitle>Work Volume & Complexity</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-4">
-                     {(stepData.roles?.selectedRoles || []).map((role) => {
-                         const roleIdStr = String(role.id!); 
-                         const roleWV = stepData.workVolume?.roleWorkVolume?.[roleIdStr] || {}; 
-                         return (
-                             <div key={role.id} className="border-t pt-4 mt-4">
-                                 <h4 className="font-medium text-sm mb-2">{role.title} Work Patterns</h4>
-                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                     <div>
-                                         <Label>Task Volume</Label>
-                                         <Select value={roleWV.volume || ''} onValueChange={(v) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.volume`, v)}>
-                                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                             <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent>
-                                         </Select>
-                                     </div>
-                                     <div>
-                                         <Label>Task Complexity</Label>
-                                          <Select value={roleWV.complexity || ''} onValueChange={(v) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.complexity`, v)}>
-                                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                              <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent>
-                                          </Select>
-                                     </div>
-                                     <div>
-                                         <Label>Repetitiveness (1-5)</Label>
-                                          <Input 
-                                            type="number" 
-                                            min="1" 
-                                            max="5" 
-                                            value={roleWV.repetitiveness || ""} 
-                                            onChange={(e) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.repetitiveness`, parseInt(e.target.value) || undefined)}
-                                            className="mt-1"
-                                            placeholder="1-5"
-                                           />
-                                     </div>
-                                 </div>
-                                 <div className="mt-4">
-                                     <Label>Data Description</Label>
-                                      <Textarea className="mt-1" value={roleWV.dataDescription || ""} onChange={(e) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.dataDescription`, e.target.value)} />
-                                 </div>
-                             </div>
-                         );
-                     })}
-                 </CardContent>
-               </Card>
-
-                {/* --- Tech Stack Section --- */}
-               <Card>
-                 <CardHeader>
-                   <CardTitle>Data & Systems</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-4">
-                    <div>
-                        <Label>Data Accessibility</Label>
-                        <Select value={stepData.techStack?.dataAccessibility || ''} onValueChange={(v) => handleInputChange('techStack.dataAccessibility', v)}>
-                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="easy">Easy</SelectItem><SelectItem value="moderate">Moderate</SelectItem><SelectItem value="difficult">Difficult</SelectItem></SelectContent>
-                        </Select>
-                    </div>
-                     <div>
-                         <Label>Data Quality</Label>
-                         <Select value={stepData.techStack?.dataQuality || ''} onValueChange={(v) => handleInputChange('techStack.dataQuality', v)}>
-                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="good">Good</SelectItem><SelectItem value="fair">Fair</SelectItem><SelectItem value="poor">Poor</SelectItem></SelectContent>
-                         </Select>
-                    </div>
-                     <div>
-                         <Label>Systems Integration</Label>
-                         <Select value={stepData.techStack?.systemsIntegration || ''} onValueChange={(v) => handleInputChange('techStack.systemsIntegration', v)}>
-                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="easy">Easy</SelectItem><SelectItem value="moderate">Moderate</SelectItem><SelectItem value="difficult">Difficult</SelectItem></SelectContent>
-                         </Select>
-                     </div>
-                    <div>
-                        <Label>Relevant Tools & Platforms</Label>
-                        <Textarea className="mt-1" value={stepData.techStack?.relevantTools || ""} onChange={(e) => handleInputChange("techStack.relevantTools", e.target.value)} />
-                    </div>
-                    <div>
-                        <Label>Notes</Label>
-                        <Textarea className="mt-1" value={stepData.techStack?.notes || ""} onChange={(e) => handleInputChange("techStack.notes", e.target.value)} />
-                    </div>
-                 </CardContent>
-               </Card>
-
-               {/* --- Adoption Section --- */}
-               <Card>
-                 <CardHeader>
-                   <CardTitle>Readiness & Expectations</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-4">
-                     <div>
-                         <Label>Organizational Readiness for Change</Label>
-                         <Select value={stepData.adoption?.changeReadiness || ''} onValueChange={(v) => handleInputChange('adoption.changeReadiness', v)}>
-                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
-                         </Select>
-                     </div>
-                      <div>
-                         <Label>Stakeholder Alignment on AI Goals</Label>
-                         <Select value={stepData.adoption?.stakeholderAlignment || ''} onValueChange={(v) => handleInputChange('adoption.stakeholderAlignment', v)}>
-                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                             <SelectContent><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
-                         </Select>
-                     </div>
-                      <div>
-                         <Label>Anticipated Training Needs</Label>
-                         <Textarea className="mt-1" value={stepData.adoption?.trainingNeeds || ""} onChange={(e) => handleInputChange("adoption.trainingNeeds", e.target.value)} />
-                     </div>
-                      <div>
-                         <Label>Expected Adoption Challenges</Label>
-                         <Textarea className="mt-1" value={stepData.adoption?.expectedChallenges || ""} onChange={(e) => handleInputChange("adoption.expectedChallenges", e.target.value)} />
-                     </div>
-                    <div>
-                         <Label>Key Success Metrics for AI Initiatives</Label>
-                         <Textarea className="mt-1" value={stepData.adoption?.successMetrics || ""} onChange={(e) => handleInputChange("adoption.successMetrics", e.target.value)} />
-                     </div>
-                 </CardContent>
-               </Card>
-
              </div>
            </React.Fragment>
         );

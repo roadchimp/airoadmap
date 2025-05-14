@@ -883,7 +883,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
               keyResponsibilities: formData.get('keyResponsibilities') ? 
                 (formData.get('keyResponsibilities') as string).split(',').map(r => r.trim()) : 
                 [],
-              aiPotential: formData.get('aiPotential') as string,
+              aiPotential: formData.get('aiPotential') as "Low" | "Medium" | "High",
               description: formData.get('description') as string || undefined,
             };
             

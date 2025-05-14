@@ -13,6 +13,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getPaginationRowModel,
+  SortingState,
+  getSortedRowModel,
+} from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
 
 interface ReportsTableProps {
   reports: Report[];
@@ -37,91 +49,188 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
             fetch('/api/public/reports'),
             fetch('/api/public/assessments')
           ]);
-          
-          let reportResults: Report[] = [];
-          let assessmentResults: Assessment[] = [];
-          
-          if (reportsResponse.ok) {
-            const reportsData = await reportsResponse.json();
-            if (Array.isArray(reportsData)) {
-              reportResults = reportsData;
-            }
+
+          // Check if responses are ok
+          if (!reportsResponse.ok || !assessmentsResponse.ok) {
+            throw new Error("Failed to fetch data");
           }
-          
-          if (assessmentsResponse.ok) {
-            const assessmentsData = await assessmentsResponse.json();
-            if (Array.isArray(assessmentsData)) {
-              assessmentResults = assessmentsData;
-            }
-          }
-          
-          // Sort reports by generatedAt (most recent first)
-          const sortedReports = [...reportResults].sort(
-            (a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
-          );
-          
-          setReportsData(sortedReports);
-          setAssessmentsData(assessmentResults);
+
+          // Parse response data
+          const fetchedReports = await reportsResponse.json();
+          const fetchedAssessments = await assessmentsResponse.json();
+
+          // Update state
+          setReportsData(Array.isArray(fetchedReports) ? fetchedReports : []);
+          setAssessmentsData(Array.isArray(fetchedAssessments) ? fetchedAssessments : []);
           setStatus("success");
         } catch (error) {
           console.error("Error fetching data:", error);
           setStatus("error");
         }
       };
-      
+
       fetchData();
     }
-  }, [reports, assessments]);
+  }, [reports.length, assessments.length]);
 
+  const [sorting, setSorting] = useState<SortingState>([
+    {
+      id: "generatedAt",
+      desc: true,
+    },
+  ]);
+
+  const router = useRouter();
+
+  // Find assessment title by assessmentId
   const getAssessmentTitle = (assessmentId: number) => {
-    const assessment = assessmentsData.find(a => a.id === assessmentId);
-    return assessment?.title || `Assessment ID: ${assessmentId}`;
+    const assessment = assessmentsData.find((a) => a.id === assessmentId);
+    return assessment?.title || "Unknown Assessment";
   };
 
-  // Show loading state
+  const columns: ColumnDef<Report>[] = [
+    {
+      accessorKey: "id",
+      header: "ID",
+      size: 60,
+    },
+    {
+      accessorKey: "assessmentId",
+      header: "Assessment Title",
+      cell: ({ row }) => getAssessmentTitle(row.original.assessmentId),
+    },
+    {
+      accessorKey: "generatedAt",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Generated At
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        // Format date string
+        const date = new Date(row.original.generatedAt);
+        return format(date, "PPp"); // e.g., "Apr 29, 2025, 7:47 PM"
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        return (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push(`/reports/${row.original.id}`)}
+          >
+            View Report
+          </Button>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: reportsData,
+    columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   if (status === "loading") {
+    return <div className="py-8 text-center">Loading reports...</div>;
+  }
+
+  if (status === "error") {
+    return <div className="py-8 text-center text-red-500">Error loading reports data.</div>;
+  }
+
+  if (reportsData.length === 0) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <p className="text-muted-foreground">Loading reports...</p>
+      <div className="py-8 text-center">
+        <p className="mb-2">No reports found.</p>
+        <p className="text-muted-foreground">A list of your assessment reports.</p>
       </div>
     );
   }
 
   return (
-    <Table>
-      <TableCaption>A list of your assessment reports.</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[100px]">ID</TableHead>
-          <TableHead>Assessment Title</TableHead>
-          <TableHead>Generated At</TableHead>
-          {/* TODO: Add Priority Items column based on legacy */}
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {reportsData.length > 0 ? (
-          reportsData.map((report) => (
-            <TableRow key={report.id}>
-              <TableCell className="font-medium">{report.id}</TableCell>
-              <TableCell>{getAssessmentTitle(report.assessmentId)}</TableCell> 
-              <TableCell>{new Date(report.generatedAt).toLocaleString()}</TableCell>
-              {/* TODO: Render priority items count */}
-              <TableCell className="text-right">
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/reports/${report.id}`}>View Report</Link>
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={4} className="text-center">
-              No reports found.
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+    <div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 } 

@@ -1,17 +1,20 @@
 // src/components/assessment/CurrentAssessmentsTable.tsx
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { format } from "date-fns";
 import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
   useReactTable,
-  ColumnFiltersState,
-  getFilteredRowModel,
-} from '@tanstack/react-table';
+  getPaginationRowModel,
+  SortingState,
+  getSortedRowModel,
+} from "@tanstack/react-table";
+import { ArrowUpDown, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -19,45 +22,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Eye, MoreHorizontal, Pencil, Trash2, ChevronDown } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Assessment, assessmentStatusEnum } from '@shared/schema';
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Assessment } from "@shared/schema";
+import ConfirmationDialog from "@/components/shared/ConfirmationDialog";
 
-type AssessmentWithReportId = Assessment & {
-    reportId?: number | null;
-    title?: string;
-  };
+export type AssessmentWithReportId = Assessment & {
+  reportId?: number | null;
+};
 
 interface CurrentAssessmentsTableProps {
   initialAssessments: AssessmentWithReportId[];
 }
-
-const capitalizeFirstLetter = (string: string) => {
-  return string.charAt(0).toUpperCase() + string.slice(1);
-};
 
 export default function CurrentAssessmentsTable({ initialAssessments }: CurrentAssessmentsTableProps) {
   const [assessments, setAssessments] = useState<AssessmentWithReportId[]>(initialAssessments);
@@ -65,11 +42,9 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
     initialAssessments.length > 0 ? "success" : "loading"
   );
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [assessmentToDelete, setAssessmentToDelete] = useState<AssessmentWithReportId | null>(null);
-  const router = useRouter();
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   // If no initial assessments were provided, try to fetch them from the public API
   useEffect(() => {
@@ -77,201 +52,220 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
       const fetchData = async () => {
         setStatus("loading");
         try {
-          // Try the public endpoint as a fallback
-          const response = await fetch('/api/public/assessments');
-          if (!response.ok) {
-            throw new Error(`Error fetching assessments: ${response.statusText}`);
+          // Try to fetch from public endpoints
+          const [assessmentsResponse, reportsResponse] = await Promise.all([
+            fetch('/api/public/assessments'),
+            fetch('/api/public/reports')
+          ]);
+
+          if (!assessmentsResponse.ok || !reportsResponse.ok) {
+            throw new Error("Failed to fetch data");
           }
-          
-          const data = await response.json();
-          
-          if (Array.isArray(data) && data.length > 0) {
-            // Get report IDs for each assessment
-            try {
-              const reportsResponse = await fetch('/api/public/reports');
-              let reports: any[] = [];
-              
-              if (reportsResponse.ok) {
-                reports = await reportsResponse.json();
+
+          const fetchedAssessments = await assessmentsResponse.json();
+          const fetchedReports = await reportsResponse.json();
+
+          // Create a map of assessment IDs to report IDs
+          const assessmentToReportMap = new Map();
+          if (Array.isArray(fetchedReports)) {
+            fetchedReports.forEach(report => {
+              if (report.assessmentId) {
+                assessmentToReportMap.set(report.assessmentId, report.id);
               }
-              
-              // Create a map of assessment IDs to report IDs for faster lookup
-              const assessmentToReportMap = new Map();
-              if (Array.isArray(reports)) {
-                reports.forEach(report => {
-                  if (report.assessmentId) {
-                    assessmentToReportMap.set(report.assessmentId, report.id);
-                  }
-                });
-              }
-              
-              // Add report IDs to assessments
-              const assessmentsWithReports = data.map((assessment: Assessment): AssessmentWithReportId => {
-                const reportId = assessmentToReportMap.get(assessment.id) || null;
-                return {
-                  ...assessment,
-                  reportId,
-                };
-              });
-              
-              // Sort by updated date
-              const sortedAssessments = [...assessmentsWithReports].sort(
-                (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-              );
-              
-              setAssessments(sortedAssessments);
-              setStatus("success");
-            } catch (reportError) {
-              console.error("Error fetching reports:", reportError);
-              // Still set the assessments without report IDs
-              setAssessments(data);
-              setStatus("success");
-            }
-          } else {
-            console.error("API returned empty or non-array data");
-            setStatus("error");
+            });
           }
+
+          // Combine assessments with their report IDs
+          const assessmentsWithReports = Array.isArray(fetchedAssessments) 
+            ? fetchedAssessments.map(assessment => ({
+                ...assessment,
+                reportId: assessmentToReportMap.get(assessment.id) || null
+              }))
+            : [];
+
+          // Sort by updated date
+          const sortedAssessments = [...assessmentsWithReports].sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+
+          setAssessments(sortedAssessments);
+          setStatus("success");
         } catch (error) {
           console.error("Error fetching assessments:", error);
           setStatus("error");
         }
       };
-      
+
       fetchData();
     }
   }, [initialAssessments]);
 
-  const handleDeleteAssessment = async () => {
-    if (!assessmentToDelete) return;
-    setAssessments(assessments.filter(a => a.id !== assessmentToDelete.id));
-    toast({ title: "Success (Placeholder)", description: `Assessment '${assessmentToDelete.title}' deleted.` });
-    setIsDeleteDialogOpen(false);
-    setAssessmentToDelete(null);
+  const handleDelete = async (id: number) => {
+    try {
+      const response = await fetch(`/api/assessments/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      toast({
+        title: "Assessment Deleted",
+        description: "The assessment has been successfully deleted.",
+      });
+
+      // Remove the deleted assessment from the state
+      setAssessments(assessments.filter((assessment) => assessment.id !== id));
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Error deleting assessment:", error);
+      
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete the assessment. Please try again later.",
+      });
+    }
   };
 
-  const openDeleteDialog = (assessment: AssessmentWithReportId) => {
-    setAssessmentToDelete(assessment);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const columns: ColumnDef<AssessmentWithReportId>[] = useMemo(() => [
+  const columns: ColumnDef<AssessmentWithReportId>[] = [
     {
-      accessorKey: 'title',
-      header: 'Assessment Name',
-      cell: ({ row }) => <div className="font-medium">{row.getValue('title')}</div>,
+      accessorKey: "title",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Title
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => <div className="font-medium">{row.getValue("title")}</div>,
     },
     {
-      accessorKey: 'status',
-      header: 'Status',
+      accessorKey: "industry",
+      header: "Industry",
+      cell: ({ row }) => <div>{row.getValue("industry") || "-"}</div>,
+    },
+    {
+      accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Last Updated
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("updatedAt"));
+        return <div>{format(date, "PPp")}</div>; // e.g., "Apr 29, 2025, 7:47 PM"
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
       cell: ({ row }) => {
         const status = row.getValue("status") as string;
-        return capitalizeFirstLetter(status);
-      },
-      enableColumnFilter: true,
-    },
-    {
-      accessorKey: 'updatedAt',
-      header: 'Last Modified',
-      cell: ({ row }) => {
-        const date = new Date(row.getValue('updatedAt'));
-        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-      },
-    },
-    {
-      id: 'actions',
-      cell: ({ row }) => {
-        const assessment = row.original;
-        const canEdit = assessment.status === 'draft';
-
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {canEdit ? (
-                 <DropdownMenuItem asChild>
-                   <Link href={`/assessment/new?id=${assessment.id}`} className='flex items-center cursor-pointer'>
-                     <Pencil className="mr-2 h-4 w-4" /> Edit
-                   </Link>
-                 </DropdownMenuItem>
-              ) : (
-                <>
-                  <DropdownMenuItem asChild disabled={!assessment.reportId}>
-                    <Link href={assessment.reportId ? `/reports/${assessment.reportId}` : '#'} className='flex items-center cursor-pointer'>
-                      <Eye className="mr-2 h-4 w-4" /> View Report
-                      {!assessment.reportId && assessment.status !== 'draft' && ' (Missing)'}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href={`/assessment/${assessment.id}/view`} className='flex items-center cursor-pointer'>
-                      <Eye className="mr-2 h-4 w-4" /> View Assessment
-                    </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-700 focus:bg-red-50 flex items-center cursor-pointer"
-                onClick={() => openDeleteDialog(assessment)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Badge
+            variant={status === "completed" ? "default" : "outline"}
+            className={
+              status === "completed"
+                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                : ""
+            }
+          >
+            {status === "completed" ? "Completed" : "In Progress"}
+          </Badge>
         );
       },
     },
-  ], []);
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const assessment = row.original;
+        const reportId = assessment.reportId;
+        
+        return (
+          <div className="flex justify-end space-x-2">
+            {assessment.status === "completed" && reportId ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/reports/${reportId}`)}
+                title="View Report"
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />
+                Report
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/assessment/edit/${assessment.id}`)}
+                title="Edit Assessment"
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteTarget(assessment.id)}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              title="Delete Assessment"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
 
   const table = useReactTable({
     data: assessments,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnFiltersChange: setColumnFilters,
+    getSortedRowModel: getSortedRowModel(),
     state: {
       sorting,
-      columnFilters,
     },
   });
 
-  const statusOptions = ["all", ...assessmentStatusEnum.enumValues];
+  if (status === "loading") {
+    return <div className="py-8 text-center">Loading assessments...</div>;
+  }
 
-  const selectedStatusFilter = table.getColumn('status')?.getFilterValue() as string || "all";
+  if (status === "error") {
+    return <div className="py-8 text-center text-red-500">Error loading assessments.</div>;
+  }
+
+  if (assessments.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <p className="mb-2">No assessments found.</p>
+        <p className="text-muted-foreground">
+          Start by creating a new assessment.
+        </p>
+        <Button
+          onClick={() => router.push("/assessment/new")}
+          className="mt-4"
+        >
+          New Assessment
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div className="flex items-center py-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Status: {capitalizeFirstLetter(selectedStatusFilter)}
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {statusOptions.map((status) => (
-              <DropdownMenuCheckboxItem
-                key={status}
-                checked={selectedStatusFilter === status}
-                onCheckedChange={() => {
-                  const newFilterValue = status === "all" ? undefined : status;
-                  table.getColumn('status')?.setFilterValue(newFilterValue);
-                }}
-              >
-                {capitalizeFirstLetter(status)}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+    <div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -295,46 +289,60 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
+                  data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No assessments found matching your filters.
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the assessment
-              "{assessmentToDelete?.title}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setAssessmentToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={handleDeleteAssessment}
-              >
-              Delete
-              </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      {/* Delete Confirmation Dialog */}
+      {deleteTarget && (
+        <ConfirmationDialog
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() => handleDelete(deleteTarget)}
+          title="Confirm Deletion"
+          description="Are you sure you want to delete this assessment? This action cannot be undone."
+        />
+      )}
+    </div>
   );
 }

@@ -479,7 +479,40 @@ export class PgStorage implements IStorage {
 
   async listReports(): Promise<Report[]> {
     await this.ensureInitialized();
-    return await this.db.select().from(reports);
+    try {
+      // Try to use Drizzle ORM first
+      return await this.db.select().from(reports);
+    } catch (error) {
+      console.error('Error fetching reports with Drizzle:', error);
+      const errorMessage = error instanceof Error ? error.message : '';
+      
+      // If the error is related to missing columns, try a direct SQL query
+      if (errorMessage.includes('column') || errorMessage.includes('does not exist')) {
+        try {
+          console.log('Using fallback SQL query for reports');
+          const result = await this.db.execute(sql`
+            SELECT 
+              id, 
+              assessment_id as "assessmentId", 
+              generated_at as "generatedAt", 
+              executive_summary as "executiveSummary", 
+              prioritization_data as "prioritizationData", 
+              ai_suggestions as "aiSuggestions", 
+              performance_impact as "performanceImpact", 
+              consultant_commentary as "consultantCommentary"
+            FROM reports
+          `);
+          
+          return result;
+        } catch (fallbackError) {
+          console.error('Fallback SQL query failed:', fallbackError);
+          return [];
+        }
+      }
+      
+      // If not a column error, rethrow
+      throw error;
+    }
   }
 
   async createReport(report: InsertReport): Promise<Report> {

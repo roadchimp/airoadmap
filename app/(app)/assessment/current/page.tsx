@@ -15,7 +15,7 @@ async function getAssessmentsData() {
     const userId = 1; // Hardcoded temporary value - Replace with actual user ID later
     
     // Get all assessments instead of just user-specific ones to avoid auth issues
-    let assessments;
+    let assessments: Assessment[] = [];
     try {
       assessments = await storage.listAssessments() || [];
     } catch (error) {
@@ -32,7 +32,7 @@ async function getAssessmentsData() {
     const userAssessments = assessments.filter(assessment => assessment.userId === userId);
     
     // 2. Fetch all reports to find matches for assessments
-    let reports;
+    let reports: Report[] = [];
     try {
       reports = await storage.listReports();
     } catch (error) {

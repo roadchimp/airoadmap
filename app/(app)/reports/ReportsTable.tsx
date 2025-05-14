@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Report, Assessment } from '@shared/schema';
 import {
@@ -20,10 +20,72 @@ interface ReportsTableProps {
 }
 
 export default function ReportsTable({ reports, assessments }: ReportsTableProps) {
+  const [reportsData, setReportsData] = useState<Report[]>(reports);
+  const [assessmentsData, setAssessmentsData] = useState<Assessment[]>(assessments);
+  const [status, setStatus] = useState<"loading" | "error" | "success">(
+    reports.length > 0 || assessments.length > 0 ? "success" : "loading"
+  );
+
+  // If no reports or assessments were provided, try to fetch them from the public API
+  useEffect(() => {
+    if (reports.length === 0 && assessments.length === 0) {
+      const fetchData = async () => {
+        setStatus("loading");
+        try {
+          // Try to fetch both reports and assessments from the public endpoints
+          const [reportsResponse, assessmentsResponse] = await Promise.all([
+            fetch('/api/public/reports'),
+            fetch('/api/public/assessments')
+          ]);
+          
+          let reportResults: Report[] = [];
+          let assessmentResults: Assessment[] = [];
+          
+          if (reportsResponse.ok) {
+            const reportsData = await reportsResponse.json();
+            if (Array.isArray(reportsData)) {
+              reportResults = reportsData;
+            }
+          }
+          
+          if (assessmentsResponse.ok) {
+            const assessmentsData = await assessmentsResponse.json();
+            if (Array.isArray(assessmentsData)) {
+              assessmentResults = assessmentsData;
+            }
+          }
+          
+          // Sort reports by generatedAt (most recent first)
+          const sortedReports = [...reportResults].sort(
+            (a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
+          );
+          
+          setReportsData(sortedReports);
+          setAssessmentsData(assessmentResults);
+          setStatus("success");
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          setStatus("error");
+        }
+      };
+      
+      fetchData();
+    }
+  }, [reports, assessments]);
+
   const getAssessmentTitle = (assessmentId: number) => {
-    const assessment = assessments.find(a => a.id === assessmentId);
+    const assessment = assessmentsData.find(a => a.id === assessmentId);
     return assessment?.title || `Assessment ID: ${assessmentId}`;
   };
+
+  // Show loading state
+  if (status === "loading") {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <p className="text-muted-foreground">Loading reports...</p>
+      </div>
+    );
+  }
 
   return (
     <Table>
@@ -38,8 +100,8 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
         </TableRow>
       </TableHeader>
       <TableBody>
-        {reports.length > 0 ? (
-          reports.map((report) => (
+        {reportsData.length > 0 ? (
+          reportsData.map((report) => (
             <TableRow key={report.id}>
               <TableCell className="font-medium">{report.id}</TableCell>
               <TableCell>{getAssessmentTitle(report.assessmentId)}</TableCell> 

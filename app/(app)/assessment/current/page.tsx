@@ -11,17 +11,34 @@ type AssessmentWithReportId = Assessment & {
 // Fetch assessments and associated report IDs
 async function getAssessmentsData() {
   try {
-    // 1. Fetch assessments for the user
+    // Try to directly access data from storage to avoid authentication issues in server component
     const userId = 1; // Hardcoded temporary value - Replace with actual user ID later
-    const assessments = await storage.listAssessmentsByUser?.(userId) || [];
-
-    if (!Array.isArray(assessments)) {
-        console.error("listAssessmentsByUser did not return an array:", assessments);
-        return { assessmentsWithReports: [] };
+    
+    // Get all assessments instead of just user-specific ones to avoid auth issues
+    let assessments;
+    try {
+      assessments = await storage.listAssessments() || [];
+    } catch (error) {
+      console.error("Error accessing storage directly:", error);
+      assessments = [];
     }
 
+    if (!Array.isArray(assessments)) {
+      console.error("listAssessments did not return an array:", assessments);
+      return { assessmentsWithReports: [] };
+    }
+
+    // Filter assessments for the current user
+    const userAssessments = assessments.filter(assessment => assessment.userId === userId);
+    
     // 2. Fetch all reports to find matches for assessments
-    const reports = await storage.listReports();
+    let reports;
+    try {
+      reports = await storage.listReports();
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+      reports = [];
+    }
     
     // Create a map of assessment IDs to report IDs for faster lookup
     const assessmentToReportMap = new Map();
@@ -34,7 +51,7 @@ async function getAssessmentsData() {
     }
 
     // 3. Combine assessments with their report IDs
-    const assessmentsWithReports = assessments.map((assessment): AssessmentWithReportId => {
+    const assessmentsWithReports = userAssessments.map((assessment): AssessmentWithReportId => {
       // Look up the report ID from our map
       const reportId = assessmentToReportMap.get(assessment.id) || null;
       

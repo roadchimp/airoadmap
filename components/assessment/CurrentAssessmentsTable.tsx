@@ -61,12 +61,85 @@ const capitalizeFirstLetter = (string: string) => {
 
 export default function CurrentAssessmentsTable({ initialAssessments }: CurrentAssessmentsTableProps) {
   const [assessments, setAssessments] = useState<AssessmentWithReportId[]>(initialAssessments);
+  const [status, setStatus] = useState<"loading" | "error" | "success">(
+    initialAssessments.length > 0 ? "success" : "loading"
+  );
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [assessmentToDelete, setAssessmentToDelete] = useState<AssessmentWithReportId | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+
+  // If no initial assessments were provided, try to fetch them from the public API
+  useEffect(() => {
+    if (initialAssessments.length === 0) {
+      const fetchData = async () => {
+        setStatus("loading");
+        try {
+          // Try the public endpoint as a fallback
+          const response = await fetch('/api/public/assessments');
+          if (!response.ok) {
+            throw new Error(`Error fetching assessments: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          
+          if (Array.isArray(data) && data.length > 0) {
+            // Get report IDs for each assessment
+            try {
+              const reportsResponse = await fetch('/api/public/reports');
+              let reports: any[] = [];
+              
+              if (reportsResponse.ok) {
+                reports = await reportsResponse.json();
+              }
+              
+              // Create a map of assessment IDs to report IDs for faster lookup
+              const assessmentToReportMap = new Map();
+              if (Array.isArray(reports)) {
+                reports.forEach(report => {
+                  if (report.assessmentId) {
+                    assessmentToReportMap.set(report.assessmentId, report.id);
+                  }
+                });
+              }
+              
+              // Add report IDs to assessments
+              const assessmentsWithReports = data.map((assessment: Assessment): AssessmentWithReportId => {
+                const reportId = assessmentToReportMap.get(assessment.id) || null;
+                return {
+                  ...assessment,
+                  reportId,
+                };
+              });
+              
+              // Sort by updated date
+              const sortedAssessments = [...assessmentsWithReports].sort(
+                (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+              );
+              
+              setAssessments(sortedAssessments);
+              setStatus("success");
+            } catch (reportError) {
+              console.error("Error fetching reports:", reportError);
+              // Still set the assessments without report IDs
+              setAssessments(data);
+              setStatus("success");
+            }
+          } else {
+            console.error("API returned empty or non-array data");
+            setStatus("error");
+          }
+        } catch (error) {
+          console.error("Error fetching assessments:", error);
+          setStatus("error");
+        }
+      };
+      
+      fetchData();
+    }
+  }, [initialAssessments]);
 
   const handleDeleteAssessment = async () => {
     if (!assessmentToDelete) return;

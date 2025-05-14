@@ -531,6 +531,16 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async updateReportAssessmentId(id: number, assessmentId: number): Promise<Report> {
+    await this.ensureInitialized();
+    const result = await this.db.update(reports)
+      .set({ assessmentId })
+      .where(eq(reports.id, id))
+      .returning();
+    
+    return result[0];
+  }
+
   // Job Description methods
   async getJobDescription(id: number): Promise<JobDescription | undefined> {
     await this.ensureInitialized();

@@ -77,7 +77,10 @@ function convertResponsesToStepData(
             industry: '',
             size: '',
             goals: '',
-            stakeholders: []
+            stakeholders: [],
+            industryMaturity: 'Mature',
+            companyStage: 'Mature',
+            reportName: 'AI Roadmap Report'
           };
           break;
         case 'roles':

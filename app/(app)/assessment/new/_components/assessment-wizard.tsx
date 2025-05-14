@@ -78,7 +78,7 @@ const wizardSteps: WizardStep[] = [
   { id: "workVolume", title: "Work Volume & Complexity", description: "Assess work patterns" },
   { id: "techStack", title: "Data & Systems", description: "Evaluate technical readiness" },
   { id: "adoption", title: "Readiness & Expectations", description: "Assess adoption readiness" },
-  { id: "aiAdoptionScoreInputs", title: "ROI Inputs", description: "Provide inputs for AI Adoption Score calculation" },
+  { id: "aiAdoptionScoreInputs", title: "ROI Targets", description: "Provide inputs for AI Adoption Score calculation" },
   { id: "review", title: "Review & Submit", description: "Review and generate report" }
 ];
 
@@ -158,6 +158,9 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const [currentStepIndex, setCurrentStepIndex] = useState(initialStepIndex);
   // Add state for max reached step, initialize with current
   const [maxReachedStepIndex, setMaxReachedStepIndex] = useState(initialStepIndex);
+  
+  // Add a state to track validation errors
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   // Moved useForm to the top level of the component
   const form = useForm<WizardStepData>({
@@ -454,7 +457,19 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         [stepId]: assessment.stepData[stepId],
       }, {});
     }
+    // Clear validation errors when changing steps
+    setValidationError(null);
   }, [currentStepIndex]);
+
+  // Effect to clear validation error when form fields are updated
+  useEffect(() => {
+    const subscription = form.watch(() => {
+      if (validationError) {
+        setValidationError(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, validationError]);
 
   // --- Handlers --- 
   // Refactored: Only update local state and localStorage on step navigation
@@ -495,6 +510,22 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       isValid = await form.trigger(fieldsToValidate, {});
     }
     if (!isValid) {
+      // Set the validation error message
+      setValidationError("Please complete all required fields marked with * before proceeding");
+      
+      // Check for fields with errors and create a more specific message
+      if (form.formState.errors) {
+        // Count errors in form.formState.errors
+        const errorCount = Object.keys(form.formState.errors).reduce((count, key) => {
+          // Each key might have nested errors, just count the top level keys for simplicity
+          return count + 1;
+        }, 0);
+        
+        if (errorCount > 0) {
+          setValidationError(`Please complete ${errorCount} required field${errorCount > 1 ? 's' : ''} marked with * before proceeding`);
+        }
+      }
+      
       toast({
         title: "Validation Error",
         description: "Please correct the errors shown on the form before proceeding.",
@@ -502,6 +533,8 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       });
       return;
     }
+    // Clear any validation error when valid
+    setValidationError(null);
     setIsTransitioning(true);
     try {
       await saveCurrentStep(() => {
@@ -520,6 +553,8 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
 
   const handlePrevious = useCallback(async () => {
     if (isTransitioning) return;
+    // Clear any validation errors when going back
+    setValidationError(null);
     setIsTransitioning(true);
     await saveCurrentStep(() => {
       if (currentStepIndex > 0) {
@@ -539,6 +574,15 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const handleSubmit = useCallback(async () => {
     const isValid = await form.trigger();
     if (!isValid) {
+      // Count errors for a specific message
+      const errorCount = Object.keys(form.formState.errors).reduce((count, key) => count + 1, 0);
+      
+      if (errorCount > 0) {
+        setValidationError(`Please complete ${errorCount} required field${errorCount > 1 ? 's' : ''} before generating the report`);
+      } else {
+        setValidationError("Please correct all errors on the form before generating the report");
+      }
+      
       toast({
         title: "Validation Error",
         description: "Please correct all errors on the form before submitting.",
@@ -546,21 +590,74 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       });
       return;
     }
+    // Clear validation errors on valid submission
+    setValidationError(null);
     // On submit, send the full wizard data to the backend
     setIsGeneratingReport(true);
     try {
+      toast({
+        title: "Processing",
+        description: "Preparing to submit assessment..."
+      });
+      
       const wizardFormData = form.getValues();
-      // You may need to adjust the payload structure to match your API
-      const response = await apiRequest("POST", "/api/assessments", {
+      
+      // Log the complete form data for debugging
+      console.log("Form data to be submitted:", JSON.stringify(wizardFormData, null, 2));
+      
+      // Check if AI Adoption Score inputs were provided
+      const hasAiAdoptionScoreInputs = 
+        wizardFormData.aiAdoptionScoreInputs && 
+        Object.keys(wizardFormData.aiAdoptionScoreInputs).length > 0;
+      
+      if (hasAiAdoptionScoreInputs) {
+        console.log("AI Adoption Score inputs provided:", JSON.stringify(wizardFormData.aiAdoptionScoreInputs, null, 2));
+        
+        // Validate that all inputs are numbers (not undefined or null)
+        const inputs = wizardFormData.aiAdoptionScoreInputs;
+        const validInputs = inputs ? Object.entries(inputs).every(([key, value]) => 
+          typeof value === 'number' && !isNaN(value)
+        ) : false;
+        
+        if (!validInputs) {
+          console.warn("Some AI Adoption Score inputs are not valid numbers. This may cause calculation issues.");
+        }
+      } else {
+        console.warn("No AI Adoption Score inputs provided. AI Adoption Score will not be calculated.");
+      }
+      
+      // Prepare the payload with all necessary data
+      const payload = {
         basics: wizardFormData.basics,
         stepData: wizardFormData,
         organizationId: 1, // Placeholder, adjust as needed
         userId: 1, // Placeholder, adjust as needed
         strategicFocus: strategicFocus, // Include the strategicFocus field
-        aiAdoptionScoreInputs: wizardFormData.aiAdoptionScoreInputs, // Include aiAdoptionScoreInputs
+        industry: wizardFormData.basics?.industry,
+        industryMaturity: wizardFormData.basics?.industryMaturity,
+        companyStage: wizardFormData.basics?.companyStage,
+        aiAdoptionScoreInputs: hasAiAdoptionScoreInputs ? wizardFormData.aiAdoptionScoreInputs : undefined,
+      };
+      
+      console.log("Submitting assessment with payload:", JSON.stringify(payload, null, 2));
+      
+      toast({
+        title: "Submitting",
+        description: "Sending assessment data to server..."
       });
+      
+      const response = await apiRequest("POST", "/api/assessments", payload);
       if (!response.ok) throw new Error(await response.text());
       const createdAssessment = await response.json();
+      
+      toast({
+        title: "Assessment Created",
+        description: "Assessment successfully created, generating report..."
+      });
+      
+      // Log the created assessment for debugging
+      console.log("Created assessment:", JSON.stringify(createdAssessment, null, 2));
+      
       setAssessment(prev => ({
         ...prev,
         id: createdAssessment.id,
@@ -580,12 +677,12 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       // Generate report after assessment is created
       generateReportMutation.mutate(createdAssessment.id);
     } catch (error) {
+      console.error("Submission Error:", error);
       toast({
         title: "Submission Error",
         description: error instanceof Error ? error.message : "Unknown error.",
         variant: "destructive",
       });
-    } finally {
       setIsGeneratingReport(false);
     }
   }, [form, toast, generateReportMutation, strategicFocus]);
@@ -1706,7 +1803,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                        </div>
                      </div>
                    </div>
-                   <p className="text-xs text-muted-foreground mt-2">To modify these values, please navigate to the 'ROI Inputs' step.</p>
+                   <p className="text-xs text-muted-foreground mt-2">To modify these values, please navigate to the 'ROI Targets' step.</p>
                  </CardContent>
                </Card>
 
@@ -1785,6 +1882,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       assessmentId={0} // This is needed for progress indicator navigation, even if we're not using it
       onSaveBeforeNavigate={saveCurrentStep}
       maxReachedStepIndex={maxReachedStepIndex}
+      validationError={validationError}
     >
       <Form {...form}>
         <Card className="mb-8">

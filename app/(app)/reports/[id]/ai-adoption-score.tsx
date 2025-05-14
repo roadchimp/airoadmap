@@ -3,8 +3,9 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
-interface AIAdoptionScoreProps {
+export interface AIAdoptionScoreProps {
   aiAdoptionScoreDetails?: {
     score: number;
     components: {
@@ -55,6 +56,39 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
     strategicFocus: ["Growth Focused", "Product / R&D Focused"]
   }
 }) => {
+  // Check if we're using the default values or have actual data
+  const isUsingDefaultData = !aiAdoptionScoreDetails?.score || 
+                            !roiDetails?.annualRoi || 
+                            !aiAdoptionScoreDetails?.components ||
+                            Object.keys(aiAdoptionScoreDetails?.components || {}).length === 0;
+  
+  // Ensure all required objects and properties exist to prevent errors
+  const scoreDetails = aiAdoptionScoreDetails || {
+    score: 0,
+    components: {
+      adoptionRate: 0,
+      timeSaved: 0,
+      costEfficiency: 0,
+      performanceImprovement: 0,
+      toolSprawl: 0,
+    },
+  };
+  
+  const roi = roiDetails || {
+    annualRoi: 0,
+    costSavings: 0,
+    additionalRevenue: 0,
+    aiInvestment: 0,
+    roiRatio: 0,
+  };
+  
+  const profile = companyProfile || {
+    industry: "Not specified",
+    industryMaturity: "Not specified",
+    companyStage: "Not specified",
+    strategicFocus: [],
+  };
+
   // Format currency values
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -63,6 +97,82 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  // Safely get component values
+  const getComponentValue = (key: keyof typeof scoreDetails.components): number => {
+    if (!scoreDetails.components) return 0;
+    const value = scoreDetails.components[key];
+    
+    // More thorough type checking to handle different data structures
+    if (typeof value === 'number') {
+      return value;
+    } else if (value && typeof value === 'object') {
+      // Handle case where value is a CalculatedScoreComponent object 
+      const objValue = value as any; // Cast to any to access potential properties
+      if ('normalizedScore' in objValue && typeof objValue.normalizedScore === 'number') {
+        return Math.round(objValue.normalizedScore * 100);
+      } else if ('value' in objValue && typeof objValue.value === 'number') {
+        return objValue.value;
+      }
+    }
+    
+    // Default fallback
+    return 0;
+  };
+
+  // If we're using default data, show a message about no data being available
+  if (isUsingDefaultData) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Adoption Score™</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-gray-500 text-center mb-4">
+              No AI Adoption Score data is available for this assessment yet.
+            </p>
+            <p className="text-sm text-gray-400 text-center max-w-md">
+              This could be because AI Adoption Score inputs were not provided during the assessment, 
+              or because the report was generated before this feature was available.
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Company Profile</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Industry</h3>
+                <p className="font-medium">
+                  {profile?.industry || 'Not specified'} {profile?.industryMaturity ? `(${profile.industryMaturity})` : ''}
+                </p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Company Stage</h3>
+                <p className="font-medium">{profile?.companyStage || 'Not specified'}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500">Strategic Focus</h3>
+                <div>
+                  {profile?.strategicFocus && Array.isArray(profile.strategicFocus) && profile.strategicFocus.length > 0 ? (
+                    profile.strategicFocus.map((focus, index) => (
+                      <Badge key={index} variant="outline" className="mr-1 mb-1">{focus}</Badge>
+                    ))
+                  ) : (
+                    <p className="font-medium">No strategic focus specified</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -87,11 +197,11 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
                   className="absolute inset-0 rounded-full border-8 border-[#e84c2b]"
                   style={{ 
                     clipPath: `polygon(0 0, 100% 0, 100% 100%, 0% 100%)`,
-                    background: `conic-gradient(#e84c2b ${aiAdoptionScoreDetails?.score || 0}%, transparent ${aiAdoptionScoreDetails?.score || 0}%, transparent 100%)`,
+                    background: `conic-gradient(#e84c2b ${scoreDetails.score || 0}%, transparent ${scoreDetails.score || 0}%, transparent 100%)`,
                   }}
                 ></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-5xl font-bold">{aiAdoptionScoreDetails?.score || 0}</span>
+                  <span className="text-5xl font-bold">{scoreDetails.score}</span>
                 </div>
               </div>
               <p className="mt-4 text-sm text-gray-600">Overall AI Adoption Score</p>
@@ -103,12 +213,12 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-medium">Adoption Rate</span>
-                  <span className="text-sm font-bold">{aiAdoptionScoreDetails?.components?.adoptionRate || 0}%</span>
+                  <span className="text-sm font-bold">{getComponentValue('adoptionRate')}%</span>
                 </div>
                 <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[#e84c2b] rounded-full"
-                    style={{ width: `${aiAdoptionScoreDetails?.components?.adoptionRate || 0}%` }}
+                    style={{ width: `${getComponentValue('adoptionRate')}%` }}
                   ></div>
                 </div>
                 <p className="text-xs text-gray-500">Percentage of users actively using AI tools on a monthly basis</p>
@@ -118,12 +228,12 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-medium">Time Saved</span>
-                  <span className="text-sm font-bold">{aiAdoptionScoreDetails?.components?.timeSaved || 0}%</span>
+                  <span className="text-sm font-bold">{getComponentValue('timeSaved')}%</span>
                 </div>
                 <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[#e84c2b] rounded-full"
-                    style={{ width: `${aiAdoptionScoreDetails?.components?.timeSaved || 0}%` }}
+                    style={{ width: `${getComponentValue('timeSaved')}%` }}
                   ></div>
                 </div>
                 <p className="text-xs text-gray-500">Percentage of time saved per user due to AI implementation</p>
@@ -133,12 +243,12 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-medium">Cost Efficiency</span>
-                  <span className="text-sm font-bold">{aiAdoptionScoreDetails?.components?.costEfficiency || 0}%</span>
+                  <span className="text-sm font-bold">{getComponentValue('costEfficiency')}%</span>
                 </div>
                 <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[#e84c2b] rounded-full"
-                    style={{ width: `${aiAdoptionScoreDetails?.components?.costEfficiency || 0}%` }}
+                    style={{ width: `${getComponentValue('costEfficiency')}%` }}
                   ></div>
                 </div>
                 <p className="text-xs text-gray-500">Ratio of AI license cost vs. equivalent human labor cost</p>
@@ -148,12 +258,12 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-medium">Performance Improvement</span>
-                  <span className="text-sm font-bold">{aiAdoptionScoreDetails?.components?.performanceImprovement || 0}%</span>
+                  <span className="text-sm font-bold">{getComponentValue('performanceImprovement')}%</span>
                 </div>
                 <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-[#e84c2b] rounded-full"
-                    style={{ width: `${aiAdoptionScoreDetails?.components?.performanceImprovement || 0}%` }}
+                    style={{ width: `${getComponentValue('performanceImprovement')}%` }}
                   ></div>
                 </div>
                 <p className="text-xs text-gray-500">Aggregate improvement in key performance metrics</p>
@@ -163,7 +273,7 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
               <div className="space-y-1">
                 <div className="flex justify-between items-end">
                   <span className="text-sm font-medium">Tool Sprawl</span>
-                  <span className="text-sm font-bold">+{aiAdoptionScoreDetails?.components?.toolSprawl || 0}</span>
+                  <span className="text-sm font-bold">+{getComponentValue('toolSprawl')}</span>
                 </div>
                 <div className="relative h-2 w-full bg-gray-200 rounded-full my-2">
                   <div className="absolute inset-y-0 left-1/2 w-0.5 bg-gray-400"></div>
@@ -171,7 +281,7 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
                   <div 
                     className="absolute inset-y-0 w-4 h-4 bg-[#e84c2b] rounded-full -mt-1"
                     style={{ 
-                      left: `${(((aiAdoptionScoreDetails?.components?.toolSprawl || 0) + 2) / 4) * 100}%`,
+                      left: `${((getComponentValue('toolSprawl') + 2) / 4) * 100}%`,
                       transform: 'translateX(-50%)' 
                     }}
                   ></div>
@@ -196,28 +306,28 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-1">
-              <h3 className="text-2xl font-bold">Annual ROI: {formatCurrency(roiDetails?.annualRoi || 0)}</h3>
+              <h3 className="text-2xl font-bold">Annual ROI: {formatCurrency(roi.annualRoi || 0)}</h3>
             </div>
 
             <div className="space-y-4 mt-6">
               <div className="flex justify-between">
                 <span className="text-gray-600">Cost Savings</span>
-                <span className="font-medium">{formatCurrency(roiDetails?.costSavings || 0)}</span>
+                <span className="font-medium">{formatCurrency(roi.costSavings || 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Additional Revenue</span>
-                <span className="font-medium">{formatCurrency(roiDetails?.additionalRevenue || 0)}</span>
+                <span className="font-medium">{formatCurrency(roi.additionalRevenue || 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">AI Investment</span>
-                <span className="font-medium">{formatCurrency(roiDetails?.aiInvestment || 0)}</span>
+                <span className="font-medium">{formatCurrency(roi.aiInvestment || 0)}</span>
               </div>
               
               <Separator className="my-4" />
               
               <div className="flex justify-between">
                 <span className="text-gray-700 font-medium">ROI Ratio</span>
-                <span className="font-bold">{(roiDetails?.roiRatio || 0).toFixed(2)}x</span>
+                <span className="font-bold">{((roi.roiRatio || 0)).toFixed(2)}x</span>
               </div>
             </div>
 
@@ -225,9 +335,9 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
               <h4 className="font-medium mb-2">ROI Formula</h4>
               <div className="font-mono text-sm bg-gray-100 p-3 rounded">
                 <p>ROI = (Cost Savings + Additional Revenue) / AI Investment</p>
-                <p>= ({formatCurrency(roiDetails?.costSavings || 0)} + {formatCurrency(roiDetails?.additionalRevenue || 0)}) / {formatCurrency(roiDetails?.aiInvestment || 0)}</p>
-                <p>= {formatCurrency((roiDetails?.costSavings || 0) + (roiDetails?.additionalRevenue || 0))} / {formatCurrency(roiDetails?.aiInvestment || 0)}</p>
-                <p>= {(roiDetails?.roiRatio || 0).toFixed(2)}x</p>
+                <p>= ({formatCurrency(roi.costSavings || 0)} + {formatCurrency(roi.additionalRevenue || 0)}) / {formatCurrency(roi.aiInvestment || 0)}</p>
+                <p>= {formatCurrency((roi.costSavings || 0) + (roi.additionalRevenue || 0))} / {formatCurrency(roi.aiInvestment || 0)}</p>
+                <p>= {((roi.roiRatio || 0)).toFixed(2)}x</p>
               </div>
             </div>
           </CardContent>
@@ -244,26 +354,24 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
             <div>
               <h3 className="text-sm font-medium text-gray-500">Industry</h3>
               <p className="font-medium">
-                {companyProfile.industry} {companyProfile.industryMaturity ? `(${companyProfile.industryMaturity})` : ''}
+                {profile?.industry || 'Not specified'} {profile?.industryMaturity ? `(${profile.industryMaturity})` : ''}
               </p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Stage of Growth</h3>
-              <p className="font-medium">{companyProfile.companyStage || 'Not specified'}</p>
+              <h3 className="text-sm font-medium text-gray-500">Company Stage</h3>
+              <p className="font-medium">{profile?.companyStage || 'Not specified'}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Strategic Focus</h3>
-              {companyProfile.strategicFocus && companyProfile.strategicFocus.length > 0 ? (
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {companyProfile.strategicFocus.map((focus, index) => (
-                    <span key={index} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      {focus}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="font-medium">Not specified</p>
-              )}
+              <div>
+                {profile?.strategicFocus && Array.isArray(profile.strategicFocus) && profile.strategicFocus.length > 0 ? (
+                  profile.strategicFocus.map((focus, index) => (
+                    <Badge key={index} variant="outline" className="mr-1 mb-1">{focus}</Badge>
+                  ))
+                ) : (
+                  <p className="font-medium">No strategic focus specified</p>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

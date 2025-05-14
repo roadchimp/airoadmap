@@ -11,10 +11,15 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // const { theme } = useTheme(); // Keep if used
 
   const toggleMobileSidebar = () => {
     setMobileSidebarOpen(!mobileSidebarOpen);
+  };  
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
   };
   
   return (
@@ -26,14 +31,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/*    - Desktop (md:): relative, fixed width, takes full height */}
       <div 
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-md
+          fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-card shadow-md
           transform transition-transform duration-300 ease-in-out 
           md:relative md:translate-x-0 md:inset-y-auto md:h-full 
           ${ mobileSidebarOpen ? "translate-x-0" : "-translate-x-full" }
         `}
       >
         {/* SidebarNav needs internal flex-col h-full structure */}
-        <SidebarNav onClose={() => setMobileSidebarOpen(false)} /> 
+        <SidebarNav 
+          onClose={() => setMobileSidebarOpen(false)} 
+          collapsed={sidebarCollapsed} 
+          onToggleCollapse={toggleSidebarCollapse}
+        /> 
       </div>
 
       {/* Mobile backdrop (keep as is) */}

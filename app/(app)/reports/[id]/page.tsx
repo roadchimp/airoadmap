@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Textarea } from "@/components/ui/textarea"
 import { addPrintStyles } from "../../../../utils/print-styles"
 import { toast } from "@/hooks/use-toast"
+import type { AIAdoptionScoreProps } from "./ai-adoption-score"
 
 // Import existing report components for fallback
 import ReportView from '@/components/report/ReportView'
@@ -463,13 +464,21 @@ export default function ReportPage({ params }: ReportPageProps) {
           {/* AI Adoption Score Tab */}
           <TabsContent value="ai-adoption-score" className="space-y-6">
             <AIAdoptionScoreTab 
-              aiAdoptionScoreDetails={reportData?.aiAdoptionScoreDetails as any}
-              roiDetails={reportData?.roiDetails as any}
+              aiAdoptionScoreDetails={
+                reportData?.aiAdoptionScoreDetails && typeof reportData.aiAdoptionScoreDetails === 'object'
+                ? reportData.aiAdoptionScoreDetails as AIAdoptionScoreProps['aiAdoptionScoreDetails']
+                : undefined
+              }
+              roiDetails={
+                reportData?.roiDetails && typeof reportData.roiDetails === 'object'
+                ? reportData.roiDetails as AIAdoptionScoreProps['roiDetails']
+                : undefined
+              }
               companyProfile={{
                 industry: reportData?.industry || undefined,
                 industryMaturity: reportData?.industryMaturity || undefined,
                 companyStage: reportData?.companyStage || undefined,
-                strategicFocus: reportData?.strategicFocus || undefined
+                strategicFocus: Array.isArray(reportData?.strategicFocus) ? reportData?.strategicFocus : undefined
               }}
             />
           </TabsContent>

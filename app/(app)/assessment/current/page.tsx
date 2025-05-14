@@ -20,29 +20,31 @@ async function getAssessmentsData() {
         return { assessmentsWithReports: [] };
     }
 
-    // 2. Fetch the corresponding report for each assessment
-    const assessmentsWithReports = await Promise.all(
-      assessments.map(async (assessment): Promise<AssessmentWithReportId> => {
-        let reportId: number | null = null;
-        try {
-            // Only fetch report if assessment is not in 'draft' status potentially
-            // (or always fetch and let the UI decide based on status + reportId presence)
-            const report = await storage.getReportByAssessment(assessment.id);
-            if (report) {
-            reportId = report.id;
-            }
-        } catch (reportError) {
-            console.error(`Error fetching report for assessment ${assessment.id}:`, reportError);
-            // Continue without reportId if report fetch fails
+    // 2. Fetch all reports to find matches for assessments
+    const reports = await storage.listReports();
+    
+    // Create a map of assessment IDs to report IDs for faster lookup
+    const assessmentToReportMap = new Map();
+    if (Array.isArray(reports)) {
+      reports.forEach(report => {
+        if (report.assessmentId) {
+          assessmentToReportMap.set(report.assessmentId, report.id);
         }
-        return {
-          ...assessment,
-          reportId: reportId, // Add the fetched reportId (will be null if no report found)
-        };
-      })
-    );
+      });
+    }
 
-    // 3. Return the combined data, sorted by update date descending
+    // 3. Combine assessments with their report IDs
+    const assessmentsWithReports = assessments.map((assessment): AssessmentWithReportId => {
+      // Look up the report ID from our map
+      const reportId = assessmentToReportMap.get(assessment.id) || null;
+      
+      return {
+        ...assessment,
+        reportId: reportId, // Add the fetched reportId (will be null if no report found)
+      };
+    });
+
+    // 4. Return the combined data, sorted by update date descending
     return {
       assessmentsWithReports: assessmentsWithReports.sort((a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -56,15 +58,14 @@ async function getAssessmentsData() {
 }
 
 export default async function CurrentAssessmentsPage() {
-  // Use the updated function name in the return object
   const { assessmentsWithReports } = await getAssessmentsData();
 
   return (
     <div className="container mx-auto py-8">
-       <div className="mb-6">
-         <h1 className="text-2xl font-bold">Current Assessments</h1>
-         <p className="text-muted-foreground">View, edit, or delete your ongoing and submitted assessments.</p>
-       </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Current Assessments</h1>
+        <p className="text-muted-foreground">View, edit, or delete your ongoing and submitted assessments.</p>
+      </div>
 
       {/* Pass the combined data to the client component table */}
       <CurrentAssessmentsTable initialAssessments={assessmentsWithReports} />

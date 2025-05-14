@@ -74,13 +74,13 @@ function convertResponsesToStepData(
         case 'basics':
           stepData['basics'] = {
             companyName: '',
+            reportName: 'AI Roadmap Report',
             industry: '',
             size: '',
             goals: '',
             stakeholders: [],
             industryMaturity: 'Mature',
             companyStage: 'Mature',
-            reportName: 'AI Roadmap Report'
           };
           break;
         case 'roles':

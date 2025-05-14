@@ -207,6 +207,14 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
           scores: { // `scores` is a top-level key in WizardStepData, not under adoption
             assessmentScores: undefined // Or an initial empty AssessmentScores object if defined
           },
+          aiAdoptionScoreInputs: {
+            adoptionRateForecast: 80,
+            timeSavingsPerUserHours: 7,
+            affectedUserCount: 120,
+            costEfficiencyGainsAmount: 20,
+            performanceImprovementPercentage: 30,
+            toolSprawlReductionScore: 4
+          },
         },
   });
 

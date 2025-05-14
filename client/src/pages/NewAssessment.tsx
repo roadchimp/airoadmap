@@ -26,6 +26,9 @@ interface AssessmentData {
       size?: string;
       goals?: string;
       stakeholders?: string[];
+      industryMaturity?: 'Mature' | 'Immature';
+      companyStage?: 'Startup' | 'Early Growth' | 'Scaling' | 'Mature';
+      reportName?: string;
     };
     roles?: {
       selectedDepartments?: number[];
@@ -63,6 +66,14 @@ interface AssessmentData {
       }>;
     };
     scores?: any;
+    aiAdoptionScoreInputs?: {
+      adoptionRateForecast?: number;
+      timeSavingsPerUserHours?: number;
+      affectedUserCount?: number;
+      costEfficiencyGainsAmount?: number;
+      performanceImprovementPercentage?: number;
+      toolSprawlReductionScore?: number;
+    };
   };
 }
 
@@ -91,7 +102,26 @@ const NewAssessment: React.FC = () => {
     title: "",
     organizationId: 1,
     userId: 1,
-    stepData: {}
+    stepData: {
+      basics: {
+        companyName: "",
+        industry: "",
+        size: "",
+        goals: "",
+        stakeholders: [],
+        industryMaturity: "Mature",
+        companyStage: "Mature",
+        reportName: "AI Roadmap Assessment"
+      },
+      aiAdoptionScoreInputs: {
+        adoptionRateForecast: 80,
+        timeSavingsPerUserHours: 7,
+        affectedUserCount: 120,
+        costEfficiencyGainsAmount: 20,
+        performanceImprovementPercentage: 30,
+        toolSprawlReductionScore: 4
+      }
+    }
   });
   
   // Auto-save state
@@ -194,7 +224,26 @@ const NewAssessment: React.FC = () => {
         title: "New AI Transformation Assessment",
         organizationId: 1,
         userId: 1,
-        stepData: {}
+        stepData: {
+          basics: {
+            companyName: "",
+            industry: "",
+            size: "",
+            goals: "",
+            stakeholders: [],
+            industryMaturity: "Mature",
+            companyStage: "Mature",
+            reportName: "AI Roadmap Assessment"
+          },
+          aiAdoptionScoreInputs: {
+            adoptionRateForecast: 80,
+            timeSavingsPerUserHours: 7,
+            affectedUserCount: 120,
+            costEfficiencyGainsAmount: 20,
+            performanceImprovementPercentage: 30,
+            toolSprawlReductionScore: 4
+          }
+        }
       });
       navigate("/assessment/basics");
     } else {
@@ -330,6 +379,15 @@ const NewAssessment: React.FC = () => {
     return (
       <>
         <QuestionCard
+          questionId="reportName"
+          questionText="Give this assessment a name"
+          inputType="text"
+          value={basicsData.reportName || ""}
+          onChange={(value) => handleInputChange("reportName", value)}
+          isRequired={true}
+        />
+
+        <QuestionCard
           questionId="companyName"
           questionText="What is the name of your organization?"
           inputType="text"
@@ -355,6 +413,36 @@ const NewAssessment: React.FC = () => {
           ]}
           value={basicsData.industry || ""}
           onChange={(value) => handleInputChange("industry", value)}
+          isRequired={true}
+        />
+        
+        <QuestionCard
+          questionId="industryMaturity"
+          questionText="How would you describe your industry's maturity with AI?"
+          guidanceText="Select the option that best describes the AI adoption level in your industry."
+          inputType="singleChoice"
+          options={[
+            { id: "mature", label: "Mature - Widespread AI adoption in my industry", value: "Mature" },
+            { id: "immature", label: "Immature - Limited AI adoption in my industry", value: "Immature" }
+          ]}
+          value={basicsData.industryMaturity || ""}
+          onChange={(value) => handleInputChange("industryMaturity", value)}
+          isRequired={true}
+        />
+        
+        <QuestionCard
+          questionId="companyStage"
+          questionText="What stage is your company in?"
+          guidanceText="Select the option that best describes your company's current stage."
+          inputType="singleChoice"
+          options={[
+            { id: "startup", label: "Startup", value: "Startup" },
+            { id: "early-growth", label: "Early Growth", value: "Early Growth" },
+            { id: "scaling", label: "Scaling", value: "Scaling" },
+            { id: "mature", label: "Mature", value: "Mature" }
+          ]}
+          value={basicsData.companyStage || ""}
+          onChange={(value) => handleInputChange("companyStage", value)}
           isRequired={true}
         />
         

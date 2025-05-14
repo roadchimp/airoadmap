@@ -389,6 +389,12 @@ export type PrioritizedItem = {
   priority: PriorityLevel;
   valueLevel: ValueLevel;
   effortLevel: EffortLevel;
+  aiAdoptionScore?: number; // Optional AI Adoption Score
+  metrics?: Array<{  // Optional metrics for detailed view
+    name: string;
+    value: string;
+    improvement: number;
+  }>;
 };
 
 export type HeatmapData = {

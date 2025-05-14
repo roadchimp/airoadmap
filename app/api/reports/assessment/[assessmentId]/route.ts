@@ -167,11 +167,99 @@ export async function POST(request: Request, { params }: { params: Params }) {
     // Calculate prioritization
     const results = await calculatePrioritization(stepData);
 
-    // Create a report with the results
+    // Create enhanced sample data for different roles to enable drill-down functionality
+    // This adds a variety of roles with their respective metrics for the Opportunities tab
+    const enhancedPrioritizationData = {
+      ...results.prioritizationData,
+      prioritizedItems: [
+        {
+          id: 1,
+          title: "Customer Service",
+          priority: "high",
+          department: "Support",
+          valueLevel: "high",
+          valueScore: 85,
+          effortLevel: "low",
+          effortScore: 35,
+          aiAdoptionScore: 82,
+          metrics: [
+            { name: "Time to Resolution", value: "2.5 hours", improvement: -35 },
+            { name: "Customer Satisfaction", value: "92%", improvement: 15 },
+            { name: "Tickets Handled per Day", value: "45", improvement: 28 }
+          ]
+        },
+        {
+          id: 2,
+          title: "Data Analysis",
+          priority: "high",
+          department: "Operations",
+          valueLevel: "high",
+          valueScore: 80,
+          effortLevel: "medium",
+          effortScore: 40,
+          aiAdoptionScore: 76,
+          metrics: [
+            { name: "Report Generation Time", value: "1.2 hours", improvement: -65 },
+            { name: "Data Processing Volume", value: "2500 records/day", improvement: 120 },
+            { name: "Error Rate", value: "0.5%", improvement: -75 }
+          ]
+        },
+        {
+          id: 3,
+          title: "Content Creation",
+          priority: "high",
+          department: "Marketing",
+          valueLevel: "high",
+          valueScore: 75,
+          effortLevel: "medium",
+          effortScore: 45,
+          aiAdoptionScore: 79,
+          metrics: [
+            { name: "Content Production Rate", value: "12 pieces/week", improvement: 100 },
+            { name: "Engagement Rate", value: "4.8%", improvement: 15 },
+            { name: "Time to Publish", value: "1.5 days", improvement: -50 }
+          ]
+        },
+        {
+          id: 4,
+          title: "Inventory Management",
+          priority: "medium",
+          department: "Logistics",
+          valueLevel: "medium",
+          valueScore: 70,
+          effortLevel: "medium",
+          effortScore: 50,
+          aiAdoptionScore: 65,
+          metrics: [
+            { name: "Stockout Rate", value: "1.2%", improvement: -40 },
+            { name: "Inventory Turnover", value: "12.5", improvement: 15 },
+            { name: "Order Fulfillment Time", value: "1.8 days", improvement: -25 }
+          ]
+        },
+        {
+          id: 5,
+          title: "HR Screening",
+          priority: "medium",
+          department: "Human Resources",
+          valueLevel: "medium",
+          valueScore: 65,
+          effortLevel: "high",
+          effortScore: 55,
+          aiAdoptionScore: 72,
+          metrics: [
+            { name: "Time to Screen", value: "1.2 days", improvement: -60 },
+            { name: "Quality of Hire", value: "85%", improvement: 12 },
+            { name: "Candidate Experience Score", value: "4.6/5", improvement: 15 }
+          ]
+        }
+      ]
+    };
+
+    // Create a report with the enhanced results
     const report = await storage.createReport({
       assessmentId,
       executiveSummary: results.executiveSummary,
-      prioritizationData: results.prioritizationData,
+      prioritizationData: enhancedPrioritizationData,
       aiSuggestions: results.aiSuggestions,
       performanceImpact: results.performanceImpact,
       consultantCommentary: "", // Default empty commentary

@@ -192,14 +192,29 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
             {/* Circular Score Display */}
             <div className="flex flex-col items-center justify-center">
               <div className="relative w-48 h-48">
-                <div className="absolute inset-0 rounded-full border-8 border-gray-100"></div>
-                <div 
-                  className="absolute inset-0 rounded-full border-8 border-[#e84c2b]"
-                  style={{ 
-                    clipPath: `polygon(0 0, 100% 0, 100% 100%, 0% 100%)`,
-                    background: `conic-gradient(#e84c2b ${scoreDetails.score || 0}%, transparent ${scoreDetails.score || 0}%, transparent 100%)`,
-                  }}
-                ></div>
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke="#f1f1f1"
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    fill="none"
+                    stroke="#e84c2b"
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                    strokeDasharray="251.2"
+                    strokeDashoffset={251.2 - (251.2 * (scoreDetails.score || 0) / 100)}
+                    transform="rotate(-90 50 50)"
+                  />
+                </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-5xl font-bold">{scoreDetails.score}</span>
                 </div>

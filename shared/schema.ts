@@ -377,7 +377,10 @@ export type InsertReport = z.infer<typeof insertReportSchema>;
 export type ReportWithAssessmentDetails = Report & Pick<
   Assessment,
   'industry' | 'industryMaturity' | 'companyStage' | 'strategicFocus' | 'title' // Added assessment title for context
-> & { organizationName?: string }; // Optionally add organization name if needed
+> & { 
+  organizationName?: string; // Optionally add organization name if needed
+  aiAdoptionScore?: number; // AI Adoption Score for display in overview
+};
 
 export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 

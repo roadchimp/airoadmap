@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { storage } from "@/server/storage";
 import AssessmentWizard from "../new/_components/assessment-wizard"; // Use the same wizard component
 import type { Assessment } from '@shared/schema';
+import { unstable_noStore } from 'next/cache';
 
 interface AssessmentDetailPageProps {
   params: {
@@ -11,6 +12,9 @@ interface AssessmentDetailPageProps {
 
 // Fetch data for a specific assessment on the server
 async function getAssessmentData(id: number): Promise<Assessment | null> {
+  // Disable caching to ensure fresh data
+  unstable_noStore();
+  
   try {
     const assessment = await storage.getAssessment(id);
     // Explicitly return null if assessment is undefined

@@ -60,8 +60,9 @@ export default function ReportPage({ params }: ReportPageProps) {
       try {
         setIsLoading(true)
         
-        // Use fetch for client-side data fetching
-        const response = await fetch(`/api/reports/${reportId}`)
+        // Use fetch for client-side data fetching with cache prevention
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/api/reports/${reportId}?t=${timestamp}`)
         if (!response.ok) {
           throw new Error(`Failed to fetch report: ${response.statusText}`)
         }
@@ -389,6 +390,49 @@ export default function ReportPage({ params }: ReportPageProps) {
                     </div>
                     <p className="text-sm text-gray-600">
                       Based on time savings and increased throughput
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* AI Adoption Score Card */}
+                <Card className="mt-6 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("ai-adoption-score")}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="text-[#e84c2b]">📈</span>
+                      AI Adoption Score
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center">
+                    <div className="relative w-24 h-24">
+                      <svg viewBox="0 0 100 100" className="w-full h-full">
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="#f1f1f1"
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                        />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="none"
+                          stroke="#e84c2b"
+                          strokeWidth="12"
+                          strokeLinecap="round"
+                          strokeDasharray="251.2"
+                          strokeDashoffset={251.2 - (251.2 * (reportData?.aiAdoptionScore || 0) / 100)}
+                          transform="rotate(-90 50 50)"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold">
+                        {reportData?.aiAdoptionScore || 0}
+                      </div>
+                    </div>
+                    <p className="text-sm text-center mt-2 text-muted-foreground">
+                      Click to view details
                     </p>
                   </CardContent>
                 </Card>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
+import { unstable_noStore } from 'next/cache';
 
 interface Params {
   id: string;
@@ -7,6 +8,9 @@ interface Params {
 
 // GET /api/assessments/:id
 export async function GET(request: Request, { params }: { params: Params }) {
+  // Disable caching for this route
+  unstable_noStore();
+  
   try {
     const assessmentId = parseInt(params.id);
     if (isNaN(assessmentId)) {
@@ -18,11 +22,20 @@ export async function GET(request: Request, { params }: { params: Params }) {
       return NextResponse.json({ message: 'Assessment not found' }, { status: 404 });
     }
     
-    return NextResponse.json(assessment);
+    return NextResponse.json(assessment, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate'
+      }
+    });
   } catch (error) {
     console.error('Error fetching assessment by ID:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: errorMessage }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate'
+      }
+    });
   }
 }
 

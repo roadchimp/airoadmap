@@ -1,4 +1,5 @@
 import React from 'react';
+import { storage } from '@/server/storage';
 import { Assessment, Report } from '@shared/schema'; // Import Report type
 import CurrentAssessmentsTable from '@components/assessment/CurrentAssessmentsTable';
 
@@ -10,37 +11,30 @@ type AssessmentWithReportId = Assessment & {
 // Fetch assessments and associated report IDs
 async function getAssessmentsData() {
   try {
+    // Try to directly access data from storage to avoid authentication issues in server component
     const userId = 1; // Hardcoded temporary value - Replace with actual user ID later
     
-    // Use public API endpoints instead of direct storage access
+    // Get all assessments instead of just user-specific ones to avoid auth issues
     let assessments: Assessment[] = [];
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/public/assessments`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch assessments: ${response.status} ${response.statusText}`);
-      }
-      assessments = await response.json();
+      assessments = await storage.listAssessments() || [];
     } catch (error) {
-      console.error("Error fetching assessments:", error);
+      console.error("Error accessing storage directly:", error);
       assessments = [];
     }
 
     if (!Array.isArray(assessments)) {
-      console.error("API did not return an array of assessments:", assessments);
+      console.error("listAssessments did not return an array:", assessments);
       return { assessmentsWithReports: [] };
     }
 
     // Filter assessments for the current user
     const userAssessments = assessments.filter(assessment => assessment.userId === userId);
     
-    // Fetch reports from public API endpoint
+    // 2. Fetch all reports to find matches for assessments
     let reports: Report[] = [];
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/public/reports`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reports: ${response.status} ${response.statusText}`);
-      }
-      reports = await response.json();
+      reports = await storage.listReports();
     } catch (error) {
       console.error("Error fetching reports:", error);
       reports = [];

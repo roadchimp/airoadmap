@@ -1,4 +1,5 @@
 import React from 'react';
+import { storage } from '@/server/storage';
 import { Report, Assessment } from '@shared/schema';
 import ReportsTable from './ReportsTable';
 
@@ -9,35 +10,25 @@ async function getReportsAndAssessments(): Promise<{ reports: Report[], assessme
   let assessments: Assessment[] = [];
   
   try {
-    // Fetch reports from public API endpoint
+    // Try to fetch reports
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/public/reports`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reports: ${response.status} ${response.statusText}`);
-      }
-      const fetchedReports = await response.json();
-      
+      const fetchedReports = await storage.listReports();
       if (Array.isArray(fetchedReports)) {
         reports = fetchedReports;
       } else {
-        console.error("Reports API did not return an array:", fetchedReports);
+        console.error("listReports did not return an array:", fetchedReports);
       }
     } catch (reportsError) {
       console.error("Error fetching reports:", reportsError);
     }
     
-    // Fetch assessments from public API endpoint
+    // Try to fetch assessments
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/public/assessments`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch assessments: ${response.status} ${response.statusText}`);
-      }
-      const fetchedAssessments = await response.json();
-      
+      const fetchedAssessments = await storage.listAssessments();
       if (Array.isArray(fetchedAssessments)) {
         assessments = fetchedAssessments;
       } else {
-        console.error("Assessments API did not return an array:", fetchedAssessments);
+        console.error("listAssessments did not return an array:", fetchedAssessments);
       }
     } catch (assessmentsError) {
       console.error("Error fetching assessments:", assessmentsError);

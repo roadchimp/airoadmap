@@ -219,29 +219,62 @@ export class PgStorage implements IStorage {
 
   // Assessment methods
   async getAssessment(id: number): Promise<Assessment | undefined> {
-    // Try to get assessment, but handle missing updated_at column
     try {
-      const result = await this.db.select().from(assessments).where(eq(assessments.id, id));
-      return result[0];
+      const result = await this.db.select({
+        id: assessments.id,
+        title: assessments.title,
+        organizationId: assessments.organizationId,
+        userId: assessments.userId,
+        status: assessments.status,
+        createdAt: assessments.createdAt,
+        updatedAt: assessments.updatedAt,
+        stepData: assessments.stepData,
+        industry: assessments.industry,
+        industryMaturity: assessments.industryMaturity,
+        companyStage: assessments.companyStage,
+        strategicFocus: assessments.strategicFocus,
+        aiAdoptionScoreInputs: assessments.aiAdoptionScoreInputs
+      }).from(assessments).where(eq(assessments.id, id));
+      
+      if (result.length > 0 && result[0] !== undefined) {
+        const assessmentData = result[0] as Assessment;
+        if (assessmentData.updatedAt === null || assessmentData.updatedAt === undefined) {
+            assessmentData.updatedAt = assessmentData.createdAt || new Date();
+        }
+        return assessmentData;
+      }
+      return undefined;
+
     } catch (error) {
-      // If error is about missing updated_at column
-      if (error instanceof Error && error.message.includes('updated_at')) {
-        console.error('Missing updated_at column in assessments table. Fetching with workaround.');
-        // Use SQL query to select all columns except updated_at
-        const result = await this.db.execute(
-          sql`SELECT id, title, organization_id, user_id, status, created_at, step_data 
+      console.error(`PgStorage.getAssessment(${id}) error:`, error);
+      if (error instanceof Error && error.message.includes('updated_at') && !error.message.includes('industry')) {
+        console.warn('Missing updated_at column in assessments table. Fetching with raw SQL workaround.');
+        const rawResult = await this.db.execute(
+          sql`SELECT id, title, organization_id, user_id, status, created_at, updated_at as db_updated_at, step_data, 
+                     industry, industry_maturity, company_stage, strategic_focus, ai_adoption_score_inputs 
               FROM assessments
               WHERE id = ${id}`
         );
-        // Add a default updated_at value to match the schema
-        if (result.rows.length === 0) return undefined;
         
+        if (rawResult.rows.length === 0) return undefined;
+        
+        const row: any = rawResult.rows[0];
         return {
-          ...result.rows[0],
-          updatedAt: result.rows[0].created_at || new Date(),
-        };
+          id: row.id,
+          title: row.title,
+          organizationId: row.organization_id,
+          userId: row.user_id,
+          status: row.status,
+          createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+          updatedAt: row.db_updated_at ? new Date(row.db_updated_at) : (row.created_at ? new Date(row.created_at) : new Date()),
+          stepData: row.step_data || {},
+          industry: row.industry,
+          industryMaturity: row.industry_maturity,
+          companyStage: row.company_stage,
+          strategicFocus: row.strategic_focus,
+          aiAdoptionScoreInputs: row.ai_adoption_score_inputs || {}
+        } as Assessment;
       }
-      // Re-throw other errors
       throw error;
     }
   }

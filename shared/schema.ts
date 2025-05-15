@@ -140,9 +140,9 @@ export const assessments = pgTable("assessments", {
   stepData: jsonb("step_data"),
 
   // NEW FIELDS (FR1.x, FR3.1)
-  industry: text("industry").notNull(), // FR1.1.2 - selected during setup
-  industryMaturity: industryMaturityEnum("industry_maturity").notNull(), // FR1.1.3 - selected during setup
-  companyStage: companyStageEnum("company_stage").notNull(), // FR1.2.2 - selected during setup
+  industry: text("industry").notNull().default('Unknown'), // FR1.1.2 - selected during setup
+  industryMaturity: industryMaturityEnum("industry_maturity").notNull().default('Immature'), // FR1.1.3 - selected during setup
+  companyStage: companyStageEnum("company_stage").notNull().default('Startup'), // FR1.2.2 - selected during setup
   strategicFocus: text("strategic_focus").array(), // Array of strings, allows for 'Other', can be empty array if not specified
   aiAdoptionScoreInputs: jsonb("ai_adoption_score_inputs"), // Store inputs for AI Adoption Score
 });

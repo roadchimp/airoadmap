@@ -8,7 +8,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast"; 
 import WizardLayout from "@/components/wizard/WizardLayout"; 
 import QuestionCard, { QuestionOption } from "@/components/wizard/QuestionCard"; 
-import { Department, JobRole, WizardStepData, Assessment, Report } from "@shared/schema";
+import { Department, JobRole, WizardStepData, Assessment, Report, industryMaturityEnum, companyStageEnum, insertAssessmentSchema, wizardStepDataSchema } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Path } from "react-hook-form"; // Import Path
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 // --- Interfaces --- (Should ideally be in a types file)
 interface WizardStep {
@@ -25,16 +37,37 @@ interface WizardStep {
   description: string;
 }
 
-// Use Assessment type from schema, make stepData Partial for incremental updates
-interface AssessmentState extends Omit<Assessment, 'stepData' | 'id' | 'createdAt'> {
-  id?: number; // Keep ID optional until created
+// Updated AssessmentState to include new dedicated fields as optional
+interface AssessmentState extends Omit<Assessment, 'stepData' | 'id' | 'createdAt' | 'updatedAt' | 'organizationId' | 'userId' | 'title' | 'status' | 'industry' | 'industryMaturity' | 'companyStage' | 'strategicFocus' | 'aiAdoptionScoreInputs' > { // Omit all direct Assessment fields that will be re-added as optional or handled
+  id?: number;
+  title?: string; // Already there, but ensure it's optional if can be missing initially
+  organizationId?: number;
+  userId?: number;
+  status?: Assessment['status']; // Use enum type
   stepData: Partial<WizardStepData>;
-  createdAt?: Date; // Make createdAt optional in state
+  createdAt?: Date | string; // Allow string for initial JSON parse, Date for DB
+  updatedAt?: Date | string;
+
+  // New dedicated fields (optional as they might not be set initially in state)
+  industry?: Assessment['industry'];
+  industryMaturity?: Assessment['industryMaturity'];
+  companyStage?: Assessment['companyStage'];
+  strategicFocus?: Assessment['strategicFocus'];
+  aiAdoptionScoreInputs?: Assessment['aiAdoptionScoreInputs'];
 }
 
 // Props for the wizard component
 interface AssessmentWizardProps {
   initialAssessmentData?: Assessment | null; // Accept initial data as optional prop
+}
+
+// Define the expected payload structure for the API when creating an assessment
+interface CreateAssessmentApiPayload {
+  basics: WizardStepData['basics']; // Ensured 'basics' is correctly typed
+  stepData: Partial<WizardStepData>;
+  organizationId?: number;
+  userId?: number;
+  // Add other top-level fields the API might expect, like aiAdoptionScoreInputs, if relevant at creation
 }
 
 // --- Wizard Steps Definition --- 
@@ -45,6 +78,7 @@ const wizardSteps: WizardStep[] = [
   { id: "workVolume", title: "Work Volume & Complexity", description: "Assess work patterns" },
   { id: "techStack", title: "Data & Systems", description: "Evaluate technical readiness" },
   { id: "adoption", title: "Readiness & Expectations", description: "Assess adoption readiness" },
+  { id: "aiAdoptionScoreInputs", title: "ROI Targets", description: "Provide inputs for AI Adoption Score calculation" },
   { id: "review", title: "Review & Submit", description: "Review and generate report" }
 ];
 
@@ -73,6 +107,22 @@ const getFromLocalCache = (assessmentId: number | undefined): Partial<WizardStep
     console.error('Failed to retrieve assessment data from cache:', e);
   }
   return null;
+};
+
+const mapAssessmentToWizardData = (assessment: Assessment & { organization?: { name?: string, size?: string, industry?: string } }): Partial<WizardStepData> => {
+  return {
+    basics: {
+      companyName: assessment.organization?.name || "",
+      reportName: assessment.title || "",
+      industry: assessment.industry || assessment.organization?.industry || "", // Prioritize assessment.industry
+      size: assessment.organization?.size || "",
+      goals: (assessment as any).goals || "", // Assuming goals might be on assessment or needs casting
+      stakeholders: (assessment as any).stakeholders || [], // Assuming stakeholders might be on assessment
+      industryMaturity: assessment.industryMaturity || undefined,
+      companyStage: assessment.companyStage || undefined,
+    },
+    // ... other steps mapping
+  };
 };
 
 // --- Main Wizard Component --- 
@@ -109,44 +159,106 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   // Add state for max reached step, initialize with current
   const [maxReachedStepIndex, setMaxReachedStepIndex] = useState(initialStepIndex);
   
-  // --- State --- 
+  // Add a state to track validation errors
+  const [validationError, setValidationError] = useState<string | null>(null);
+  
+  // Moved useForm to the top level of the component
+  const form = useForm<WizardStepData>({
+    resolver: zodResolver(wizardStepDataSchema),
+    defaultValues: initialAssessmentData
+      ? mapAssessmentToWizardData(initialAssessmentData)
+      : {
+          basics: {
+            companyName: "",
+            reportName: "",
+            industry: "",
+            size: "",
+            goals: "",
+            stakeholders: [],
+            industryMaturity: undefined,
+            companyStage: undefined,
+          },
+          roles: {
+            selectedDepartments: [],
+            selectedRoles: [],
+          },
+          painPoints: { roleSpecificPainPoints: {}, generalPainPoints: "" },
+          workVolume: { roleWorkVolume: {} },
+          techStack: { 
+            currentSystems: "", 
+            dataAvailability: [], 
+            existingAutomation: "", 
+            dataQuality: undefined, // Assuming this might be a select, hence undefined default
+            dataQualityIssues: "",
+            approvals: "",
+            dataAccessibility: undefined, // Assuming select
+            systemsIntegration: undefined, // Assuming select
+            relevantTools: "",
+            notes: ""
+          },
+          adoption: { // Defaults for fields defined in wizardStepDataSchema.adoption
+            roleAdoption: {},
+            changeReadiness: undefined, // Assuming select
+            stakeholderAlignment: undefined, // Assuming select
+            expectedChallenges: "",
+            successMetrics: "",
+            trainingNeeds: "",
+          },
+          scores: { // `scores` is a top-level key in WizardStepData, not under adoption
+            assessmentScores: undefined // Or an initial empty AssessmentScores object if defined
+          },
+          aiAdoptionScoreInputs: {
+            adoptionRateForecast: 80,
+            timeSavingsPerUserHours: 7,
+            affectedUserCount: 120,
+            costEfficiencyGainsAmount: 20,
+            performanceImprovementPercentage: 30,
+            toolSprawlReductionScore: 4
+          },
+        },
+  });
+
   const [assessment, setAssessment] = useState<AssessmentState>(() => {
-      if (initialAssessmentData) {
-          // Extract stepData and ensure it's not null/undefined
-          const stepData = initialAssessmentData.stepData || {};
-          
-          // Extract reportName from basics if available - ensure string type
-          let reportName = "";
-          if (stepData && 
-              typeof stepData === 'object' && 
-              'basics' in stepData && 
-              stepData.basics && 
-              typeof stepData.basics === 'object' &&
-              'reportName' in stepData.basics && 
-              typeof stepData.basics.reportName === 'string') {
-            reportName = stepData.basics.reportName;
-          }
-          
-          return {
-              ...initialAssessmentData,
-              // Use reportName as title if available, ensuring a string result
-              title: reportName || initialAssessmentData.title || "New AI Transformation Assessment",
-              stepData, 
-          };
-      } else {
-          // Revert back to using 'title' and original fields
-          return {
-              title: "New AI Transformation Assessment", // Reverted from 'name'
-              organizationId: 1, // Placeholder
-              userId: 1, // Placeholder
-              status: "draft",
-              stepData: {},
-              updatedAt: new Date(),
+    if (initialAssessmentData) {
+      const mappedData = mapAssessmentToWizardData(initialAssessmentData);
+      // Ensure stepData in the initial state is fully populated or defaults correctly
+      const defaultFormValues = form.getValues(); // Get defaults including all steps
+      const initialStepData: Partial<WizardStepData> = {
+        ...defaultFormValues, // Start with all default step structures
+        ...mappedData       // Override with mapped data from initialAssessmentData
+      };
+      if (mappedData.basics) initialStepData.basics = mappedData.basics; // Ensure basics is specifically from mappedData if present
+      // ... ensure other steps are also correctly merged if necessary
+
+      return {
+        id: initialAssessmentData.id,
+        title: initialAssessmentData.title,
+        organizationId: initialAssessmentData.organizationId,
+        userId: initialAssessmentData.userId,
+        status: initialAssessmentData.status,
+        stepData: initialStepData, // Use the merged initial step data
+        createdAt: initialAssessmentData.createdAt,
+        updatedAt: initialAssessmentData.updatedAt,
+        industry: initialAssessmentData.industry,
+        industryMaturity: initialAssessmentData.industryMaturity,
+        companyStage: initialAssessmentData.companyStage,
+        strategicFocus: initialAssessmentData.strategicFocus,
+        aiAdoptionScoreInputs: initialAssessmentData.aiAdoptionScoreInputs,
+      };
+    } else {
+      return {
+        title: "New AI Transformation Assessment",
+        stepData: form.getValues(), // Initialize with all default form values
       };
     }
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  // Add a state for strategicFocus, which is stored at the assessment level, not in stepData
+  const [strategicFocus, setStrategicFocus] = useState<string[]>(
+    initialAssessmentData?.strategicFocus || []
+  );
 
   // --- Data Fetching --- 
   const { data: departments = [] } = useQuery<Department[]>({
@@ -161,13 +273,29 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
 
   // --- Mutations --- 
   const createAssessmentMutation = useMutation({
-    mutationFn: async (assessmentData: Omit<AssessmentState, 'id'>) => {
-      const response = await apiRequest("POST", "/api/assessments", assessmentData);
+    // Updated mutationFn to accept the new CreateAssessmentApiPayload type
+    mutationFn: async (payloadForApi: CreateAssessmentApiPayload) => {
+      const response = await apiRequest("POST", "/api/assessments", payloadForApi);
       if (!response.ok) throw new Error(await response.text());
       return response.json() as Promise<Assessment>;
     },
-    onSuccess: (data) => {
-      setAssessment(prev => ({ ...prev, id: data.id, stepData: data.stepData || {} }));
+    onSuccess: (createdDbAssessment) => {
+      setAssessment(prev => ({ 
+        ...prev,
+        id: createdDbAssessment.id,
+        title: createdDbAssessment.title,
+        organizationId: createdDbAssessment.organizationId,
+        userId: createdDbAssessment.userId,
+        status: createdDbAssessment.status,
+        industry: createdDbAssessment.industry,
+        industryMaturity: createdDbAssessment.industryMaturity,
+        companyStage: createdDbAssessment.companyStage,
+        strategicFocus: createdDbAssessment.strategicFocus,
+        aiAdoptionScoreInputs: createdDbAssessment.aiAdoptionScoreInputs,
+        stepData: (createdDbAssessment.stepData as Partial<WizardStepData>) || { basics: form.getValues().basics }, 
+        createdAt: createdDbAssessment.createdAt, 
+        updatedAt: createdDbAssessment.updatedAt,
+      }));
       queryClient.invalidateQueries({ queryKey: ["/api/assessments"] });
       toast({
         title: "Assessment created",
@@ -182,13 +310,20 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   });
   
   const updateAssessmentStepMutation = useMutation({
-    mutationFn: async ({ id, stepData }: { id: number, stepData: Partial<WizardStepData> }) => {
-      const response = await apiRequest("PATCH", `/api/assessments/${id}/step`, stepData);
+    mutationFn: async ({ id, stepData, strategicFocus }: { id: number, stepData: Partial<WizardStepData>, strategicFocus?: string[] }) => {
+      const response = await apiRequest("PATCH", `/api/assessments/${id}/step`, { 
+        ...stepData,
+        strategicFocus
+      });
        if (!response.ok) throw new Error(await response.text());
       return response.json() as Promise<Assessment>;
     },
     onSuccess: (data) => {
-      setAssessment(prev => ({ ...prev, stepData: data.stepData || {} }));
+      setAssessment(prev => ({ 
+        ...prev, 
+        stepData: data.stepData || {},
+        strategicFocus: data.strategicFocus || prev.strategicFocus 
+      }));
       queryClient.invalidateQueries({ queryKey: [`/api/assessments/${data.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/assessments"] });
       toast({ title: "Progress Saved", description: "Your changes have been saved.", duration: 2000 });
@@ -260,189 +395,180 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   useEffect(() => {
     const currentStepId = wizardSteps[currentStepIndex]?.id;
     
-    // If moving to the painPoints step, ensure roles are properly prefetched
     if (currentStepId === 'painPoints') {
       const selectedRoles = assessment.stepData.roles?.selectedRoles || [];
-      if (selectedRoles.length > 0 && !assessment.stepData.painPoints?.roleSpecificPainPoints) {
-        // Initialize pain points structure for selected roles if not already done
+      
+      if (selectedRoles.length > 0) {
         setAssessment(prev => {
-          const newStepData = { ...prev.stepData };
+          const newStepData = JSON.parse(JSON.stringify(prev.stepData)); // Deep clone
+
           if (!newStepData.painPoints) {
             newStepData.painPoints = { roleSpecificPainPoints: {}, generalPainPoints: '' };
           } else if (!newStepData.painPoints.roleSpecificPainPoints) {
             newStepData.painPoints.roleSpecificPainPoints = {};
           }
-          
-          // Create empty pain point entries for each selected role
+
+          let painPointsUpdated = false;
+          const currentRolePainPoints = newStepData.painPoints.roleSpecificPainPoints;
+
           selectedRoles.forEach(role => {
-            if (role.id && !newStepData.painPoints?.roleSpecificPainPoints[role.id]) {
-              if (newStepData.painPoints?.roleSpecificPainPoints) {
-                newStepData.painPoints.roleSpecificPainPoints[role.id] = {
-                  description: '',
-                  severity: undefined,
-                  frequency: undefined,
-                  impact: undefined
-                };
-              }
+            if (role.id && !currentRolePainPoints[role.id]) {
+              currentRolePainPoints[role.id] = {
+                description: '',
+                severity: undefined, 
+                frequency: undefined,
+                impact: undefined
+              };
+              painPointsUpdated = true;
             }
           });
-          
-          return { ...prev, stepData: newStepData };
+
+          if (painPointsUpdated) {
+            return { ...prev, stepData: newStepData };
+          }
+          // Always return the previous state if no updates were made to avoid returning undefined
+          return prev; 
         });
       }
+      // It's also useful to clear pain points if NO roles are selected, 
+      // but only if painPoints data actually exists to avoid unnecessary updates.
+      // else if (selectedRoles.length === 0 && assessment.stepData.painPoints?.roleSpecificPainPoints) {
+      //   setAssessment(prev => {
+      //     const newStepData = JSON.parse(JSON.stringify(prev.stepData));
+      //     if (newStepData.painPoints) { // Ensure painPoints object exists
+      //       newStepData.painPoints.roleSpecificPainPoints = {}; // Clear role-specific points
+      //       return { ...prev, stepData: newStepData };
+      //     }
+      //     return prev;
+      //   });
+      // }
     }
-  }, [currentStepIndex, assessment.stepData]);
+  }, [currentStepIndex, JSON.stringify(assessment.stepData.roles?.selectedRoles?.map(r => r.id)), wizardSteps]); // More specific dependency
 
   // Sync state with URL step parameter AND update maxReachedStepIndex if needed
+  // This useEffect was likely misplaced in the previous diff, ensure it's at the correct scope level.
   useEffect(() => {
     const stepIdFromUrl = searchParams.get('step') || wizardSteps[0].id;
     const indexFromUrl = wizardSteps.findIndex(step => step.id === stepIdFromUrl);
     const validIndex = indexFromUrl !== -1 ? indexFromUrl : 0;
 
     setCurrentStepIndex(validIndex);
-    // Ensure maxReached is at least the current step index upon load/navigation
     setMaxReachedStepIndex(prevMax => Math.max(prevMax, validIndex));
+  }, [searchParams, wizardSteps]); // Dependencies were searchParams; added wizardSteps as it's used
 
-    // --- This effect should ONLY run when the step parameter changes --- 
-  }, [searchParams]); // Dependency only on searchParams
+  // Sync form values from assessment.stepData when navigating between steps
+  useEffect(() => {
+    const stepId = wizardSteps[currentStepIndex].id as keyof WizardStepData;
+    if (assessment.stepData && assessment.stepData[stepId]) {
+      form.reset({
+        ...form.getValues(),
+        [stepId]: assessment.stepData[stepId],
+      }, {});
+    }
+    // Clear validation errors when changing steps
+    setValidationError(null);
+  }, [currentStepIndex]);
+
+  // Effect to clear validation error when form fields are updated
+  useEffect(() => {
+    const subscription = form.watch(() => {
+      if (validationError) {
+        setValidationError(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, validationError]);
 
   // --- Handlers --- 
+  // Refactored: Only update local state and localStorage on step navigation
   const saveCurrentStep = useCallback(async (onSuccess?: () => void) => {
-    if (isSaving) return;
-    setIsSaving(true);
-    
-    const currentStepId = wizardSteps[currentStepIndex].id as keyof WizardStepData;
-    // FIXED: Send the complete assessment.stepData object, not just the current step
-    // This will ensure all steps are retained in the DB
-
-    try {
-      let currentAssessment = assessment; // Use state directly
-      if (!currentAssessment.id) {
-        // Use default user ID 1 since we don't have auth yet
-        console.log("Attempting to create assessment with default user ID:", { 
-          ...currentAssessment,
-          userId: 1 
-        });
-        
-        const created = await createAssessmentMutation.mutateAsync({
-          ...currentAssessment,
-          userId: 1 // Default user ID
-        });
-        
-        console.log("Created assessment:", created);
-        // Update the current assessment with created data while preserving step data
-        currentAssessment = { 
-          ...currentAssessment, 
-          id: created.id,
-          userId: created.userId || 1,
-          status: created.status,
-          createdAt: created.createdAt,
-          updatedAt: created.updatedAt
-        };
-        setAssessment(currentAssessment);
-        
-        // Save to local cache after getting ID
-        saveToLocalCache(created.id, assessment.stepData);
-      } else {
-        console.log("Attempting to update assessment:", assessment.id, assessment.stepData);
-      }
-
-      // Save changes to step data
-      console.log("Saving step data:", { stepId: currentStepId, data: assessment.stepData[currentStepId] });
-      await updateAssessmentStepMutation.mutateAsync({
-        id: currentAssessment.id!, // Add non-null assertion since we know it exists at this point
-        stepData: assessment.stepData
-      });
-      
-      // Save individual responses to assessment_responses table via API
-      if (currentAssessment.id) {
-        try {
-          // Always use a default user ID of 1 until auth is implemented
-          const userIdToUse: number = currentAssessment.userId ? 
-            (currentAssessment.userId > 0 ? currentAssessment.userId : 1) : 
-            1;
-          
-          console.log("Saving assessment responses:", {
-            assessmentId: currentAssessment.id,
-            userId: userIdToUse,
-            stepId: currentStepId,
-            stepData: assessment.stepData[currentStepId]
-          });
-          
-          // Updated URL to match the Next.js route structure
-          const response = await fetch(`/api/assessment-responses/${currentAssessment.id}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              userId: userIdToUse,
-              stepId: currentStepId,
-              stepData: assessment.stepData[currentStepId]
-            }),
-          });
-          
-          if (!response.ok) {
-            console.warn("Warning saving assessment responses:", await response.text());
-          } else {
-            console.log("Successfully saved assessment responses");
-          }
-        } catch (error) {
-          console.warn("Warning saving assessment responses:", error);
-        }
-      }
-      
-      // Call success callback if provided
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) { 
-        console.error("Save failed:", error);
-         // Let mutation onError handle toast
-    } finally {
-        setIsSaving(false);
+    // Only update local state and localStorage, no API/database writes
+    const wizardFormData = form.getValues();
+    setAssessment(prev => ({
+      ...prev,
+      stepData: wizardFormData,
+      updatedAt: new Date().toISOString(),
+      // Important: We're not including strategicFocus here as it's managed separately
+    }));
+    if (assessment.id) {
+      saveToLocalCache(assessment.id, wizardFormData);
     }
-  }, [assessment, currentStepIndex, isSaving, createAssessmentMutation, updateAssessmentStepMutation]);
+    if (onSuccess) onSuccess();
+  }, [form, assessment.id]);
 
   // --- Enhance navigation handlers with transition state ---
   const handleNext = useCallback(async () => {
     if (isTransitioning) return;
-    setIsTransitioning(true);
-    
-    await saveCurrentStep(() => {
-      if (currentStepIndex < wizardSteps.length - 1) {
-        const nextIndex = currentStepIndex + 1;
-        const nextStepId = wizardSteps[nextIndex].id;
-        const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
+    const currentStepId = wizardSteps[currentStepIndex].id;
+    // Handle validation
+    let isValid = true;
+    let fieldsToValidate: Path<WizardStepData>[] = [];
+    if (currentStepId === 'basics') {
+      fieldsToValidate.push(...[
+        'basics.companyName',
+        'basics.reportName',
+        'basics.industry',
+        'basics.size',
+        'basics.industryMaturity',
+        'basics.companyStage',
+      ] as Path<WizardStepData>[]);
+    }
+    fieldsToValidate = Array.from(new Set(fieldsToValidate));
+    if (fieldsToValidate.length > 0) {
+      isValid = await form.trigger(fieldsToValidate, {});
+    }
+    if (!isValid) {
+      // Set the validation error message
+      setValidationError("Please complete all required fields marked with * before proceeding");
+      
+      // Check for fields with errors and create a more specific message
+      if (form.formState.errors) {
+        // Count errors in form.formState.errors
+        const errorCount = Object.keys(form.formState.errors).reduce((count, key) => {
+          // Each key might have nested errors, just count the top level keys for simplicity
+          return count + 1;
+        }, 0);
         
-        // Update max reached index AFTER successful navigation intent
-        setMaxReachedStepIndex(prevMax => Math.max(prevMax, nextIndex));
-        
-        // Navigate after a short delay to allow UI to update
-        router.push(`${basePath}?step=${nextStepId}`);
-        
-        // Reset transition state after navigation
-        setTimeout(() => {
-          setIsTransitioning(false);
-        }, 300);
-      } else {
-        setIsTransitioning(false);
+        if (errorCount > 0) {
+          setValidationError(`Please complete ${errorCount} required field${errorCount > 1 ? 's' : ''} marked with * before proceeding`);
+        }
       }
-    });
-  }, [saveCurrentStep, currentStepIndex, router, assessment.id, isTransitioning]);
+      
+      toast({
+        title: "Validation Error",
+        description: "Please correct the errors shown on the form before proceeding.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Clear any validation error when valid
+    setValidationError(null);
+    setIsTransitioning(true);
+    try {
+      await saveCurrentStep(() => {
+        if (currentStepIndex < wizardSteps.length - 1) {
+          const nextIndex = currentStepIndex + 1;
+          const nextStepId = wizardSteps[nextIndex].id;
+          setMaxReachedStepIndex(prevMax => Math.max(prevMax, nextIndex));
+          // Always navigate to /assessment/new for a local-only wizard
+          router.push(`/assessment/new?step=${nextStepId}`);
+        }
+      });
+    } finally {
+      setIsTransitioning(false);
+    }
+  }, [form, currentStepIndex, wizardSteps, saveCurrentStep, router, isTransitioning, toast]);
 
   const handlePrevious = useCallback(async () => {
     if (isTransitioning) return;
+    // Clear any validation errors when going back
+    setValidationError(null);
     setIsTransitioning(true);
-    
-    // Save current state before navigating back
     await saveCurrentStep(() => {
       if (currentStepIndex > 0) {
         const prevStepId = wizardSteps[currentStepIndex - 1].id;
-        const basePath = assessment.id ? `/assessment/${assessment.id}` : '/assessment/new';
-        router.push(`${basePath}?step=${prevStepId}`);
-        
-        // Reset transition state after navigation
+        // Always navigate to /assessment/new for a local-only wizard
+        router.push(`/assessment/new?step=${prevStepId}`);
         setTimeout(() => {
           setIsTransitioning(false);
         }, 300);
@@ -450,20 +576,130 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         setIsTransitioning(false);
       }
     });
-  }, [currentStepIndex, router, assessment.id, saveCurrentStep, isTransitioning]);
-  
+  }, [currentStepIndex, router, saveCurrentStep, isTransitioning, wizardSteps]);
+
+  // Only send the full wizard data to the backend on final submit
   const handleSubmit = useCallback(async () => {
-    await saveCurrentStep(() => {
-      if (assessment.id) {
-        // Mark final step as reached before submitting
-        setMaxReachedStepIndex(prevMax => Math.max(prevMax, wizardSteps.length - 1));
-        generateReportMutation.mutate(assessment.id);
+    const isValid = await form.trigger();
+    if (!isValid) {
+      // Count errors for a specific message
+      const errorCount = Object.keys(form.formState.errors).reduce((count, key) => count + 1, 0);
+      
+      if (errorCount > 0) {
+        setValidationError(`Please complete ${errorCount} required field${errorCount > 1 ? 's' : ''} before generating the report`);
+      } else {
+        setValidationError("Please correct all errors on the form before generating the report");
       }
-    });
-  }, [saveCurrentStep, assessment.id, generateReportMutation]);
+      
+      toast({
+        title: "Validation Error",
+        description: "Please correct all errors on the form before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Clear validation errors on valid submission
+    setValidationError(null);
+    // On submit, send the full wizard data to the backend
+    setIsGeneratingReport(true);
+    try {
+      toast({
+        title: "Processing",
+        description: "Preparing to submit assessment..."
+      });
+      
+      const wizardFormData = form.getValues();
+      
+      // Log the complete form data for debugging
+      console.log("Form data to be submitted:", JSON.stringify(wizardFormData, null, 2));
+      
+      // Check if AI Adoption Score inputs were provided
+      const hasAiAdoptionScoreInputs = 
+        wizardFormData.aiAdoptionScoreInputs && 
+        Object.keys(wizardFormData.aiAdoptionScoreInputs).length > 0;
+      
+      if (hasAiAdoptionScoreInputs) {
+        console.log("AI Adoption Score inputs provided:", JSON.stringify(wizardFormData.aiAdoptionScoreInputs, null, 2));
+        
+        // Validate that all inputs are numbers (not undefined or null)
+        const inputs = wizardFormData.aiAdoptionScoreInputs;
+        const validInputs = inputs ? Object.entries(inputs).every(([key, value]) => 
+          typeof value === 'number' && !isNaN(value)
+        ) : false;
+        
+        if (!validInputs) {
+          console.warn("Some AI Adoption Score inputs are not valid numbers. This may cause calculation issues.");
+        }
+      } else {
+        console.warn("No AI Adoption Score inputs provided. AI Adoption Score will not be calculated.");
+      }
+      
+      // Prepare the payload with all necessary data
+      const payload = {
+        basics: wizardFormData.basics,
+        stepData: wizardFormData,
+        organizationId: 1, // Placeholder, adjust as needed
+        userId: 1, // Placeholder, adjust as needed
+        strategicFocus: strategicFocus, // Include the strategicFocus field
+        industry: wizardFormData.basics?.industry,
+        industryMaturity: wizardFormData.basics?.industryMaturity,
+        companyStage: wizardFormData.basics?.companyStage,
+        aiAdoptionScoreInputs: hasAiAdoptionScoreInputs ? wizardFormData.aiAdoptionScoreInputs : undefined,
+      };
+      
+      console.log("Submitting assessment with payload:", JSON.stringify(payload, null, 2));
+      
+      toast({
+        title: "Submitting",
+        description: "Sending assessment data to server..."
+      });
+      
+      const response = await apiRequest("POST", "/api/assessments", payload);
+      if (!response.ok) throw new Error(await response.text());
+      const createdAssessment = await response.json();
+      
+      toast({
+        title: "Assessment Created",
+        description: "Assessment successfully created, generating report..."
+      });
+      
+      // Log the created assessment for debugging
+      console.log("Created assessment:", JSON.stringify(createdAssessment, null, 2));
+      
+      setAssessment(prev => ({
+        ...prev,
+        id: createdAssessment.id,
+        title: createdAssessment.title,
+        organizationId: createdAssessment.organizationId,
+        userId: createdAssessment.userId,
+        status: createdAssessment.status,
+        industry: createdAssessment.industry,
+        industryMaturity: createdAssessment.industryMaturity,
+        companyStage: createdAssessment.companyStage,
+        strategicFocus: createdAssessment.strategicFocus,
+        aiAdoptionScoreInputs: createdAssessment.aiAdoptionScoreInputs,
+        stepData: (createdAssessment.stepData as Partial<WizardStepData>) || { basics: wizardFormData.basics },
+        createdAt: createdAssessment.createdAt,
+        updatedAt: createdAssessment.updatedAt,
+      }));
+      // Generate report after assessment is created
+      generateReportMutation.mutate(createdAssessment.id);
+    } catch (error) {
+      console.error("Submission Error:", error);
+      toast({
+        title: "Submission Error",
+        description: error instanceof Error ? error.message : "Unknown error.",
+        variant: "destructive",
+      });
+      setIsGeneratingReport(false);
+    }
+  }, [form, toast, generateReportMutation, strategicFocus]);
   
   // Generic input change handler - deep updates for nested stepData
   const handleInputChange = (path: string, value: any) => {
+    // Update react-hook-form state
+    form.setValue(path as any, value, { shouldDirty: true, shouldValidate: true });
+
     setAssessment(prev => {
       const keys = path.split('.');
       const newState = { ...prev };
@@ -499,151 +735,301 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       // Add any other relevant options
     ];
 
+    // Options for checkbox-style radio groups
+    const industryOptions = [
+      { value: "Software & Technology", label: "Software & Technology" },
+      { value: "Finance & Banking", label: "Finance & Banking" },
+      { value: "Healthcare", label: "Healthcare" },
+      { value: "Retail & E-commerce", label: "Retail & E-commerce" },
+      { value: "Manufacturing", label: "Manufacturing" },
+      { value: "Education", label: "Education" },
+      { value: "Professional Services", label: "Professional Services" },
+      { value: "Media & Entertainment", label: "Media & Entertainment" },
+      { value: "Other", label: "Other" },
+    ];
+
+    const companySizeOptions = [
+      { value: "Small (1-50 employees)", label: "Small (1-50 employees)" },
+      { value: "Medium (51-500 employees)", label: "Medium (51-500 employees)" },
+      { value: "Large (501-5000 employees)", label: "Large (501-5000 employees)" },
+      { value: "Enterprise (5000+ employees)", label: "Enterprise (5000+ employees)" },
+    ];
 
     switch (stepId) {
       case "basics":
         return (
-          <React.Fragment>
-            <h2 className="text-xl font-semibold mb-4 text-slate-900">{title}</h2>
-            
-            <div className="space-y-6">
-              <div className="section-card">
-                <h3 className="text-base font-medium mb-3 text-slate-800">What is the name of your organization? <span className="text-red-500">*</span></h3>
-                <Input 
-                  className="max-w-md border-slate-300 focus:border-primary focus:ring-primary"
-                  value={stepData.basics?.companyName || ""}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange("basics.companyName", e.target.value)}
-                  placeholder="Enter your company name"
-                />
-              </div>
-
-              <div className="section-card">
-                <h3 className="text-base font-medium mb-3 text-slate-800">What is the name of this assessment? <span className="text-red-500">*</span></h3>
-                <Input 
-                  className="max-w-md border-slate-300 focus:border-primary focus:ring-primary"
-                  value={stepData.basics?.reportName || ""}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    // Update both the reportName in stepData and the assessment title
-                    handleInputChange("basics.reportName", e.target.value);
-                    setAssessment(prev => ({ ...prev, title: e.target.value || "New AI Transformation Assessment" }));
-                  }}
-                  placeholder="Enter a name for this assessment"
-                />
-                <p className="text-sm text-slate-500 mt-1">This name will be used as the title for your assessment and generated report.</p>
-              </div>
-
-              <div className="section-card">
-                <h3 className="text-base font-medium mb-3 text-slate-800">What industry is your organization in? <span className="text-red-500">*</span></h3>
-                <p className="text-sm text-slate-500 mb-4">Select the industry that best matches your organization's primary business activities.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    "Software & Technology",
-                    "Finance & Banking",
-                    "Healthcare",
-                    "Retail & E-commerce",
-                    "Manufacturing",
-                    "Education",
-                    "Professional Services", 
-                    "Media & Entertainment",
-                    "Other"
-                  ].map((industry) => (
-                    <div 
-                      key={industry} 
-                      className={`radio-option ${stepData.basics?.industry === industry ? 'selected' : ''}`}
-                      onClick={() => handleInputChange("basics.industry", industry)}
-                    >
-                      <div className="radio-circle">
-                        {stepData.basics?.industry === industry && (
-                          <div className="radio-circle-dot"></div>
-                        )}
-                      </div>
-                      <span>{industry}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="section-card">
-                <h3 className="text-base font-medium mb-3 text-slate-800">What is the size of your organization? <span className="text-red-500">*</span></h3>
-                <p className="text-sm text-slate-500 mb-4">Select the option that best describes your organization's size.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { value: "Small (1-50 employees)", label: "Small (1-50 employees)" },
-                    { value: "Medium (51-500 employees)", label: "Medium (51-500 employees)" },
-                    { value: "Large (501-5000 employees)", label: "Large (501-5000 employees)" },
-                    { value: "Enterprise (5000+ employees)", label: "Enterprise (5000+ employees)" }
-                  ].map((sizeOption) => (
-                    <div 
-                      key={sizeOption.value} 
-                      className={`radio-option ${stepData.basics?.size === sizeOption.value ? 'selected' : ''}`}
-                      onClick={() => handleInputChange("basics.size", sizeOption.value)}
-                    >
-                      <div className="radio-circle">
-                        {stepData.basics?.size === sizeOption.value && (
-                          <div className="radio-circle-dot"></div>
-                        )}
-                      </div>
-                      <span>{sizeOption.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="section-card">
-                <h3 className="text-base font-medium mb-3 text-slate-800">Primary Goals for AI Transformation</h3>
-                <Textarea
-                  className="min-h-[100px] border-slate-300 focus:border-primary focus:ring-primary"
-                  value={stepData.basics?.goals || ""}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleInputChange("basics.goals", e.target.value)}
-                  placeholder="Describe key objectives, e.g., improve efficiency, enhance customer experience..."
-                />
-              </div>
-              
-              <div className="section-card">
-                <h3 className="text-base font-medium mb-3 text-slate-800">Key Stakeholders</h3>
-                <p className="text-sm text-slate-500 mb-4">Select all departments or roles involved in approving or supporting this AI implementation.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {stakeholderOptions.map((option) => {
-                      // Ensure stakeholders is treated as an array
-                      const currentStakeholders: string[] = stepData.basics?.stakeholders || [];
-                      const isSelected = currentStakeholders.includes(option);  
-                            
-      
-                      return (
-                        <div
-                          key={option}
-                          className={`checkbox-option ${isSelected ? 'selected' : ''}`} // Use appropriate styling
-                        >
+          <div className="space-y-6 p-1">
+            <FormField
+              control={form.control}
+              name="basics.companyName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Name*</FormLabel>
+                  <FormControl><Input placeholder="Your Company LLC" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="basics.reportName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Report Name*</FormLabel>
+                  <FormControl><Input placeholder="Q1 AI Readiness Report" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="basics.industry"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Industry*</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                      {industryOptions.map((option) => (
+                        <div key={option.value} className={`checkbox-option ${field.value === option.value ? 'selected' : ''}`}>
                           <Checkbox
-                            id={`stakeholder-${option.replace(/\s+/g, '-')}`} // Create a unique ID
-                            checked={isSelected}
-                            onCheckedChange={(checked: boolean | string) => {
-                              const wasChecked = checked === true;
-                              const currentSelection = stepData.basics?.stakeholders || [];
-                              let newSelection;
-                              if (wasChecked) {
-                                newSelection = [...currentSelection, option];
-                              } else {
-                                newSelection = currentSelection.filter(s => s !== option);
+                            id={`industry-${option.value}`}
+                            checked={field.value === option.value}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                field.onChange(option.value);
+                              } else if (field.value === option.value) {
+                                // Optional: allow unchecking to clear. Zod requires a selection.
+                                // field.onChange(""); // Or undefined, if your schema handles it.
+                                // For now, to ensure one is always selected once interacted with,
+                                // clicking an already checked one does nothing or use radio group behavior.
+                                // If Zod requires a selection, this logic is fine.
                               }
-                              // Use handleInputChange to update the state
-                              handleInputChange("basics.stakeholders", newSelection);
                             }}
                             className="h-4 w-4"
                           />
-                          <Label
-                            htmlFor={`stakeholder-${option.replace(/\s+/g, '-')}`}
-                            className="cursor-pointer flex-1 font-normal text-slate-700"
-                          >
+                          <Label htmlFor={`industry-${option.value}`} className="cursor-pointer flex-1 font-normal text-slate-700">
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </FormControl>
+                  {/* <FormDescription>Select the industry that best matches your organization's primary business activities.</FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="basics.size"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Size*</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                      {companySizeOptions.map((option) => (
+                        <div key={option.value} className={`checkbox-option ${field.value === option.value ? 'selected' : ''}`}>
+                          <Checkbox
+                            id={`size-${option.value}`}
+                            checked={field.value === option.value}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                field.onChange(option.value);
+                              }
+                              // Similar logic as industry for ensuring one selection if needed
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor={`size-${option.value}`} className="cursor-pointer flex-1 font-normal text-slate-700">
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </FormControl>
+                  {/* <FormDescription>Select the option that best describes your organization's size.</FormDescription> */}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="basics.industryMaturity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Industry Maturity*</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select industry maturity..." /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {industryMaturityEnum.enumValues.map((maturity) => (
+                        <SelectItem key={maturity} value={maturity}>{maturity}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                  <FormDescription className="mt-2 text-xs text-slate-600 space-y-1">
+                    {/* Changed p tags to div to avoid p-in-p hydration error */}
+                    <div><span className="font-semibold">Mature Industry:</span> An industry that has reached a stable, established phase with slow or minimal growth, high competition, and a well-defined customer base, often focusing on efficiency and cost control rather than rapid expansion.</div>
+                    <div><span className="font-semibold">Immature Industry:</span> An industry that is still in its early or growth phases, characterized by rapid innovation, high growth rates, emerging customer bases, and frequent entry of new competitors as the market is still developing and evolving.</div>
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="basics.companyStage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Stage*</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select company stage..." /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {companyStageEnum.enumValues.map((stage) => (
+                        <SelectItem key={stage} value={stage}>{stage}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                  <Accordion type="single" collapsible className="w-full mt-2">
+                    <AccordionItem value="company-stage-context">
+                      <AccordionTrigger className="text-sm text-red-600 hover:text-red-700 hover:no-underline py-2">Hint: Details for each company stage</AccordionTrigger>
+                      <AccordionContent className="text-xs p-1">
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-slate-200 border border-slate-200">
+                            <thead className="bg-slate-50">
+                              <tr>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Stage</th>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Typical Annual Revenue</th>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Typical Employee Count</th>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Operational/AI Characteristics</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-slate-200">
+                              {[
+                                {
+                                  stage: "Startup",
+                                  revenue: "$0 – $1M",
+                                  employees: "1–10",
+                                  characteristics: "Founder-led, manual ops, ad hoc, early AI pilots"
+                                },
+                                {
+                                  stage: "Early Growth",
+                                  revenue: "$1M – $10M",
+                                  employees: "10–50",
+                                  characteristics: "First sales/CS hires, basic automation, track CAC"
+                                },
+                                {
+                                  stage: "Scaling",
+                                  revenue: "$10M – $50M+",
+                                  employees: "50–250",
+                                  characteristics: "Multiple teams, advanced analytics, AI scaling"
+                                },
+                                {
+                                  stage: "Mature",
+                                  revenue: "$50M – $500M+ (or IPO)",
+                                  employees: "250–1000+",
+                                  characteristics: "Fully built org, heavy automation, AI everywhere"
+                                }
+                              ].map(item => (
+                                <tr key={item.stage}>
+                                  <td className="px-3 py-2 whitespace-nowrap text-slate-700 font-medium">{item.stage}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{item.revenue}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-slate-600">{item.employees}</td>
+                                  <td className="px-3 py-2 text-slate-600 text-wrap">{item.characteristics}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </FormItem>
+              )}
+            />
+            
+            <FormItem>
+              <FormLabel>Strategic Focus (select all that apply)</FormLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                {[
+                  "Efficiency & Productivity",
+                  "Cost Reduction",
+                  "Revenue Growth",
+                  "Customer Experience",
+                  "Innovation & New Products",
+                  "Operational Excellence",
+                  "Data-Driven Decision Making",
+                  "Talent & Workforce Development"
+                ].map((option) => (
+                  <div key={option} className={`checkbox-option ${strategicFocus.includes(option) ? 'selected' : ''}`}>
+                    <Checkbox
+                      id={`strategic-focus-${option}`}
+                      checked={strategicFocus.includes(option)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setStrategicFocus(prev => [...prev, option]);
+                        } else {
+                          setStrategicFocus(prev => prev.filter(v => v !== option));
+                        }
+                      }}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor={`strategic-focus-${option}`} className="cursor-pointer flex-1 font-normal text-slate-700">
+                      {option}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <FormDescription>Select the strategic focus areas for your AI initiatives.</FormDescription>
+            </FormItem>
+            
+            <FormField
+              control={form.control}
+              name="basics.goals"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Key Business Goals for AI (Optional)</FormLabel>
+                  <FormControl><Textarea placeholder="Describe key business goals AI could address..." {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="basics.stakeholders"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Key Stakeholders (select all that apply)</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
+                      {stakeholderOptions.map((option) => (
+                        <div key={option} className={`checkbox-option ${(field.value || []).includes(option) ? 'selected' : ''}`}>
+                          <Checkbox
+                            id={`stakeholder-${option}`}
+                            checked={(field.value || []).includes(option)}
+                            onCheckedChange={(checked) => {
+                              const current = field.value || [];
+                              if (checked) {
+                                field.onChange([...current, option]);
+                              } else {
+                                field.onChange(current.filter((v: string) => v !== option));
+                              }
+                            }}
+                            className="h-4 w-4"
+                          />
+                          <Label htmlFor={`stakeholder-${option}`} className="cursor-pointer flex-1 font-normal text-slate-700">
                             {option}
                           </Label>
                         </div>
-                      );
-                    })}
-                </div>
-              </div>
-            </div>
-          </React.Fragment>
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormDescription>Select the key stakeholders involved in this assessment.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         );
       case "roles":
         // Get the current selections from state, providing defaults
@@ -1122,6 +1508,136 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
             </div>
           </React.Fragment>
         );
+      case "aiAdoptionScoreInputs":
+        // Get current AI Adoption Score inputs or initialize with empty object
+        const aiAdoptionScoreInputs = stepData.aiAdoptionScoreInputs || {};
+        
+        return (
+          <React.Fragment>
+            <h2 className="text-xl font-semibold mb-1">{title}</h2>
+            <p className="text-muted-foreground mb-4">{description}</p>
+            <div className="space-y-6">
+              <div>
+                <Label>Adoption Rate Forecast (%)</Label>
+                <Input 
+                  placeholder="Enter percentage (e.g., 75)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.adoptionRateForecast || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.adoptionRateForecast", value);
+                  }}
+                  min={0}
+                  max={100}
+                />
+                <FormDescription>Estimated percentage of potential users who will adopt the AI solution</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Time Savings (hours/week/user)</Label>
+                <Input 
+                  placeholder="Enter hours (e.g., 5)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.timeSavingsPerUserHours || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.timeSavingsPerUserHours", value);
+                  }}
+                  min={0}
+                  step={0.5}
+                />
+                <FormDescription>Estimated hours saved per user per week</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Affected Users (count)</Label>
+                <Input 
+                  placeholder="Enter number of users (e.g., 50)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.affectedUserCount || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.affectedUserCount", value);
+                  }}
+                  min={0}
+                />
+                <FormDescription>Number of users who will be affected by the AI solution</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Cost Efficiency Gains ($)</Label>
+                <Input 
+                  placeholder="Enter dollar amount (e.g., 10000)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.costEfficiencyGainsAmount || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.costEfficiencyGainsAmount", value);
+                  }}
+                  min={0}
+                />
+                <FormDescription>Estimated direct cost savings per year</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Performance Improvement (%)</Label>
+                <Input 
+                  placeholder="Enter percentage (e.g., 20)" 
+                  type="number"
+                  value={aiAdoptionScoreInputs.performanceImprovementPercentage || ""}
+                  onChange={(e) => {
+                    const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                    handleInputChange("aiAdoptionScoreInputs.performanceImprovementPercentage", value);
+                  }}
+                  min={0}
+                  max={100}
+                />
+                <FormDescription>Estimated percentage improvement in a key performance metric</FormDescription>
+              </div>
+              
+              <div>
+                <Label>Tool Sprawl Reduction (1-5)</Label>
+                <Select
+                  value={aiAdoptionScoreInputs.toolSprawlReductionScore?.toString() || ""}
+                  onValueChange={(value) => {
+                    handleInputChange("aiAdoptionScoreInputs.toolSprawlReductionScore", parseInt(value, 10));
+                  }}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select a value..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 - Minimal</SelectItem>
+                    <SelectItem value="2">2 - Below Average</SelectItem>
+                    <SelectItem value="3">3 - Average</SelectItem>
+                    <SelectItem value="4">4 - Above Average</SelectItem>
+                    <SelectItem value="5">5 - Significant</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>Estimated benefit from consolidating or replacing existing tools</FormDescription>
+              </div>
+              
+              <Card className="bg-slate-50 mt-4">
+                <CardContent className="pt-6">
+                  <div className="text-sm text-slate-700">
+                    <p className="font-medium mb-2">AI Adoption Score Formula:</p>
+                    <p className="mb-1">AIAdoption Score = (α·U + β·I + γ·E + δ·S - ε·B) / IB</p>
+                    <p className="text-xs mb-4">Where weights (α, β, γ, δ, ε) vary based on industry and company stage.</p>
+                    
+                    <p className="text-xs">
+                      <span className="font-semibold">U</span> = User factors (adoption rate, affected users)<br/>
+                      <span className="font-semibold">I</span> = Impact factors (time savings, performance improvement)<br/>
+                      <span className="font-semibold">E</span> = Efficiency factors (cost savings)<br/>
+                      <span className="font-semibold">S</span> = Strategic factors (tool sprawl reduction)<br/>
+                      <span className="font-semibold">B</span> = Barriers<br/>
+                      <span className="font-semibold">IB</span> = Industry-specific normalization factor
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </React.Fragment>
+        );
       case "review":
         return (
            <React.Fragment>
@@ -1201,18 +1717,24 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                     </div>
                     <div>
                         <Label>Key Stakeholders</Label>
-                        <Input
-                          className="mt-1"
-                          value={(stepData.basics?.stakeholders || []).join(", ")}
-                          onChange={(e) => handleInputChange("basics.stakeholders", e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                          placeholder="e.g., CEO, Head of Dept, IT Director"
-                         />
-                         <p className="text-xs text-muted-foreground mt-1">Edit the list using comma separation.</p>
+                        <div className="mt-1">
+                          {Array.isArray(stepData.basics?.stakeholders) && stepData.basics.stakeholders.length > 0
+                            ? stepData.basics.stakeholders.join(", ")
+                            : <span className="text-muted-foreground">No stakeholders selected.</span>}
+                        </div>
+                    </div>
+                    <div>
+                        <Label>Strategic Focus Areas</Label>
+                        <div className="mt-1">
+                          {Array.isArray(strategicFocus) && strategicFocus.length > 0
+                            ? strategicFocus.join(", ")
+                            : <span className="text-muted-foreground">No strategic focus areas selected.</span>}
+                        </div>
                     </div>
                  </CardContent>
                </Card>
 
-                {/* --- Role Selection Section --- */}
+               {/* --- Role Selection Section --- */}
                <Card>
                  <CardHeader>
                    <CardTitle>Selected Roles</CardTitle>
@@ -1229,6 +1751,67 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                      <p className="text-sm text-muted-foreground">No roles selected.</p>
                    )}
                    <p className="text-xs text-muted-foreground mt-2">To change selected roles, please navigate back to the 'Role Selection' step.</p>
+                 </CardContent>
+               </Card>
+
+               {/* --- AI Adoption Score Inputs Section --- */}
+               <Card>
+                 <CardHeader>
+                   <CardTitle>AI Adoption Score Inputs</CardTitle>
+                   <CardDescription>ROI calculation inputs.</CardDescription>
+                 </CardHeader>
+                 <CardContent className="space-y-2">
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <Label>Adoption Rate Forecast</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.adoptionRateForecast ? 
+                           `${stepData.aiAdoptionScoreInputs.adoptionRateForecast}%` : 
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Time Savings</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.timeSavingsPerUserHours ?
+                           `${stepData.aiAdoptionScoreInputs.timeSavingsPerUserHours} hours/week/user` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Affected Users</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.affectedUserCount ?
+                           stepData.aiAdoptionScoreInputs.affectedUserCount :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Cost Efficiency Gains</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.costEfficiencyGainsAmount ?
+                           `$${stepData.aiAdoptionScoreInputs.costEfficiencyGainsAmount}` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Performance Improvement</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.performanceImprovementPercentage ?
+                           `${stepData.aiAdoptionScoreInputs.performanceImprovementPercentage}%` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                     <div>
+                       <Label>Tool Sprawl Reduction</Label>
+                       <div className="text-sm mt-1">
+                         {stepData.aiAdoptionScoreInputs?.toolSprawlReductionScore ?
+                           `${stepData.aiAdoptionScoreInputs.toolSprawlReductionScore}/5` :
+                           <span className="text-muted-foreground">Not specified</span>}
+                       </div>
+                     </div>
+                   </div>
+                   <p className="text-xs text-muted-foreground mt-2">To modify these values, please navigate to the 'ROI Targets' step.</p>
                  </CardContent>
                </Card>
 
@@ -1278,130 +1861,6 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                    })}
                  </CardContent>
                </Card>
-
-                {/* --- Work Volume Section --- */}
-               <Card>
-                 <CardHeader>
-                    <CardTitle>Work Volume & Complexity</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-4">
-                     {(stepData.roles?.selectedRoles || []).map((role) => {
-                         const roleIdStr = String(role.id!); 
-                         const roleWV = stepData.workVolume?.roleWorkVolume?.[roleIdStr] || {}; 
-                         return (
-                             <div key={role.id} className="border-t pt-4 mt-4">
-                                 <h4 className="font-medium text-sm mb-2">{role.title} Work Patterns</h4>
-                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                     <div>
-                                         <Label>Task Volume</Label>
-                                         <Select value={roleWV.volume || ''} onValueChange={(v) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.volume`, v)}>
-                                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                             <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent>
-                                         </Select>
-                                     </div>
-                                     <div>
-                                         <Label>Task Complexity</Label>
-                                          <Select value={roleWV.complexity || ''} onValueChange={(v) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.complexity`, v)}>
-                                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                              <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem></SelectContent>
-                                          </Select>
-                                     </div>
-                                     <div>
-                                         <Label>Repetitiveness (1-5)</Label>
-                                          <Input 
-                                            type="number" 
-                                            min="1" 
-                                            max="5" 
-                                            value={roleWV.repetitiveness || ""} 
-                                            onChange={(e) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.repetitiveness`, parseInt(e.target.value) || undefined)}
-                                            className="mt-1"
-                                            placeholder="1-5"
-                                           />
-                                     </div>
-                                 </div>
-                                 <div className="mt-4">
-                                     <Label>Data Description</Label>
-                                      <Textarea className="mt-1" value={roleWV.dataDescription || ""} onChange={(e) => handleInputChange(`workVolume.roleWorkVolume.${roleIdStr}.dataDescription`, e.target.value)} />
-                                 </div>
-                             </div>
-                         );
-                     })}
-                 </CardContent>
-               </Card>
-
-                {/* --- Tech Stack Section --- */}
-               <Card>
-                 <CardHeader>
-                   <CardTitle>Data & Systems</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-4">
-                    <div>
-                        <Label>Data Accessibility</Label>
-                        <Select value={stepData.techStack?.dataAccessibility || ''} onValueChange={(v) => handleInputChange('techStack.dataAccessibility', v)}>
-                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="easy">Easy</SelectItem><SelectItem value="moderate">Moderate</SelectItem><SelectItem value="difficult">Difficult</SelectItem></SelectContent>
-                        </Select>
-                    </div>
-                     <div>
-                         <Label>Data Quality</Label>
-                         <Select value={stepData.techStack?.dataQuality || ''} onValueChange={(v) => handleInputChange('techStack.dataQuality', v)}>
-                            <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="good">Good</SelectItem><SelectItem value="fair">Fair</SelectItem><SelectItem value="poor">Poor</SelectItem></SelectContent>
-                         </Select>
-                    </div>
-                     <div>
-                         <Label>Systems Integration</Label>
-                         <Select value={stepData.techStack?.systemsIntegration || ''} onValueChange={(v) => handleInputChange('techStack.systemsIntegration', v)}>
-                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="easy">Easy</SelectItem><SelectItem value="moderate">Moderate</SelectItem><SelectItem value="difficult">Difficult</SelectItem></SelectContent>
-                         </Select>
-                     </div>
-                    <div>
-                        <Label>Relevant Tools & Platforms</Label>
-                        <Textarea className="mt-1" value={stepData.techStack?.relevantTools || ""} onChange={(e) => handleInputChange("techStack.relevantTools", e.target.value)} />
-                    </div>
-                    <div>
-                        <Label>Notes</Label>
-                        <Textarea className="mt-1" value={stepData.techStack?.notes || ""} onChange={(e) => handleInputChange("techStack.notes", e.target.value)} />
-                    </div>
-                 </CardContent>
-               </Card>
-
-               {/* --- Adoption Section --- */}
-               <Card>
-                 <CardHeader>
-                   <CardTitle>Readiness & Expectations</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-4">
-                     <div>
-                         <Label>Organizational Readiness for Change</Label>
-                         <Select value={stepData.adoption?.changeReadiness || ''} onValueChange={(v) => handleInputChange('adoption.changeReadiness', v)}>
-                             <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
-                         </Select>
-                     </div>
-                      <div>
-                         <Label>Stakeholder Alignment on AI Goals</Label>
-                         <Select value={stepData.adoption?.stakeholderAlignment || ''} onValueChange={(v) => handleInputChange('adoption.stakeholderAlignment', v)}>
-                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                             <SelectContent><SelectItem value="high">High</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="low">Low</SelectItem></SelectContent>
-                         </Select>
-                     </div>
-                      <div>
-                         <Label>Anticipated Training Needs</Label>
-                         <Textarea className="mt-1" value={stepData.adoption?.trainingNeeds || ""} onChange={(e) => handleInputChange("adoption.trainingNeeds", e.target.value)} />
-                     </div>
-                      <div>
-                         <Label>Expected Adoption Challenges</Label>
-                         <Textarea className="mt-1" value={stepData.adoption?.expectedChallenges || ""} onChange={(e) => handleInputChange("adoption.expectedChallenges", e.target.value)} />
-                     </div>
-                    <div>
-                         <Label>Key Success Metrics for AI Initiatives</Label>
-                         <Textarea className="mt-1" value={stepData.adoption?.successMetrics || ""} onChange={(e) => handleInputChange("adoption.successMetrics", e.target.value)} />
-                     </div>
-                 </CardContent>
-               </Card>
-
              </div>
            </React.Fragment>
         );
@@ -1428,33 +1887,36 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       onSubmit={currentStepIndex === wizardSteps.length - 1 ? handleSubmit : undefined}
       isSaving={isSaving || isTransitioning}
       isSubmitting={isGeneratingReport}
-      assessmentId={assessment.id}
+      assessmentId={0} // This is needed for progress indicator navigation, even if we're not using it
       onSaveBeforeNavigate={saveCurrentStep}
       maxReachedStepIndex={maxReachedStepIndex}
+      validationError={validationError}
     >
-      <Card className="mb-8">
-        <CardContent className="pt-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                {wizardSteps[currentStepIndex].title}
-              </h1>
-              <p className="text-slate-600">
-                {wizardSteps[currentStepIndex].description}
-              </p>
+      <Form {...form}>
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  {wizardSteps[currentStepIndex].title}
+                </h1>
+                <p className="text-slate-600">
+                  {wizardSteps[currentStepIndex].description}
+                </p>
+              </div>
+              
+              {isGeneratingReport && (
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  <span className="text-slate-600 font-medium">Generating report...</span>
+                </div>
+              )}
             </div>
             
-            {isGeneratingReport && (
-              <div className="flex items-center space-x-3">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                <span className="text-slate-600 font-medium">Generating report...</span>
-              </div>
-            )}
-          </div>
-          
-          {renderStepContent()}
-        </CardContent>
-      </Card>
+            {renderStepContent()}
+          </CardContent>
+        </Card>
+      </Form>
     </WizardLayout>
   );
 } 

@@ -1,9 +1,9 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
+  // Don't try to read the body, as it may have been read already in the apiRequest function
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    throw new Error(`${res.status}: ${res.statusText}`);
   }
 }
 
@@ -17,6 +17,11 @@ export async function apiRequest(
   let retryCount = 0;
   let delay = 1000; // Start with 1s delay
   
+  console.log(`Making API request: ${method} ${url}`);
+  if (data) {
+    console.log("Request data:", JSON.stringify(data).slice(0, 200) + (JSON.stringify(data).length > 200 ? "..." : ""));
+  }
+  
   while (retryCount < maxRetries) {
     try {
       const res = await fetch(url, {
@@ -28,9 +33,17 @@ export async function apiRequest(
         cache: "no-cache",
       });
       
+      console.log(`API response status: ${res.status} ${res.statusText}`);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`API error: ${res.status}`, errorText || res.statusText);
+      }
+      
       await throwIfResNotOk(res);
       return res;
     } catch (error) {
+      console.error(`API request error (attempt ${retryCount + 1}/${maxRetries}):`, error);
       retryCount++;
       
       // If we've reached max retries, throw the error

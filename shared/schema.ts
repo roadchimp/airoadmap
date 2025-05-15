@@ -30,6 +30,7 @@ export const organizations = pgTable("organizations", {
   description: text("description"),
 });
 
+//added a field for the organization's industry
 export const insertOrganizationSchema = createInsertSchema(organizations).pick({
   name: true,
   industry: true, 
@@ -125,19 +126,26 @@ export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick(
 });
 
 // Assessment model
-export const assessmentStatusEnum = pgEnum('assessment_status', ['draft', 'submitted', 'completed']); // Added 'submitted' as a potential state
+export const assessmentStatusEnum = pgEnum('assessment_status', ['draft', 'submitted', 'completed']);
+export const industryMaturityEnum = pgEnum('industry_maturity_enum', ['Mature', 'Immature']);
+export const companyStageEnum = pgEnum('company_stage_enum', ['Startup', 'Early Growth', 'Scaling', 'Mature']);
 
 export const assessments = pgTable("assessments", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id),
-  // ADD .references() HERE
   userId: integer("user_id").notNull().references(() => users.id),
   status: assessmentStatusEnum("status").default("draft").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  stepData: jsonb("step_data"), // Store all wizard step data as a JSON object
+  stepData: jsonb("step_data"),
 
+  // NEW FIELDS (FR1.x, FR3.1)
+  industry: text("industry").notNull().default('Unknown'), // FR1.1.2 - selected during setup
+  industryMaturity: industryMaturityEnum("industry_maturity").notNull().default('Immature'), // FR1.1.3 - selected during setup
+  companyStage: companyStageEnum("company_stage").notNull().default('Startup'), // FR1.2.2 - selected during setup
+  strategicFocus: text("strategic_focus").array(), // Array of strings, allows for 'Other', can be empty array if not specified
+  aiAdoptionScoreInputs: jsonb("ai_adoption_score_inputs"), // Store inputs for AI Adoption Score
 });
 
 // Schema for selecting/retrieving assessments
@@ -166,6 +174,10 @@ export const reports = pgTable("reports", {
   aiSuggestions: jsonb("ai_suggestions"), // AI capability suggestions
   performanceImpact: jsonb("performance_impact"), // KPI estimates
   consultantCommentary: text("consultant_commentary"),
+
+  // NEW FIELDS (FR4.1, FR4.5)
+  aiAdoptionScoreDetails: jsonb("ai_adoption_score_details"), // Store calculated score and components
+  roiDetails: jsonb("roi_details"), // Store calculated ROI and its inputs
 });
 
 export const insertReportSchema = createInsertSchema(reports).pick({
@@ -175,6 +187,9 @@ export const insertReportSchema = createInsertSchema(reports).pick({
   aiSuggestions: true,
   performanceImpact: true,
   consultantCommentary: true,
+  // Add new fields to pick if they are set during report creation
+  aiAdoptionScoreDetails: true,
+  roiDetails: true,
 });
 
 // Scoring types
@@ -217,15 +232,35 @@ export type AssessmentScores = {
   timestamp: string;
 };
 
-// Update the Wizard Step Data schema
+// First, define the AI Adoption Score components schema at the top of the file, before wizardStepDataSchema is defined
+export const aiAdoptionScoreInputComponentsSchema = z.object({
+  // User-facing inputs - adjust types as needed (e.g., string for user input, then parse)
+  adoptionRateForecast: z.number().min(0).max(100).optional().describe("Estimated % adoption rate"),
+  timeSavingsPerUserHours: z.number().min(0).optional().describe("Estimated hours saved per user per week"),
+  affectedUserCount: z.number().min(0).optional().describe("Number of users affected by the AI solution"),
+  costEfficiencyGainsAmount: z.number().min(0).optional().describe("Estimated direct cost savings (e.g., per year)"),
+  performanceImprovementPercentage: z.number().min(0).optional().describe("Estimated % improvement in a key performance metric"),
+  toolSprawlReductionScore: z.number().min(1).max(5).optional().describe("Score (1-5) for estimated benefit from tool sprawl reduction"),
+});
+export type AiAdoptionScoreInputComponents = z.infer<typeof aiAdoptionScoreInputComponentsSchema>;
+
+// Now update the WizardStepData schema to include the aiAdoptionScoreInputs field
 export const wizardStepDataSchema = z.object({
   basics: z.object({
-    companyName: z.string(),
-    reportName: z.string().optional(),
-    industry: z.string(),
-    size: z.string(),
-    goals: z.string(),
-    stakeholders: z.array(z.string()),
+    companyName: z.string().min(1, "Company Name is required"),
+    reportName: z.string().min(1, "Report Name is required"),
+    industry: z.string().min(1, "Industry is required"),
+    size: z.string().min(1, "Company Size is required"),
+    goals: z.string().optional(),
+    stakeholders: z.array(z.string()).optional(),
+    industryMaturity: z.enum(industryMaturityEnum.enumValues, { 
+      required_error: "Industry Maturity is required",
+      invalid_type_error: "Please select a valid Industry Maturity",
+    }),
+    companyStage: z.enum(companyStageEnum.enumValues, {
+      required_error: "Company Stage is required",
+      invalid_type_error: "Please select a valid Company Stage",
+    }),
   }).optional(),
   
   roles: z.object({
@@ -300,6 +335,9 @@ export const wizardStepDataSchema = z.object({
   scores: z.object({
     assessmentScores: z.custom<AssessmentScores>(),
   }).optional(),
+  
+  // Add the aiAdoptionScoreInputs field
+  aiAdoptionScoreInputs: aiAdoptionScoreInputComponentsSchema.optional(),
 }).strict();
 
 // Priority matrix types
@@ -335,6 +373,12 @@ export type NewAssessment = typeof assessments.$inferInsert;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
 
+// New type for Report joined with Assessment details
+export type ReportWithAssessmentDetails = Report & Pick<
+  Assessment,
+  'industry' | 'industryMaturity' | 'companyStage' | 'strategicFocus' | 'title' // Added assessment title for context
+> & { organizationName?: string }; // Optionally add organization name if needed
+
 export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 
 export type PrioritizedItem = {
@@ -346,6 +390,12 @@ export type PrioritizedItem = {
   priority: PriorityLevel;
   valueLevel: ValueLevel;
   effortLevel: EffortLevel;
+  aiAdoptionScore?: number; // Optional AI Adoption Score
+  metrics?: Array<{  // Optional metrics for detailed view
+    name: string;
+    value: string;
+    improvement: number;
+  }>;
 };
 
 export type HeatmapData = {
@@ -589,3 +639,100 @@ export interface AssessmentScoreResponse {
 export type JobRoleWithDepartment = JobRole & {
   departmentName: string;
 };
+
+// Performance Metrics model (NEW)
+export const performanceMetricsRelevanceEnum = pgEnum('performance_metrics_relevance_enum', ['low', 'medium', 'high']);
+
+export const performanceMetrics = pgTable("performance_metrics", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(), // e.g., "Time Saved", "Cost Reduction"
+  unit: text("unit"), // e.g., "hours/week", "USD/year", "%"
+  description: text("description"),
+});
+
+export const insertPerformanceMetricSchema = createInsertSchema(performanceMetrics).omit({
+  id: true,
+});
+export const selectPerformanceMetricSchema = createSelectSchema(performanceMetrics);
+
+// Job Role - Performance Metric Link Table (NEW)
+export const jobRolePerformanceMetrics = pgTable("job_role_performance_metrics", {
+  jobRoleId: integer("job_role_id").notNull().references(() => jobRoles.id, { onDelete: "cascade" }),
+  performanceMetricId: integer("performance_metric_id").notNull().references(() => performanceMetrics.id, { onDelete: "cascade" }),
+}, (t) => ({
+  pk: primaryKey(t.jobRoleId, t.performanceMetricId)
+}));
+
+export const insertJobRolePerformanceMetricSchema = createInsertSchema(jobRolePerformanceMetrics);
+export const selectJobRolePerformanceMetricSchema = createSelectSchema(jobRolePerformanceMetrics);
+
+
+// Metric Relevance Rules model
+// Stores rules for applying weights or conditions to metrics based on context
+export const metricRules = pgTable("metric_rules", {
+  id: serial("id").primaryKey(),
+  metricId: integer("metric_id").notNull().references(() => performanceMetrics.id, { onDelete: "cascade" }),
+  // rule_condition JSONB can define criteria based on assessment fields like company_stage, strategic_focus, etc.
+  // Example: { "companyStage": "Startup", "strategicFocusIncludes": ["Efficiency"] }
+  ruleCondition: jsonb("rule_condition"),
+  weight: numeric("weight").notNull(), // Weight to apply if condition met
+  description: text("description"), // Optional description of the rule
+});
+
+export const insertMetricRuleSchema = createInsertSchema(metricRules).omit({
+  id: true,
+  metricId: true,
+  ruleCondition: true,
+  weight: true,
+  description: true,
+});
+export const selectMetricRuleSchema = createSelectSchema(metricRules);
+
+
+// Performance Metrics
+export type PerformanceMetrics = typeof performanceMetrics.$inferSelect;
+export type InsertPerformanceMetrics = typeof insertPerformanceMetricSchema;
+export type SelectPerformanceMetrics = typeof selectPerformanceMetricSchema;
+
+// Job Role Performance Metrics
+export type JobRolePerformanceMetrics = typeof jobRolePerformanceMetrics.$inferSelect;
+export type InsertJobRolePerformanceMetrics = typeof insertJobRolePerformanceMetricSchema;
+export type SelectJobRolePerformanceMetrics = typeof selectJobRolePerformanceMetricSchema;
+
+// Metric Rules
+export type MetricRules = typeof metricRules.$inferSelect;
+export type InsertMetricRule = typeof insertMetricRuleSchema; // Use this for insertions
+export type SelectMetricRule = typeof selectMetricRuleSchema; // Use this for selections
+
+// New Table: Organization Score Weights (NEW)
+export const organizationScoreWeights = pgTable("organization_score_weights", {
+  organizationId: integer("organization_id").primaryKey().references(() => organizations.id, { onDelete: "cascade" }),
+  adoptionRateWeight: numeric("adoption_rate_weight").notNull().default("0.2"), // Example default
+  timeSavedWeight: numeric("time_saved_weight").notNull().default("0.2"),
+  costEfficiencyWeight: numeric("cost_efficiency_weight").notNull().default("0.2"),
+  performanceImprovementWeight: numeric("performance_improvement_weight").notNull().default("0.2"),
+  toolSprawlReductionWeight: numeric("tool_sprawl_reduction_weight").notNull().default("0.2"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOrganizationScoreWeightsSchema = createInsertSchema(organizationScoreWeights, {
+  // All weights are numeric but represented as strings by default by drizzle-zod, convert to number
+  adoptionRateWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
+  timeSavedWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
+  costEfficiencyWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
+  performanceImprovementWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
+  toolSprawlReductionWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
+}).omit({ updatedAt: true }); // Allow DB to handle updatedAt on insert/update
+
+export const selectOrganizationScoreWeightsSchema = createSelectSchema(organizationScoreWeights, {
+  // Convert numeric strings to numbers on select
+  adoptionRateWeight: z.string().transform(Number),
+  timeSavedWeight: z.string().transform(Number),
+  costEfficiencyWeight: z.string().transform(Number),
+  performanceImprovementWeight: z.string().transform(Number),
+  toolSprawlReductionWeight: z.string().transform(Number),
+});
+
+// Organization Score Weights Types
+export type OrganizationScoreWeights = z.infer<typeof selectOrganizationScoreWeightsSchema>;
+export type InsertOrganizationScoreWeights = z.infer<typeof insertOrganizationScoreWeightsSchema>;

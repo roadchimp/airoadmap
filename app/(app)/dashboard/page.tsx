@@ -12,11 +12,31 @@ export default async function DashboardPage() {
   let fetchError = null;
 
   try {
-    const [assessments, reports] = await Promise.all([
-      storage.listAssessments(),
-      storage.listReports()
-    ]);
-
+    // Fetch assessments and handle potential schema errors
+    let assessments: Assessment[] = [];
+    let reports: any[] = [];
+    
+    try {
+      assessments = await storage.listAssessments();
+      if (!Array.isArray(assessments)) {
+        assessments = [];
+      }
+    } catch (assessmentError) {
+      console.error("Error fetching assessments:", assessmentError);
+      // Continue with empty assessments array
+    }
+    
+    try {
+      reports = await storage.listReports();
+      if (!Array.isArray(reports)) {
+        reports = [];
+      }
+    } catch (reportsError) {
+      console.error("Error fetching reports:", reportsError);
+      // Continue with empty reports array
+    }
+    
+    // Process assessment data
     assessments.forEach((assessment: Assessment) => {
       if (assessment.status === 'completed') {
         assessmentCountCompleted++;
@@ -29,7 +49,7 @@ export default async function DashboardPage() {
     reportCount = reports.length;
 
   } catch (error) {
-    console.error("Error fetching dashboard data:", error);
+    console.error("Error processing dashboard data:", error);
     fetchError = error instanceof Error ? error.message : "Failed to load dashboard data";
   }
 

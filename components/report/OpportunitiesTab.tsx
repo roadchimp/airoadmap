@@ -5,13 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { PrioritizedItem } from "@shared/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface OpportunitiesTabProps {
   prioritizedItems: PrioritizedItem[];
   title?: string;
   description?: string;
+}
+
+// Interface for the metrics shown in the detailed view
+interface PerformanceMetric {
+  name: string;
+  value: string;
+  improvement: number;
 }
 
 const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
@@ -23,6 +30,9 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [selectedValueRanges, setSelectedValueRanges] = useState<string[]>([]);
+  
+  // State for detailed view
+  const [selectedItem, setSelectedItem] = useState<PrioritizedItem | null>(null);
 
   // Extract unique departments from items
   const departments = useMemo(() => {
@@ -60,7 +70,7 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
       
       // Apply value range filter
       if (selectedValueRanges.length > 0) {
-        const valueScore = item.valueScore * 20; // Convert 1-5 scale to 0-100
+        const valueScore = item.valueScore;
         return selectedValueRanges.some(range => {
           const [min, max] = range.split('-').map(Number);
           return valueScore >= min && valueScore <= max;
@@ -84,6 +94,147 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
     medium: "Medium",
     low: "Low",
     not_recommended: "Not Recommended"
+  };
+
+  // Sample metrics data generator based on the selected item
+  const getMetricsForItem = (item: PrioritizedItem): PerformanceMetric[] => {
+    // You would normally fetch this from the API or it would be included in the item data
+    // This is just sample data based on department type
+    if (item.department === "Support") {
+      return [
+        { name: "Time to Resolution", value: "2.5 hours", improvement: -35 },
+        { name: "Customer Satisfaction", value: "92%", improvement: 15 },
+        { name: "Tickets Handled per Day", value: "45", improvement: 28 }
+      ];
+    } else if (item.department === "Operations") {
+      return [
+        { name: "Report Generation Time", value: "1.2 hours", improvement: -65 },
+        { name: "Data Processing Volume", value: "2500 records/day", improvement: 120 },
+        { name: "Error Rate", value: "0.5%", improvement: -75 }
+      ];
+    } else if (item.department === "Marketing") {
+      return [
+        { name: "Content Production Rate", value: "12 pieces/week", improvement: 100 },
+        { name: "Engagement Rate", value: "4.8%", improvement: 15 },
+        { name: "Time to Publish", value: "1.5 days", improvement: -50 }
+      ];
+    } else if (item.department === "Logistics") {
+      return [
+        { name: "Stockout Rate", value: "1.2%", improvement: -40 },
+        { name: "Inventory Turnover", value: "12.5", improvement: 15 },
+        { name: "Order Fulfillment Time", value: "1.8 days", improvement: -25 }
+      ];
+    } else if (item.department === "Human Resources") {
+      return [
+        { name: "Time to Screen", value: "1.2 days", improvement: -60 },
+        { name: "Quality of Hire", value: "85%", improvement: 12 },
+        { name: "Candidate Experience Score", value: "4.6/5", improvement: 15 }
+      ];
+    }
+    // Default metrics for other departments
+    return [
+      { name: "Efficiency", value: "75%", improvement: 25 },
+      { name: "Quality", value: "82%", improvement: 15 },
+      { name: "Cost", value: "$1200/month", improvement: -30 }
+    ];
+  };
+
+  // Handle row click to show detailed view
+  const handleRowClick = (item: PrioritizedItem) => {
+    setSelectedItem(item);
+  };
+
+  // Render detailed view for a selected item
+  const renderDetailedView = () => {
+    if (!selectedItem) return null;
+
+    const metrics = getMetricsForItem(selectedItem);
+    const aiAdoptionScore = selectedItem.aiAdoptionScore || 75; // Default score if not provided
+
+    return (
+      <Card className="mb-6 relative">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="absolute right-2 top-2 z-10" 
+          onClick={() => setSelectedItem(null)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <CardHeader className="pb-2">
+          <CardTitle>{selectedItem.title} - Detailed View</CardTitle>
+          <CardDescription>{selectedItem.department}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* AI Adoption Score Components */}
+            <div>
+              <h3 className="text-lg font-medium mb-2">AI Adoption Score Components</h3>
+              <div className="mb-4">
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-sm font-medium">Overall Score</span>
+                  <span className="text-sm font-bold">{aiAdoptionScore}</span>
+                </div>
+                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[#e84c2b] rounded-full"
+                    style={{ width: `${aiAdoptionScore}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Implementation Details */}
+            <div>
+              <h3 className="text-lg font-medium mb-2">Implementation Details</h3>
+              <div className="space-y-2">
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Value Score:</span>
+                  <span className="text-sm font-bold float-right">{selectedItem.valueScore}</span>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Effort Score:</span>
+                  <span className="text-sm font-bold float-right">{selectedItem.effortScore}</span>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-500">Priority:</span>
+                  <span className="text-sm font-bold float-right">
+                    {priorityLabels[selectedItem.priority as keyof typeof priorityLabels] || selectedItem.priority}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Metrics */}
+          <div className="mt-6">
+            <h3 className="text-lg font-medium mb-2">Performance Metrics</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Metric</TableHead>
+                  <TableHead>Current Value</TableHead>
+                  <TableHead>Improvement</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {metrics.map((metric, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{metric.name}</TableCell>
+                    <TableCell>{metric.value}</TableCell>
+                    <TableCell>
+                      <span className={metric.improvement >= 0 ? "text-green-600" : "text-red-600"}>
+                        {metric.improvement >= 0 ? '+' : ''}{metric.improvement}%
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
   
   return (
@@ -186,11 +337,17 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
                 <TableHead>Value Score</TableHead>
                 <TableHead>Effort Score</TableHead>
                 <TableHead>Priority</TableHead>
+                <TableHead>AI Adoption Score</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredItems.map((item, index) => (
-                <TableRow key={item.id}>
+                <TableRow 
+                  key={item.id}
+                  onClick={() => handleRowClick(item)}
+                  className="cursor-pointer hover:bg-slate-50"
+                  data-state={selectedItem?.id === item.id ? "selected" : undefined}
+                >
                   <TableCell className="font-medium">{index + 1}</TableCell>
                   <TableCell className="font-medium">{item.title}</TableCell>
                   <TableCell className="text-neutral-600">{item.department}</TableCell>
@@ -199,7 +356,7 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
                       <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden mr-2">
                         <div 
                           className="h-full bg-red-500" 
-                          style={{ width: `${item.valueScore * 20}%` }} 
+                          style={{ width: `${item.valueScore}%` }} 
                         />
                       </div>
                       {item.valueScore}
@@ -210,7 +367,7 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
                       <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden mr-2">
                         <div 
                           className="h-full bg-amber-500" 
-                          style={{ width: `${item.effortScore * 20}%` }} 
+                          style={{ width: `${item.effortScore}%` }} 
                         />
                       </div>
                       {item.effortScore}
@@ -221,11 +378,22 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
                       {priorityLabels[item.priority as keyof typeof priorityLabels] || item.priority}
                     </span>
                   </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden mr-2">
+                        <div 
+                          className="h-full bg-[#e84c2b]" 
+                          style={{ width: `${item.aiAdoptionScore || 0}%` }} 
+                        />
+                      </div>
+                      {item.aiAdoptionScore || 'N/A'}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {filteredItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-neutral-500">
                     No opportunities match the selected filters.
                   </TableCell>
                 </TableRow>
@@ -233,6 +401,9 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
             </TableBody>
           </Table>
         </div>
+        
+        {/* Render detailed view if an item is selected */}
+        {selectedItem && renderDetailedView()}
       </CardContent>
     </Card>
   );

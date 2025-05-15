@@ -383,3 +383,7 @@ export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 - **Deployment:** Vercel
 - **State Management:** TanStack Query for data fetching, Zustand for client state
 - **Data Visualization:** React-based charting libraries (heatmaps, etc.)
+
+## Recent Updates
+
+- **Local Caching**: The assessment wizard now uses local caching for step data, committing to the database only on final submission.

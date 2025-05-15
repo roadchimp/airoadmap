@@ -62,3 +62,9 @@ The project is currently undergoing a refinement phase focused on improving the 
 ### Decision Evolution
 
 The project has evolved from a mixed architecture (with some legacy React Router components) to a more consistent Next.js App Router approach, with proper separation of concerns between Server and Client Components. This has improved maintainability and performance while addressing critical runtime errors.
+
+## Recent Changes
+
+- Implemented local caching for the assessment wizard.
+- Refactored the submission process to commit data to the database only on final submission.
+- Updated README to include batch processing instructions for handling multiple assessments.

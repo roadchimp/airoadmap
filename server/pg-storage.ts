@@ -1,20 +1,33 @@
 import { drizzle as drizzleNodePostgres } from 'drizzle-orm/node-postgres';
 import { drizzle as drizzleNeonHttp } from 'drizzle-orm/neon-http';
 import { neon, neonConfig } from '@neondatabase/serverless';
-import { eq, sql, asc } from 'drizzle-orm';
+import { eq, sql, asc, and, inArray } from 'drizzle-orm';
 // Using dynamic import for pg which works better with ESM
-import { IStorage } from './storage.ts';
+import { IStorage, ReportWithMetricsAndRules } from './storage.ts';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import { z } from 'zod'; // Import z for z.infer
 
-// Import the schema
+// Import Drizzle schema tables and schemas (values)
 import { 
   assessments, departments, organizations, users, reports, 
   aiCapabilities, jobRoles, jobDescriptions, jobScraperConfigs,
-  aiTools, capabilityToolMapping, assessmentScores, assessmentResponses
+  aiTools, capabilityToolMapping, assessmentScores, assessmentResponses,
+  insertAssessmentSchema,
+  
+  // Import new tables and schemas (values)
+  performanceMetrics,
+  jobRolePerformanceMetrics,
+  metricRules,
+  insertPerformanceMetricSchema,
+  insertMetricRuleSchema,
+  insertJobRolePerformanceMetricSchema,
+  organizationScoreWeights as organizationScoreWeightsTable,
+  insertOrganizationScoreWeightsSchema as dzInsertOrganizationScoreWeightsSchema
+
 } from '../shared/schema.ts';
 
-// Import types
+// Import types that are explicitly exported from shared/schema.ts
 import type {
   User, InsertUser,
   Organization, InsertOrganization,
@@ -29,8 +42,14 @@ import type {
   InsertAiTool, // DB Insert Type (snake_case)
   CapabilityToolMapping, InsertCapabilityToolMapping,
   AssessmentScoreData,
-  AssessmentResponse, InsertAssessmentResponse
-  // AITool // REMOVE References to this non-existent type
+  AssessmentResponse, InsertAssessmentResponse,
+  ReportWithAssessmentDetails,
+  PerformanceMetrics, 
+  JobRolePerformanceMetrics, 
+  MetricRules, 
+  OrganizationScoreWeights,
+  InsertOrganizationScoreWeights
+
 } from '../shared/schema.ts';
 
 // Load root .env file for local development
@@ -200,29 +219,62 @@ export class PgStorage implements IStorage {
 
   // Assessment methods
   async getAssessment(id: number): Promise<Assessment | undefined> {
-    // Try to get assessment, but handle missing updated_at column
     try {
-      const result = await this.db.select().from(assessments).where(eq(assessments.id, id));
-      return result[0];
+      const result = await this.db.select({
+        id: assessments.id,
+        title: assessments.title,
+        organizationId: assessments.organizationId,
+        userId: assessments.userId,
+        status: assessments.status,
+        createdAt: assessments.createdAt,
+        updatedAt: assessments.updatedAt,
+        stepData: assessments.stepData,
+        industry: assessments.industry,
+        industryMaturity: assessments.industryMaturity,
+        companyStage: assessments.companyStage,
+        strategicFocus: assessments.strategicFocus,
+        aiAdoptionScoreInputs: assessments.aiAdoptionScoreInputs
+      }).from(assessments).where(eq(assessments.id, id));
+      
+      if (result.length > 0 && result[0] !== undefined) {
+        const assessmentData = result[0] as Assessment;
+        if (assessmentData.updatedAt === null || assessmentData.updatedAt === undefined) {
+            assessmentData.updatedAt = assessmentData.createdAt || new Date();
+        }
+        return assessmentData;
+      }
+      return undefined;
+
     } catch (error) {
-      // If error is about missing updated_at column
-      if (error instanceof Error && error.message.includes('updated_at')) {
-        console.error('Missing updated_at column in assessments table. Fetching with workaround.');
-        // Use SQL query to select all columns except updated_at
-        const result = await this.db.execute(
-          sql`SELECT id, title, organization_id, user_id, status, created_at, step_data 
+      console.error(`PgStorage.getAssessment(${id}) error:`, error);
+      if (error instanceof Error && error.message.includes('updated_at') && !error.message.includes('industry')) {
+        console.warn('Missing updated_at column in assessments table. Fetching with raw SQL workaround.');
+        const rawResult = await this.db.execute(
+          sql`SELECT id, title, organization_id, user_id, status, created_at, updated_at as db_updated_at, step_data, 
+                     industry, industry_maturity, company_stage, strategic_focus, ai_adoption_score_inputs 
               FROM assessments
               WHERE id = ${id}`
         );
-        // Add a default updated_at value to match the schema
-        if (result.rows.length === 0) return undefined;
         
+        if (rawResult.rows.length === 0) return undefined;
+        
+        const row: any = rawResult.rows[0];
         return {
-          ...result.rows[0],
-          updatedAt: result.rows[0].created_at || new Date(),
-        };
+          id: row.id,
+          title: row.title,
+          organizationId: row.organization_id,
+          userId: row.user_id,
+          status: row.status,
+          createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+          updatedAt: row.db_updated_at ? new Date(row.db_updated_at) : (row.created_at ? new Date(row.created_at) : new Date()),
+          stepData: row.step_data || {},
+          industry: row.industry,
+          industryMaturity: row.industry_maturity,
+          companyStage: row.company_stage,
+          strategicFocus: row.strategic_focus,
+          aiAdoptionScoreInputs: row.ai_adoption_score_inputs || {}
+        } as Assessment;
       }
-      // Re-throw other errors
       throw error;
     }
   }
@@ -276,61 +328,79 @@ export class PgStorage implements IStorage {
     }
   }
 
-  async createAssessment(assessment: InsertAssessment): Promise<Assessment> {
+  async createAssessment(assessmentInput: InsertAssessment): Promise<Assessment> {
     const result = await this.db.insert(assessments).values({
-      ...assessment,
-      status: assessment.status || 'draft',
-      stepData: assessment.stepData || null
+      ...assessmentInput,
+      status: assessmentInput.status || 'draft',
+      stepData: assessmentInput.stepData || {},
+      updatedAt: new Date(), // Explicitly set updatedAt on creation too, or ensure schema default handles it
+      createdAt: new Date(), // Explicitly set createdAt, or ensure schema default handles it
     }).returning();
     return result[0];
   }
 
-  async updateAssessmentStep(id: number, stepData: Partial<WizardStepData>): Promise<Assessment> {
-    // Get current assessment
+  async updateAssessmentStep(id: number, partialStepData: Partial<WizardStepData>): Promise<Assessment> {
+    await this.ensureInitialized();
     const current = await this.getAssessment(id);
     if (!current) {
       throw new Error(`Assessment with ID ${id} not found`);
     }
 
-    // Merge stepData with existing data using deep merge
-    let updatedStepData: any = {};
+    // Initialize the main update payload for the assessment record
+    const assessmentUpdatePayload: Partial<Omit<Assessment, 'id' | 'createdAt' | 'stepData'> & { updatedAt?: Date }> = {
+        updatedAt: new Date(), // Always update the timestamp
+    };
+
+    // Deep clone existing step_data to merge with new partial data
+    const newStepDataJson = current.stepData ? JSON.parse(JSON.stringify(current.stepData)) : {};
     
-    // Only use existing data if it's an object
-    if (current.stepData && typeof current.stepData === 'object') {
-      updatedStepData = JSON.parse(JSON.stringify(current.stepData)); // Deep clone
+    // Handle special field aiAdoptionScoreInputs if present
+    if ('aiAdoptionScoreInputs' in partialStepData && partialStepData.aiAdoptionScoreInputs !== undefined) {
+      // Update the top-level aiAdoptionScoreInputs field
+      assessmentUpdatePayload.aiAdoptionScoreInputs = partialStepData.aiAdoptionScoreInputs;
+      // Also store in stepData for consistent access patterns
+      newStepDataJson.aiAdoptionScoreInputs = partialStepData.aiAdoptionScoreInputs;
+      // Remove from partialStepData to avoid processing again in the loop below
+      delete (partialStepData as any).aiAdoptionScoreInputs;
+    }
+
+    // Iterate over the keys in the provided partialStepData (e.g., 'basics', 'roles')
+    for (const stepKey in partialStepData) {
+        if (Object.prototype.hasOwnProperty.call(partialStepData, stepKey)) {
+            const key = stepKey as keyof WizardStepData;
+            const dataForThisStep = partialStepData[key];
+            newStepDataJson[key] = dataForThisStep; // Update the JSON for this specific step
+
+            // If this is the 'basics' step, extract data for dedicated columns
+            if (key === 'basics' && dataForThisStep) {
+                const basicsData = dataForThisStep as WizardStepData['basics'];
+                if (basicsData) {
+                    if (basicsData.industry !== undefined) assessmentUpdatePayload.industry = basicsData.industry;
+                    if (basicsData.industryMaturity !== undefined) assessmentUpdatePayload.industryMaturity = basicsData.industryMaturity;
+                    if (basicsData.companyStage !== undefined) assessmentUpdatePayload.companyStage = basicsData.companyStage;
+                    // Assuming 'stakeholders' from wizard basics maps to 'strategicFocus' dedicated column
+                    // If 'strategicFocus' is a distinct field in `basicsData`, use that instead.
+                    if (basicsData.stakeholders !== undefined) assessmentUpdatePayload.strategicFocus = basicsData.stakeholders;
+                    if (basicsData.reportName !== undefined) assessmentUpdatePayload.title = basicsData.reportName; // Update title if reportName changes
+                    // Note: organizationId would likely be set at creation and not change here.
+                    // status might be updated elsewhere or through a specific field in a step
+                }
+            }
+             // If any step data includes a status update (less common for this specific function)
+            if (typeof dataForThisStep === 'object' && dataForThisStep !== null && 'status' in dataForThisStep) {
+                assessmentUpdatePayload.status = (dataForThisStep as any).status;
+            }
+        }
     }
     
-    // Function to perform deep merge
-    const deepMerge = (target: any, source: any) => {
-      for (const key in source) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-          // Initialize target key if it doesn't exist
-          if (!target[key] || typeof target[key] !== 'object') {
-            target[key] = {};
-          }
-          // Recursively merge
-          deepMerge(target[key], source[key]);
-        } else {
-          // For arrays or primitives, replace
-          target[key] = source[key];
-        }
-      }
-      return target;
-    };
-    
-    // Perform deep merge of step data
-    updatedStepData = deepMerge(updatedStepData, stepData);
-    
-    console.log("Original data:", current.stepData);
-    console.log("Input data:", stepData);
-    console.log("Merged data:", updatedStepData);
-    
-    // Update assessment
+    // Add the merged step_data to the main payload
+    (assessmentUpdatePayload as any).stepData = newStepDataJson;
+
     const result = await this.db.update(assessments)
-      .set({ stepData: updatedStepData })
+      .set(assessmentUpdatePayload)
       .where(eq(assessments.id, id))
       .returning();
-    
+
     return result[0];
   }
 
@@ -360,26 +430,132 @@ export class PgStorage implements IStorage {
     console.log(`Deleted assessment with ID: ${id}`);
   }
   // Report methods
-  async getReport(id: number): Promise<Report | undefined> {
-    const result = await this.db.select().from(reports).where(eq(reports.id, id));
-    return result[0];
+  async getReport(id: number): Promise<ReportWithAssessmentDetails | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .select({
+        // Select all fields from reports table
+        ...reports,
+        // Select specific fields from assessments table
+        assessmentTitle: assessments.title,
+        industry: assessments.industry,
+        industryMaturity: assessments.industryMaturity,
+        companyStage: assessments.companyStage,
+        strategicFocus: assessments.strategicFocus,
+        // Select organization name from organizations table
+        organizationName: organizations.name,
+      })
+      .from(reports)
+      .leftJoin(assessments, eq(reports.assessmentId, assessments.id))
+      .leftJoin(organizations, eq(assessments.organizationId, organizations.id))
+      .where(eq(reports.id, id));
+    
+    return result[0] as ReportWithAssessmentDetails | undefined;
   }
 
-  async getReportByAssessment(assessmentId: number): Promise<Report | undefined> {
-    const result = await this.db.select().from(reports).where(eq(reports.assessmentId, assessmentId));
-    return result[0];
+  async getReportByAssessment(assessmentId: number): Promise<ReportWithMetricsAndRules | undefined> {
+    // 1. Fetch the base report and assessment details
+    const reportWithAssessment = await this.db.query.reports.findFirst({
+      where: eq(reports.assessmentId, assessmentId),
+      with: { assessment: true },
+    });
+
+    if (!reportWithAssessment || !reportWithAssessment.assessment) {
+      return undefined; // Report or associated assessment not found
+    }
+
+    const assessment = reportWithAssessment.assessment;
+    // Ensure stepData is treated as WizardStepData type
+    const stepData = assessment.stepData as WizardStepData | null;
+
+    // 2. Extract selected JobRole IDs from stepData (assuming they are stored in stepData.roles as an array of objects with id)
+    // Safely access roles and map to IDs, defaulting to an empty array if roles is null, undefined, or not an array
+    const selectedJobRoleIds: number[] = Array.isArray(stepData?.roles) 
+      ? stepData.roles.map((role: { id?: number }) => role.id).filter((id): id is number => id !== undefined) 
+      : [];
+
+    let selectedRoles: JobRole[] = [];
+    // RENAME this variable to avoid collision with the imported table schema
+    let fetchedPerformanceMetrics: PerformanceMetrics[] = [];
+    let metricRules: MetricRules[] = []; // Declare metricRules here
+
+    // 3. Fetch selected JobRoles and their associated PerformanceMetrics if IDs exist
+    if (selectedJobRoleIds.length > 0) {
+      // Fetch the JobRole details
+      selectedRoles = await this.db.select().from(jobRoles).where(inArray(jobRoles.id, selectedJobRoleIds));
+
+      // Fetch PerformanceMetrics linked to these JobRoles
+      // This requires joining jobRolePerformanceMetrics and performanceMetrics tables
+      const linkedMetrics = await this.db
+        .select({ pm: performanceMetrics }) // Here 'performanceMetrics' refers to the TABLE schema
+        .from(jobRolePerformanceMetrics)
+        // Here 'performanceMetrics' refers to the TABLE schema
+        .innerJoin(performanceMetrics, eq(jobRolePerformanceMetrics.performanceMetricId, performanceMetrics.id))
+        .where(inArray(jobRolePerformanceMetrics.jobRoleId, selectedJobRoleIds));
+
+      // Assign to the new variable name
+      fetchedPerformanceMetrics = linkedMetrics.map((lm: { pm: PerformanceMetrics }) => lm.pm);
+    }
+
+    // 4. Fetch all MetricRules
+    // Here 'metricRules' refers to the TABLE schema
+    metricRules = await this.db.select().from(metricRules);
+
+    // 5. Construct and return the composite object
+    return {
+      ...reportWithAssessment,
+      selectedRoles: selectedRoles,
+      performanceMetrics: fetchedPerformanceMetrics, // Use the renamed variable
+      metricRules: metricRules, // This will be an array of fetched MetricRules data
+    };
   }
 
   async listReports(): Promise<Report[]> {
-    return await this.db.select().from(reports);
+    await this.ensureInitialized();
+    try {
+      // Try to use Drizzle ORM first
+      return await this.db.select().from(reports);
+    } catch (error) {
+      console.error('Error fetching reports with Drizzle:', error);
+      const errorMessage = error instanceof Error ? error.message : '';
+      
+      // If the error is related to missing columns, try a direct SQL query
+      if (errorMessage.includes('column') || errorMessage.includes('does not exist')) {
+        try {
+          console.log('Using fallback SQL query for reports');
+          const result = await this.db.execute(sql`
+            SELECT 
+              id, 
+              assessment_id as "assessmentId", 
+              generated_at as "generatedAt", 
+              executive_summary as "executiveSummary", 
+              prioritization_data as "prioritizationData", 
+              ai_suggestions as "aiSuggestions", 
+              performance_impact as "performanceImpact", 
+              consultant_commentary as "consultantCommentary"
+            FROM reports
+          `);
+          
+          return result;
+        } catch (fallbackError) {
+          console.error('Fallback SQL query failed:', fallbackError);
+          return [];
+        }
+      }
+      
+      // If not a column error, rethrow
+      throw error;
+    }
   }
 
   async createReport(report: InsertReport): Promise<Report> {
+    await this.ensureInitialized();
     const result = await this.db.insert(reports).values(report).returning();
     return result[0];
   }
 
   async updateReportCommentary(id: number, commentary: string): Promise<Report> {
+    await this.ensureInitialized();
     const result = await this.db.update(reports)
       .set({ commentary })
       .where(eq(reports.id, id))
@@ -690,4 +866,156 @@ export class PgStorage implements IStorage {
     
     return result;
   }
+
+  // Performance Metric methods
+  async listPerformanceMetrics(): Promise<PerformanceMetrics[]> {
+    await this.ensureInitialized();
+    return this.db.select().from(performanceMetrics);
+  }
+
+  async getPerformanceMetric(id: number): Promise<PerformanceMetrics | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(performanceMetrics).where(eq(performanceMetrics.id, id));
+    return result[0];
+  }
+
+  async createPerformanceMetric(metric: z.infer<typeof insertPerformanceMetricSchema>): Promise<PerformanceMetrics> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(performanceMetrics).values(metric).returning();
+    return result[0];
+  }
+
+  async updatePerformanceMetric(id: number, metric: Partial<z.infer<typeof insertPerformanceMetricSchema>>): Promise<PerformanceMetrics | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.update(performanceMetrics).set(metric).where(eq(performanceMetrics.id, id)).returning();
+    return result[0];
+  }
+
+  async deletePerformanceMetric(id: number): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.delete(performanceMetrics).where(eq(performanceMetrics.id, id));
+  }
+
+  // Job Role Performance Metric Link methods
+  async linkJobRoleToMetric(linkData: { jobRoleId: number; performanceMetricId: number; }): Promise<JobRolePerformanceMetrics> {
+    await this.ensureInitialized();
+     // Drizzle insert requires a full object, the input 'linkData' matches the schema.
+    const result = await this.db.insert(jobRolePerformanceMetrics).values(linkData).returning();
+    return result[0];
+  }
+
+  async unlinkJobRoleFromMetric(jobRoleId: number, performanceMetricId: number): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.delete(jobRolePerformanceMetrics).where(
+      and(eq(jobRolePerformanceMetrics.jobRoleId, jobRoleId), eq(jobRolePerformanceMetrics.performanceMetricId, performanceMetricId))
+    );
+  }
+
+  async getMetricsForJobRole(jobRoleId: number): Promise<(PerformanceMetrics & { linkId: number })[]> {
+    await this.ensureInitialized();
+    // Join jobRolePerformanceMetrics with performanceMetrics to get metric details
+    const result = await this.db.select({
+      ...performanceMetrics, // Select all columns from performanceMetrics
+      linkId: jobRolePerformanceMetrics.jobRoleId // Use jobRoleId from link table as a placeholder for a link ID (or adjust if link table gets its own serial id)
+    })
+    .from(jobRolePerformanceMetrics)
+    .innerJoin(performanceMetrics, eq(jobRolePerformanceMetrics.performanceMetricId, performanceMetrics.id))
+    .where(eq(jobRolePerformanceMetrics.jobRoleId, jobRoleId));
+
+    // Need to cast the result to match the return type
+    return result as (PerformanceMetrics & { linkId: number })[];
+  }
+
+  // Metric Rule methods
+  async listMetricRules(): Promise<MetricRules[]> {
+    await this.ensureInitialized();
+    return this.db.select().from(metricRules);
+  }
+
+  async getMetricRule(id: number): Promise<MetricRules | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(metricRules).where(eq(metricRules.id, id));
+    return result[0];
+  }
+
+  async listMetricRulesByMetric(metricId: number): Promise<MetricRules[]> {
+    await this.ensureInitialized();
+    return this.db.select().from(metricRules).where(eq(metricRules.metricId, metricId));
+  }
+
+  async insertMetricRule(rule: z.infer<typeof insertMetricRuleSchema>): Promise<MetricRules> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(metricRules).values(rule).returning();
+    return result[0];
+  }
+
+  async updateMetricRule(id: number, rule: Partial<z.infer<typeof insertMetricRuleSchema>>): Promise<MetricRules | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.update(metricRules).set(rule).where(eq(metricRules.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteMetricRule(id: number): Promise<void> {
+    await this.ensureInitialized();
+    await this.db.delete(metricRules).where(eq(metricRules.id, id));
+  }
+
+  // Organization Score Weights methods (NEW for PgStorage)
+  async getOrganizationScoreWeights(organizationId: number): Promise<OrganizationScoreWeights | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select()
+      .from(organizationScoreWeightsTable)
+      .where(eq(organizationScoreWeightsTable.organizationId, organizationId));
+    
+    if (result.length === 0) {
+      // Automatically create default weights if none exist
+      // Use default values defined in the schema
+      const defaultWeights: InsertOrganizationScoreWeights = {
+        organizationId,
+        adoptionRateWeight: 0.2,
+        timeSavedWeight: 0.2,
+        costEfficiencyWeight: 0.2,
+        performanceImprovementWeight: 0.2,
+        toolSprawlReductionWeight: 0.2,
+      };
+      
+      // Create the default weights
+      const newWeights = await this.upsertOrganizationScoreWeights(defaultWeights);
+      return newWeights;
+    }
+    
+    // Drizzle returns numeric types as strings, so we parse them here if needed, or rely on Zod schema on consumption
+    // For now, let's assume the select schema transformation handles it, or it's handled by the caller.
+    return result[0] as OrganizationScoreWeights;
+  }
+
+  async upsertOrganizationScoreWeights(weights: InsertOrganizationScoreWeights): Promise<OrganizationScoreWeights> {
+    await this.ensureInitialized();
+
+    // Validate with the Drizzle-Zod insert schema before inserting/updating
+    // const validatedWeights = dzInsertOrganizationScoreWeightsSchema.parse(weights);
+    // The type InsertOrganizationScoreWeights is already the result of Zod parsing with transformations,
+    // so numeric fields should already be numbers.
+
+    const result = await this.db.insert(organizationScoreWeightsTable)
+      .values({
+        ...weights,
+        updatedAt: new Date(), // Ensure updatedAt is set
+      })
+      .onConflictDoUpdate({
+        target: organizationScoreWeightsTable.organizationId,
+        set: {
+          ...weights, // Spread all fields from input, organizationId will match the target
+          updatedAt: new Date(), // Explicitly update the timestamp
+        },
+      })
+      .returning();
+    
+    // As with get, ensure numeric types are handled correctly if not automatically by Drizzle/Zod.
+    return result[0] as OrganizationScoreWeights;
+  }
 }
+
+// Create and export a single instance of the storage class
+// Use PgStorage for database interactions
+export const storage: IStorage = new PgStorage();

@@ -5,21 +5,46 @@ import ReportsTable from './ReportsTable';
 
 // Server-side data fetching function
 async function getReportsAndAssessments(): Promise<{ reports: Report[], assessments: Assessment[] }> {
+  // Initialize with empty arrays
+  let reports: Report[] = [];
+  let assessments: Assessment[] = [];
+  
   try {
-    const reports = await storage.listReports() || [];
-    const assessments = await storage.listAssessments() || []; 
+    // Try to fetch reports
+    try {
+      const fetchedReports = await storage.listReports();
+      if (Array.isArray(fetchedReports)) {
+        reports = fetchedReports;
+      } else {
+        console.error("listReports did not return an array:", fetchedReports);
+      }
+    } catch (reportsError) {
+      console.error("Error fetching reports:", reportsError);
+    }
+    
+    // Try to fetch assessments
+    try {
+      const fetchedAssessments = await storage.listAssessments();
+      if (Array.isArray(fetchedAssessments)) {
+        assessments = fetchedAssessments;
+      } else {
+        console.error("listAssessments did not return an array:", fetchedAssessments);
+      }
+    } catch (assessmentsError) {
+      console.error("Error fetching assessments:", assessmentsError);
+    }
     
     // Sort reports by generatedAt timestamp (most recent first)
-    const sortedReports = Array.isArray(reports) 
-      ? [...reports].sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()) 
-      : [];
+    const sortedReports = [...reports].sort((a, b) => 
+      new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
+    );
     
     return {
       reports: sortedReports,
-      assessments: Array.isArray(assessments) ? assessments : []
+      assessments: assessments
     };
   } catch (error) {
-    console.error("Error fetching reports/assessments:", error);
+    console.error("Error in getReportsAndAssessments:", error);
     return { reports: [], assessments: [] };
   }
 }

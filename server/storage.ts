@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { 
   User, InsertUser, 
   Organization, InsertOrganization,
@@ -19,10 +19,45 @@ import {
   AssessmentScoreData,
   InsertAiTool,
   AssessmentResponse,
-  InsertAssessmentResponse
-} from "../shared/schema.ts";
+  InsertAssessmentResponse,
+  PerformanceMetrics, InsertPerformanceMetrics, SelectPerformanceMetrics,
+  JobRolePerformanceMetrics, InsertJobRolePerformanceMetrics, SelectJobRolePerformanceMetrics,
+  MetricRules, InsertMetricRule, SelectMetricRule,
+  ReportWithAssessmentDetails,
+  insertPerformanceMetricSchema,
+  insertMetricRuleSchema,
+  insertJobRolePerformanceMetricSchema,
+  users,
+  organizations,
+  departments,
+  jobRoles,
+  aiCapabilities,
+  assessments,
+  reports,
+  assessmentResponses,
+  performanceMetrics as performanceMetricsTable,
+  jobRolePerformanceMetrics as jobRolePerformanceMetricsTable,
+  metricRules as metricRulesTable,
+  jobDescriptions,
+  jobScraperConfigs,
+  aiTools,
+  // Import new schema and types for organization score weights
+  organizationScoreWeights,
+  type OrganizationScoreWeights,
+  type InsertOrganizationScoreWeights,
+  insertOrganizationScoreWeightsSchema 
+} from "../shared/schema";
 
 import { PgStorage } from './pg-storage.ts';
+import { z } from 'zod';
+import { calculatePrioritization } from './lib/prioritizationEngine';
+
+// Update the return type for getReportByAssessment to include metrics and rules
+export type ReportWithMetricsAndRules = ReportWithAssessmentDetails & {
+  selectedRoles?: JobRole[]; // Include selected job roles from assessment stepData
+  performanceMetrics?: PerformanceMetrics[]; // Include relevant performance metrics
+  metricRules?: MetricRules[]; // Include all metric rules
+};
 
 // modify the interface with any CRUD methods
 // you might need
@@ -65,7 +100,7 @@ export interface IStorage {
   
   // Report methods
   getReport(id: number): Promise<Report | undefined>;
-  getReportByAssessment(assessmentId: number): Promise<Report | undefined>;
+  getReportByAssessment(assessmentId: number): Promise<ReportWithMetricsAndRules | undefined>;
   listReports(): Promise<Report[]>;
   createReport(report: InsertReport): Promise<Report>;
   updateReportCommentary(id: number, commentary: string): Promise<Report>;
@@ -101,6 +136,30 @@ export interface IStorage {
   // Assessment Score methods
   upsertAssessmentScore(score: Omit<AssessmentScoreData, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentScoreData>;
   getAssessmentScore(wizardStepId: string): Promise<AssessmentScoreData | undefined>;
+
+  // Performance Metric methods
+  listPerformanceMetrics(): Promise<PerformanceMetrics[]>;
+  getPerformanceMetric(id: number): Promise<PerformanceMetrics | undefined>;
+  createPerformanceMetric(metric: z.infer<typeof insertPerformanceMetricSchema>): Promise<PerformanceMetrics>;
+  updatePerformanceMetric(id: number, metric: Partial<z.infer<typeof insertPerformanceMetricSchema>>): Promise<PerformanceMetrics | undefined>;
+  deletePerformanceMetric(id: number): Promise<void>;
+
+  // Job Role Performance Metric Link methods
+  linkJobRoleToMetric(linkData: z.infer<typeof insertJobRolePerformanceMetricSchema>): Promise<JobRolePerformanceMetrics>;
+  unlinkJobRoleFromMetric(jobRoleId: number, performanceMetricId: number): Promise<void>;
+  getMetricsForJobRole(jobRoleId: number): Promise<(PerformanceMetrics & { linkId: number })[]>; // Include link table info if useful
+
+  // Metric Rule methods
+  listMetricRules(): Promise<MetricRules[]>;
+  getMetricRule(id: number): Promise<MetricRules | undefined>;
+  listMetricRulesByMetric(metricId: number): Promise<MetricRules[]>;
+  insertMetricRule(rule: z.infer<typeof insertMetricRuleSchema>): Promise<MetricRules>;
+  updateMetricRule(id: number, rule: Partial<z.infer<typeof insertMetricRuleSchema>>): Promise<MetricRules | undefined>;
+  deleteMetricRule(id: number): Promise<void>;
+
+  // Organization Score Weights methods (NEW)
+  getOrganizationScoreWeights(organizationId: number): Promise<OrganizationScoreWeights | undefined>;
+  upsertOrganizationScoreWeights(weights: InsertOrganizationScoreWeights): Promise<OrganizationScoreWeights>;
 }
 
 export class MemStorage implements IStorage {
@@ -128,7 +187,10 @@ export class MemStorage implements IStorage {
   private jobScraperConfigIdCounter: number;
   private aiToolIdCounter: number;
   private assessmentResponseIdCounter: number;
-  
+  private performanceMetricIdCounter: number;
+  // Add map for organization score weights in MemStorage
+  private organizationScoreWeightsMap: Map<number, OrganizationScoreWeights>;
+
   constructor() {
     this.users = new Map();
     this.organizations = new Map();
@@ -154,7 +216,10 @@ export class MemStorage implements IStorage {
     this.jobScraperConfigIdCounter = 1;
     this.aiToolIdCounter = 1;
     this.assessmentResponseIdCounter = 1;
-    
+    this.performanceMetricIdCounter = 1;
+    // Initialize the new map
+    this.organizationScoreWeightsMap = new Map();
+
     // Initialize with sample data
     this.initializeSampleData();
   }
@@ -374,10 +439,8 @@ export class MemStorage implements IStorage {
     return this.reports.get(id);
   }
   
-  async getReportByAssessment(assessmentId: number): Promise<Report | undefined> {
-    return Array.from(this.reports.values()).find(
-      (report) => report.assessmentId === assessmentId
-    );
+  async getReportByAssessment(assessmentId: number): Promise<ReportWithMetricsAndRules | undefined> {
+    throw new Error("Method getReportByAssessment not implemented in MemStorage.");
   }
   
   async listReports(): Promise<Report[]> {
@@ -387,15 +450,17 @@ export class MemStorage implements IStorage {
   async createReport(report: InsertReport): Promise<Report> {
     const id = this.reportIdCounter++;
     const generatedAt = new Date();
-    const newReport = { 
+    const newReport: Report = { 
       ...report, 
       id, 
       generatedAt,
-      executiveSummary: report.executiveSummary || null,
-      prioritizationData: report.prioritizationData || null,
-      aiSuggestions: report.aiSuggestions || null,
-      performanceImpact: report.performanceImpact || null,
-      consultantCommentary: report.consultantCommentary || null
+      executiveSummary: report.executiveSummary ?? null,
+      prioritizationData: report.prioritizationData ?? null,
+      aiSuggestions: report.aiSuggestions ?? null,
+      performanceImpact: report.performanceImpact ?? null,
+      consultantCommentary: report.consultantCommentary ?? null,
+      aiAdoptionScoreDetails: report.aiAdoptionScoreDetails ?? null,
+      roiDetails: report.roiDetails ?? null,
     };
     this.reports.set(id, newReport);
     return newReport;
@@ -817,6 +882,103 @@ export class MemStorage implements IStorage {
       cronSchedule: "0 12 * * *"
     });
   }
+
+  // Performance Metric methods
+  async listPerformanceMetrics(): Promise<PerformanceMetrics[]> {
+    // TODO: Implement this properly for MemStorage
+    return [];
+  }
+
+  async getPerformanceMetric(id: number): Promise<PerformanceMetrics | undefined> {
+    // TODO: Implement this properly for MemStorage
+    return undefined;
+  }
+
+  async createPerformanceMetric(metric: z.infer<typeof insertPerformanceMetricSchema>): Promise<PerformanceMetrics> {
+    // TODO: Implement this properly for MemStorage
+     throw new Error("Method not implemented in MemStorage.");
+  }
+
+  async updatePerformanceMetric(id: number, metric: Partial<z.infer<typeof insertPerformanceMetricSchema>>): Promise<PerformanceMetrics | undefined> {
+    // TODO: Implement this properly for MemStorage
+     throw new Error("Method not implemented in MemStorage.");
+  }
+
+  async deletePerformanceMetric(id: number): Promise<void> {
+    // TODO: Implement this properly for MemStorage
+     throw new Error("Method not implemented in MemStorage.");
+  }
+
+  // Job Role Performance Metric Link methods
+  async linkJobRoleToMetric(linkData: z.infer<typeof insertJobRolePerformanceMetricSchema>): Promise<JobRolePerformanceMetrics> {
+    // TODO: Implement this properly for MemStorage
+    throw new Error("Method not implemented in MemStorage.");
+  }
+
+  async unlinkJobRoleFromMetric(jobRoleId: number, performanceMetricId: number): Promise<void> {
+    // TODO: Implement this properly for MemStorage
+    throw new Error("Method not implemented in MemStorage.");
+  }
+
+  async getMetricsForJobRole(jobRoleId: number): Promise<(PerformanceMetrics & { linkId: number })[]> {
+    // TODO: Implement this properly for MemStorage
+    return [];
+  }
+
+  // Metric Rule methods
+  async listMetricRules(): Promise<MetricRules[]> {
+    // TODO: Implement this properly for MemStorage
+    return [];
+  }
+
+  async getMetricRule(id: number): Promise<MetricRules | undefined> {
+    // TODO: Implement this properly for MemStorage
+    return undefined;
+  }
+
+  async listMetricRulesByMetric(metricId: number): Promise<MetricRules[]> {
+    // TODO: Implement this properly for MemStorage
+    return [];
+  }
+
+  async insertMetricRule(rule: z.infer<typeof insertMetricRuleSchema>): Promise<MetricRules> {
+    // TODO: Implement this properly for MemStorage
+    throw new Error("Method not implemented in MemStorage.");
+  }
+
+  async updateMetricRule(id: number, rule: Partial<z.infer<typeof insertMetricRuleSchema>>): Promise<MetricRules | undefined> {
+    // TODO: Implement this properly for MemStorage
+    throw new Error("Method not implemented in MemStorage.");
+  }
+
+  async deleteMetricRule(id: number): Promise<void> {
+    // TODO: Implement this properly for MemStorage
+    throw new Error("Method not implemented in MemStorage.");
+  }
+
+  // Organization Score Weights methods (NEW)
+  async getOrganizationScoreWeights(organizationId: number): Promise<OrganizationScoreWeights | undefined> {
+    // TODO: Implement this properly for MemStorage if needed for testing
+    // return this.organizationScoreWeightsMap.get(organizationId);
+    throw new Error("Method getOrganizationScoreWeights not implemented in MemStorage.");
+  }
+
+  async upsertOrganizationScoreWeights(weights: InsertOrganizationScoreWeights): Promise<OrganizationScoreWeights> {
+    // TODO: Implement this properly for MemStorage if needed for testing
+    // const orgWeights: OrganizationScoreWeights = {
+    //   ...weights,
+    //   updatedAt: new Date(),
+    //   // Ensure all numeric fields are numbers, as InsertOrganizationScoreWeights might have them as strings from Zod
+    //   adoptionRateWeight: Number(weights.adoptionRateWeight),
+    //   timeSavedWeight: Number(weights.timeSavedWeight),
+    //   costEfficiencyWeight: Number(weights.costEfficiencyWeight),
+    //   performanceImprovementWeight: Number(weights.performanceImprovementWeight),
+    //   toolSprawlReductionWeight: Number(weights.toolSprawlReductionWeight),
+    // };
+    // this.organizationScoreWeightsMap.set(weights.organizationId, orgWeights);
+    // return orgWeights;
+    throw new Error("Method upsertOrganizationScoreWeights not implemented in MemStorage.");
+  }
 }
 
 // Create storage instance based on environment
@@ -837,4 +999,4 @@ try {
 }
 
 // Export the selected storage implementation
-export const storage = storageInstance;
+export const storage: IStorage = storageInstance;

@@ -30,6 +30,7 @@ export const organizations = pgTable("organizations", {
   description: text("description"),
 });
 
+//added a field for the organization's industry
 export const insertOrganizationSchema = createInsertSchema(organizations).pick({
   name: true,
   industry: true, 

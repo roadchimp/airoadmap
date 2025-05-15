@@ -109,12 +109,16 @@ export async function generateAICapabilityRecommendations(
       messages: [
         { role: "system", content: "You are an AI transformation consultant providing specific, actionable recommendations." },
         { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
+      ]
     });
 
     const content = response.choices[0].message.content;
-    return JSON.parse(content || "[]");
+    try {
+      return JSON.parse(content || "[]");
+    } catch (error) {
+      console.error("Error parsing JSON response:", error);
+      return fallbackAICapabilities(role);
+    }
   } catch (error) {
     console.error("Error generating AI capability recommendations with OpenAI:", error);
     return fallbackAICapabilities(role);
@@ -144,12 +148,16 @@ export async function generatePerformanceImpact(
       messages: [
         { role: "system", content: "You are an AI transformation analyst providing realistic performance predictions." },
         { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
+      ]
     });
 
     const content = response.choices[0].message.content;
-    return JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
+    try {
+      return JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
+    } catch (error) {
+      console.error("Error parsing JSON response:", error);
+      return fallbackPerformanceImpact(role);
+    }
   } catch (error) {
     console.error("Error generating performance impact predictions with OpenAI:", error);
     return fallbackPerformanceImpact(role);

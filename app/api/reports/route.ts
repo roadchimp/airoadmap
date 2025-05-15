@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { insertReportSchema } from '@shared/schema';
 import { ZodError } from 'zod';
+import { unstable_noStore } from 'next/cache';
 
 // GET /api/reports
 export async function GET(request: Request) {
+  // Disable caching for this route
+  unstable_noStore();
+  
   try {
     const url = new URL(request.url);
     const assessmentId = url.searchParams.get('assessmentId');
@@ -19,16 +23,35 @@ export async function GET(request: Request) {
       
       // Find report by assessment ID
       const report = await storage.getReportByAssessment(assessmentIdNum);
-      return NextResponse.json({ reports: report ? [report] : [] });
+      return NextResponse.json({ reports: report ? [report] : [] }, {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0, must-revalidate'
+        }
+      });
     }
     
     // Fetch all reports
     const reports = await storage.listReports();
-    return NextResponse.json({ reports });
+    
+    // Sort reports by generatedAt timestamp (most recent first)
+    const sortedReports = [...reports].sort((a, b) => 
+      new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
+    );
+    
+    return NextResponse.json({ reports: sortedReports }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate'
+      }
+    });
   } catch (error) {
     console.error('Error fetching reports:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: errorMessage }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate'
+      }
+    });
   }
 }
 
@@ -38,7 +61,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedData = insertReportSchema.parse(body);
     const report = await storage.createReport(validatedData);
-    return NextResponse.json(report, { status: 201 });
+    return NextResponse.json(report, { 
+      status: 201,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate'
+      }
+    });
   } catch (error) {
     console.error('Error creating report:', error);
     if (error instanceof ZodError) {

@@ -38,8 +38,7 @@ export class JobProcessor {
             content: prompt
           }
         ],
-        temperature: 0.2,
-        response_format: { type: "json_object" }
+        temperature: 0.2
       });
       
       // Parse the structured data

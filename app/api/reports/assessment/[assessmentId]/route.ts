@@ -93,7 +93,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
         adoptionRateForecast: 80,
         timeSavingsPerUserHours: 7, 
         affectedUserCount: 120,
-        costEfficiencyGainsAmount: 20,
+        costEfficiencyGainsAmount: 25000,
         performanceImprovementPercentage: 30,
         toolSprawlReductionScore: 4
       };

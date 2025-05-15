@@ -117,7 +117,7 @@ const NewAssessment: React.FC = () => {
         adoptionRateForecast: 80,
         timeSavingsPerUserHours: 7,
         affectedUserCount: 120,
-        costEfficiencyGainsAmount: 20,
+        costEfficiencyGainsAmount: 25000,
         performanceImprovementPercentage: 30,
         toolSprawlReductionScore: 4
       }
@@ -239,7 +239,7 @@ const NewAssessment: React.FC = () => {
             adoptionRateForecast: 80,
             timeSavingsPerUserHours: 7,
             affectedUserCount: 120,
-            costEfficiencyGainsAmount: 20,
+            costEfficiencyGainsAmount: 25000,
             performanceImprovementPercentage: 30,
             toolSprawlReductionScore: 4
           }

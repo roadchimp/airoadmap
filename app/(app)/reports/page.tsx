@@ -2,9 +2,13 @@ import React from 'react';
 import { storage } from '@/server/storage';
 import { Report, Assessment } from '@shared/schema';
 import ReportsTable from './ReportsTable';
+import { unstable_noStore } from 'next/cache';
 
 // Server-side data fetching function
 async function getReportsAndAssessments(): Promise<{ reports: Report[], assessments: Assessment[] }> {
+  // Disable caching to ensure fresh data on each request
+  unstable_noStore();
+  
   // Initialize with empty arrays
   let reports: Report[] = [];
   let assessments: Assessment[] = [];

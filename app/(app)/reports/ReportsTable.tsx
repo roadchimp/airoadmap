@@ -24,7 +24,7 @@ import {
   SortingState,
   getSortedRowModel,
 } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, RefreshCcw } from "lucide-react";
 
 interface ReportsTableProps {
   reports: Report[];
@@ -34,41 +34,48 @@ interface ReportsTableProps {
 export default function ReportsTable({ reports, assessments }: ReportsTableProps) {
   const [reportsData, setReportsData] = useState<Report[]>(reports);
   const [assessmentsData, setAssessmentsData] = useState<Assessment[]>(assessments);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [status, setStatus] = useState<"loading" | "error" | "success">(
     reports.length > 0 || assessments.length > 0 ? "success" : "loading"
   );
 
+  const fetchData = async () => {
+    setIsRefreshing(true);
+    setStatus("loading");
+    try {
+      // Add a cache-busting timestamp to prevent cached responses
+      const timestamp = new Date().getTime();
+      
+      // Try to fetch both reports and assessments from the public endpoints
+      const [reportsResponse, assessmentsResponse] = await Promise.all([
+        fetch(`/api/public/reports?t=${timestamp}`),
+        fetch(`/api/public/assessments?t=${timestamp}`)
+      ]);
+
+      // Check if responses are ok
+      if (!reportsResponse.ok || !assessmentsResponse.ok) {
+        throw new Error("Failed to fetch data");
+      }
+
+      // Parse response data
+      const fetchedReports = await reportsResponse.json();
+      const fetchedAssessments = await assessmentsResponse.json();
+
+      // Update state
+      setReportsData(Array.isArray(fetchedReports) ? fetchedReports : []);
+      setAssessmentsData(Array.isArray(fetchedAssessments) ? fetchedAssessments : []);
+      setStatus("success");
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setStatus("error");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // If no reports or assessments were provided, try to fetch them from the public API
   useEffect(() => {
     if (reports.length === 0 && assessments.length === 0) {
-      const fetchData = async () => {
-        setStatus("loading");
-        try {
-          // Try to fetch both reports and assessments from the public endpoints
-          const [reportsResponse, assessmentsResponse] = await Promise.all([
-            fetch('/api/public/reports'),
-            fetch('/api/public/assessments')
-          ]);
-
-          // Check if responses are ok
-          if (!reportsResponse.ok || !assessmentsResponse.ok) {
-            throw new Error("Failed to fetch data");
-          }
-
-          // Parse response data
-          const fetchedReports = await reportsResponse.json();
-          const fetchedAssessments = await assessmentsResponse.json();
-
-          // Update state
-          setReportsData(Array.isArray(fetchedReports) ? fetchedReports : []);
-          setAssessmentsData(Array.isArray(fetchedAssessments) ? fetchedAssessments : []);
-          setStatus("success");
-        } catch (error) {
-          console.error("Error fetching data:", error);
-          setStatus("error");
-        }
-      };
-
       fetchData();
     }
   }, [reports.length, assessments.length]);
@@ -152,85 +159,98 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
     return <div className="py-8 text-center text-red-500">Error loading reports data.</div>;
   }
 
-  if (reportsData.length === 0) {
-    return (
-      <div className="py-8 text-center">
-        <p className="mb-2">No reports found.</p>
-        <p className="text-muted-foreground">A list of your assessment reports.</p>
-      </div>
-    );
-  }
-
   return (
     <div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
+      <div className="flex justify-end mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchData}
+          disabled={isRefreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCcw className="h-4 w-4" />
+          {isRefreshing ? "Refreshing..." : "Refresh Reports"}
+        </Button>
+      </div>
+      
+      {reportsData.length === 0 ? (
+        <div className="py-8 text-center">
+          <p className="mb-2">No reports found.</p>
+          <p className="text-muted-foreground">A list of your assessment reports.</p>
+        </div>
+      ) : (
+        <>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
                           )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No results.
                     </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="flex items-center justify-end space-x-2 py-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 } 

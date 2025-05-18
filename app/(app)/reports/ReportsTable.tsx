@@ -39,39 +39,39 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
     reports.length > 0 || assessments.length > 0 ? "success" : "loading"
   );
 
-  const fetchData = async () => {
+      const fetchData = async () => {
     setIsRefreshing(true);
-    setStatus("loading");
-    try {
+        setStatus("loading");
+        try {
       // Add a cache-busting timestamp to prevent cached responses
       const timestamp = new Date().getTime();
       
-      // Try to fetch both reports and assessments from the public endpoints
-      const [reportsResponse, assessmentsResponse] = await Promise.all([
+          // Try to fetch both reports and assessments from the public endpoints
+          const [reportsResponse, assessmentsResponse] = await Promise.all([
         fetch(`/api/public/reports?t=${timestamp}`),
         fetch(`/api/public/assessments?t=${timestamp}`)
-      ]);
+          ]);
 
-      // Check if responses are ok
-      if (!reportsResponse.ok || !assessmentsResponse.ok) {
-        throw new Error("Failed to fetch data");
-      }
+          // Check if responses are ok
+          if (!reportsResponse.ok || !assessmentsResponse.ok) {
+            throw new Error("Failed to fetch data");
+          }
 
-      // Parse response data
-      const fetchedReports = await reportsResponse.json();
-      const fetchedAssessments = await assessmentsResponse.json();
+          // Parse response data
+          const fetchedReports = await reportsResponse.json();
+          const fetchedAssessments = await assessmentsResponse.json();
 
-      // Update state
-      setReportsData(Array.isArray(fetchedReports) ? fetchedReports : []);
-      setAssessmentsData(Array.isArray(fetchedAssessments) ? fetchedAssessments : []);
-      setStatus("success");
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      setStatus("error");
+          // Update state
+          setReportsData(Array.isArray(fetchedReports) ? fetchedReports : []);
+          setAssessmentsData(Array.isArray(fetchedAssessments) ? fetchedAssessments : []);
+          setStatus("success");
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          setStatus("error");
     } finally {
       setIsRefreshing(false);
-    }
-  };
+        }
+      };
 
   // If no reports or assessments were provided, try to fetch them from the public API
   useEffect(() => {
@@ -159,7 +159,7 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
     return <div className="py-8 text-center text-red-500">Error loading reports data.</div>;
   }
 
-  return (
+    return (
     <div>
       <div className="flex justify-end mb-4">
         <Button 
@@ -175,80 +175,80 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
       </div>
       
       {reportsData.length === 0 ? (
-        <div className="py-8 text-center">
-          <p className="mb-2">No reports found.</p>
-          <p className="text-muted-foreground">A list of your assessment reports.</p>
-        </div>
+      <div className="py-8 text-center">
+        <p className="mb-2">No reports found.</p>
+        <p className="text-muted-foreground">A list of your assessment reports.</p>
+      </div>
       ) : (
         <>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
                           )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      No results.
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="flex items-center justify-end space-x-2 py-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
-          </div>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex items-center justify-end space-x-2 py-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.previousPage()}
+          disabled={!table.getCanPreviousPage()}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => table.nextPage()}
+          disabled={!table.getCanNextPage()}
+        >
+          Next
+        </Button>
+      </div>
         </>
       )}
     </div>

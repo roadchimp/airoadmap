@@ -13,7 +13,7 @@ import {
   SortingState,
   getSortedRowModel,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ArrowUpDown, ExternalLink, Pencil, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -192,25 +192,47 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
         return (
           <div className="flex justify-end space-x-2">
             {assessment.status === "completed" && reportId ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/reports/${reportId}`)}
-                title="View Report"
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                Report
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/assessment/${assessment.id}/view`)}
+                  title="View Assessment Data"
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  View
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/reports/${reportId}`)}
+                  title="View Report"
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Report
+                </Button>
+              </>
             ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/assessment/edit/${assessment.id}`)}
-                title="Edit Assessment"
-              >
-                <Pencil className="h-4 w-4 mr-1" />
-                Edit
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/assessment/${assessment.id}/view`)}
+                  title="View Assessment Data"
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  View
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/assessment/edit/${assessment.id}`)}
+                  title="Edit Assessment"
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Edit
+                </Button>
+              </>
             )}
             <Button
               variant="ghost"

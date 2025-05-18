@@ -41,6 +41,38 @@
 └── memory-bank/            # AI Assistant project knowledge base
 ```
 
+## Viewing Reports
+
+Report-Related Routes
+*   Page Routes:
+  *   /reports - Main reports listing page (app/(app)/reports/page.tsx)
+  *   /reports/[id] - Individual report view (app/(app)/reports/[id]/page.tsx)
+*   API Routes:
+  *   /api/reports - Main reports API endpoint:
+    *   GET - Lists all reports or filters by assessmentId
+    *   POST - Creates a new report
+  *   /api/reports/[id] - Likely handles operations on a specific report
+  *   /api/public/reports - Public fallback endpoint that also lists reports
+*   Key Components:
+  *   ReportsTable.tsx - Client component that displays reports in the UI
+
+Data Flow
+The reports data flow follows this pattern:
+  *   Server Component (page.tsx) uses storage.listReports() to fetch reports
+  *   API Routes also use the same storage interface for data operations
+  *   Both rely on the PostgreSQL implementation in pg-storage.ts
+  *   listReports() implementation has a fallback mechanism that uses raw SQL if the ORM query fails
+
+
+Caching Considerations
+All routes include cache control headers and use unstable_noStore() to disable caching:
+
+unstable_noStore();
+// and
+headers: {
+  'Cache-Control': 'no-store, max-age=0, must-revalidate'
+}
+
 ## Recent Changes / Milestones
 
 *   **UI Client-Server Refactoring (August 2024):**

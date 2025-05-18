@@ -18,7 +18,11 @@
     "storage:migrate": "tsx server/scripts/migrateToPostgres.ts",
     "scraper:run": "tsx server/scraper/runScraper.ts",
     "scraper:tools": "tsx server/scripts/tool_scraper.ts",
-    "process:batch": "tsx server/scripts/processBatchOutput.ts"
+    "process:batch": "tsx server/scripts/processBatchOutput.ts",
+    "test:e2e": "playwright test",
+  "test:e2e:headed": "playwright test --headed",
+  "test:e2e:debug": "playwright test --debug",
+  "test:e2e:report": "playwright show-report"  
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -113,6 +117,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@replit/vite-plugin-cartographer": "^0.0.11",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",

@@ -114,7 +114,7 @@ export async function generateAICapabilityRecommendations(
 
     const content = response.choices[0].message.content;
     try {
-      return JSON.parse(content || "[]");
+    return JSON.parse(content || "[]");
     } catch (error) {
       console.error("Error parsing JSON response:", error);
       return fallbackAICapabilities(role);
@@ -153,7 +153,7 @@ export async function generatePerformanceImpact(
 
     const content = response.choices[0].message.content;
     try {
-      return JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
+    return JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
     } catch (error) {
       console.error("Error parsing JSON response:", error);
       return fallbackPerformanceImpact(role);

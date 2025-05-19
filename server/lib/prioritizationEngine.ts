@@ -127,19 +127,21 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     return a.effortScore - b.effortScore; // Ascending effort (easier first)
   });
   
+  // OPTIMIZATION: Run all AI API calls in parallel
+  // Create an array of promises for all OpenAI API calls
+  const promises = [];
+
   // Generate AI-enhanced executive summary using Anthropic
-  const executiveSummary = await generateEnhancedExecutiveSummary(
+  const executiveSummaryPromise = generateEnhancedExecutiveSummary(
     stepData,
     prioritizedItems
   );
+  promises.push(executiveSummaryPromise);
   
-  // Generate AI suggestions for top roles using OpenAI
-  const aiSuggestions: AISuggestion[] = [];
-  
-  for (const item of prioritizedItems.slice(0, 3)) {
-    // For this demo, we'll use fallback AI capabilities from aiService
-    // In a full implementation, we would retrieve the actual role and department data
-    // and pass them to generateAICapabilityRecommendations
+  // Generate AI suggestions for top roles using OpenAI (in parallel)
+  const topRoles = prioritizedItems.slice(0, 3);
+  const aiSuggestionsPromises = topRoles.map(item => {
+    // Create role and department objects
     const role: JobRole = {
       id: item.id,
       title: item.title,
@@ -158,24 +160,12 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     const rolePainPoints = painPoints[item.id.toString()] || {};
     
     // Call AI service for capability recommendations
-    const capabilities = await generateAICapabilityRecommendations(
-      role,
-      department,
-      rolePainPoints
-    );
-    
-    aiSuggestions.push({
-      roleId: item.id,
-      roleTitle: item.title,
-      capabilities
-    });
-  }
+    return generateAICapabilityRecommendations(role, department, rolePainPoints);
+  });
+  promises.push(...aiSuggestionsPromises);
   
-  // Generate performance impact estimates
-  const roleImpacts = [];
-  let totalRoi = 0;
-  
-  for (const item of prioritizedItems.slice(0, 3)) {
+  // Generate performance impact estimates (in parallel)
+  const performanceImpactPromises = topRoles.map(item => {
     const role: JobRole = {
       id: item.id,
       title: item.title,
@@ -192,15 +182,32 @@ export async function calculatePrioritization(stepData: WizardStepData) {
     };
     
     // Call AI service for performance impact predictions
-    const impactResult = await generatePerformanceImpact(role, department);
-    
-    roleImpacts.push({
-      roleTitle: item.title,
-      metrics: impactResult.metrics
-    });
-    
-    totalRoi += impactResult.estimatedAnnualRoi;
-  }
+    return generatePerformanceImpact(role, department);
+  });
+  promises.push(...performanceImpactPromises);
+  
+  // Wait for all promises to resolve
+  const results = await Promise.all(promises);
+  
+  // Extract results
+  const executiveSummary = results[0] as string;
+  const aiCapabilities = results.slice(1, 4) as any[];
+  const performanceResults = results.slice(4, 7) as any[];
+  
+  // Format AI suggestions
+  const aiSuggestions: AISuggestion[] = topRoles.map((item, index) => ({
+    roleId: item.id,
+    roleTitle: item.title,
+    capabilities: aiCapabilities[index]
+  }));
+  
+  // Format performance impact
+  const roleImpacts = topRoles.map((item, index) => ({
+    roleTitle: item.title,
+    metrics: performanceResults[index].metrics
+  }));
+  
+  const totalRoi = performanceResults.reduce((sum, result) => sum + (result.estimatedAnnualRoi || 0), 0);
   
   const performanceImpact: PerformanceImpact = {
     roleImpacts,

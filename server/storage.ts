@@ -104,6 +104,7 @@ export interface IStorage {
   listReports(): Promise<Report[]>;
   createReport(report: InsertReport): Promise<Report>;
   updateReportCommentary(id: number, commentary: string): Promise<Report>;
+  updateReport(id: number, reportUpdate: Partial<InsertReport>): Promise<Report>;
   
   // Assessment Response methods
   createAssessmentResponse(response: InsertAssessmentResponse): Promise<AssessmentResponse>;
@@ -475,6 +476,21 @@ export class MemStorage implements IStorage {
     const updatedReport = {
       ...report,
       consultantCommentary: commentary
+    };
+    
+    this.reports.set(id, updatedReport);
+    return updatedReport;
+  }
+
+  async updateReport(id: number, reportUpdate: Partial<InsertReport>): Promise<Report> {
+    const report = this.reports.get(id);
+    if (!report) {
+      throw new Error(`Report with id ${id} not found`);
+    }
+    
+    const updatedReport = {
+      ...report,
+      ...reportUpdate
     };
     
     this.reports.set(id, updatedReport);

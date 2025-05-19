@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { WizardStepData, JobRole, Department } from '@shared/schema';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 // Load environment variables from .env file in local development
 if (process.env.NODE_ENV !== 'production') {
@@ -20,6 +21,41 @@ if (missingEnvVars.length > 0) {
 const openai = process.env.OPENAI_API_KEY 
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
+
+// Cache implementation for OpenAI responses
+const responseCache = new Map<string, any>();
+
+// Function to get a cache key from a prompt and model
+function getCacheKey(prompt: string, model: string): string {
+  // Create a hash of the prompt and model to use as a cache key
+  return crypto
+    .createHash('md5')
+    .update(`${prompt}|${model}`)
+    .digest('hex');
+}
+
+// Function to check if a response is cached
+function getCachedResponse(prompt: string, model: string): any | null {
+  const cacheKey = getCacheKey(prompt, model);
+  if (responseCache.has(cacheKey)) {
+    console.log('Using cached OpenAI response');
+    return responseCache.get(cacheKey);
+  }
+  return null;
+}
+
+// Function to cache a response
+function cacheResponse(prompt: string, model: string, response: any): void {
+  const cacheKey = getCacheKey(prompt, model);
+  responseCache.set(cacheKey, response);
+  
+  // Limit cache size to prevent memory leaks
+  if (responseCache.size > 1000) {
+    // Delete oldest entries if cache is too large
+    const keysToDelete = Array.from(responseCache.keys()).slice(0, 100);
+    keysToDelete.forEach(key => responseCache.delete(key));
+  }
+}
 
 /**
  * Generate an enhanced executive summary with OpenAI GPT-4
@@ -61,15 +97,29 @@ export async function generateEnhancedExecutiveSummary(
     
     Use a professional, concise tone appropriate for C-level executives.`;
 
+    const model = "gpt-4";
+    
+    // Check if we have a cached response
+    const cachedResponse = getCachedResponse(prompt, model);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    // Make the API call
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model,
       messages: [
         { role: "system", content: "You are an AI transformation consultant providing executive-level strategic insights." },
         { role: "user", content: prompt }
       ]
     });
 
-    return response.choices[0].message.content || fallbackExecutiveSummary(stepData, prioritizedRoles);
+    const content = response.choices[0].message.content || fallbackExecutiveSummary(stepData, prioritizedRoles);
+    
+    // Cache the response
+    cacheResponse(prompt, model, content);
+    
+    return content;
   } catch (error) {
     console.error('Error generating executive summary with OpenAI:', error);
     return fallbackExecutiveSummary(stepData, prioritizedRoles);
@@ -104,8 +154,16 @@ export async function generateAICapabilityRecommendations(
     1. A specific name/title for the capability
     2. A brief description of what it does and how it helps this specific role`;
 
+    const model = "gpt-4";
+    
+    // Check if we have a cached response
+    const cachedResponse = getCachedResponse(prompt, model);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model,
       messages: [
         { role: "system", content: "You are an AI transformation consultant providing specific, actionable recommendations." },
         { role: "user", content: prompt }
@@ -114,7 +172,12 @@ export async function generateAICapabilityRecommendations(
 
     const content = response.choices[0].message.content;
     try {
-    return JSON.parse(content || "[]");
+      const parsedContent = JSON.parse(content || "[]");
+      
+      // Cache the response
+      cacheResponse(prompt, model, parsedContent);
+      
+      return parsedContent;
     } catch (error) {
       console.error("Error parsing JSON response:", error);
       return fallbackAICapabilities(role);
@@ -143,8 +206,16 @@ export async function generatePerformanceImpact(
     Department: ${department.name}
     Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(", ") : "Not provided"}`;
 
+    const model = "gpt-4";
+    
+    // Check if we have a cached response
+    const cachedResponse = getCachedResponse(prompt, model);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model,
       messages: [
         { role: "system", content: "You are an AI transformation analyst providing realistic performance predictions." },
         { role: "user", content: prompt }
@@ -153,7 +224,12 @@ export async function generatePerformanceImpact(
 
     const content = response.choices[0].message.content;
     try {
-    return JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
+      const parsedContent = JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
+      
+      // Cache the response
+      cacheResponse(prompt, model, parsedContent);
+      
+      return parsedContent;
     } catch (error) {
       console.error("Error parsing JSON response:", error);
       return fallbackPerformanceImpact(role);

@@ -556,10 +556,44 @@ export class PgStorage implements IStorage {
 
   async updateReportCommentary(id: number, commentary: string): Promise<Report> {
     await this.ensureInitialized();
+    
     const result = await this.db.update(reports)
-      .set({ commentary })
+      .set({ 
+        consultantCommentary: commentary,
+        updatedAt: new Date()
+      })
       .where(eq(reports.id, id))
       .returning();
+    
+    if (result.length === 0) {
+      throw new Error(`Report with id ${id} not found`);
+    }
+    
+    return result[0];
+  }
+
+  async updateReport(id: number, reportUpdate: Partial<InsertReport>): Promise<Report> {
+    await this.ensureInitialized();
+    
+    // Create a clean update object, ensuring updatedAt is set
+    const updateData = {
+      ...reportUpdate,
+      updatedAt: new Date()
+    };
+    
+    // Remove any fields that should not be updated directly
+    if ('id' in updateData) delete updateData.id;
+    if ('assessmentId' in updateData) delete updateData.assessmentId;
+    if ('createdAt' in updateData) delete updateData.createdAt;
+    
+    const result = await this.db.update(reports)
+      .set(updateData)
+      .where(eq(reports.id, id))
+      .returning();
+    
+    if (result.length === 0) {
+      throw new Error(`Report with id ${id} not found`);
+    }
     
     return result[0];
   }

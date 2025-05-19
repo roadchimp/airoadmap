@@ -349,8 +349,13 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     onSuccess: (reportId) => {
       console.log("Report generated:", reportId);
       setIsGeneratingReport(false); // Clear generation loading state
-      // Navigate to the report page
-      router.push(`/reports/${reportId}`);
+      
+      // Immediately redirect to the report page - don't wait for any confirmation
+      // This is critical for reducing perceived latency, as report generation continues in the background
+      console.log(`Redirecting to report ${reportId} immediately...`);
+      
+      // Force a hard navigation instead of client-side routing for more reliability
+      window.location.href = `/reports/${reportId}`;
     },
     onError: (error) => {
       console.error("Failed to generate report:", error);
@@ -398,6 +403,9 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     if (currentStepId === 'painPoints') {
       const selectedRoles = assessment.stepData.roles?.selectedRoles || [];
       
+      console.log('Pain Points Step - Current selected roles:', selectedRoles);
+      console.log('Current assessment state:', assessment);
+      
       if (selectedRoles.length > 0) {
         setAssessment(prev => {
           const newStepData = JSON.parse(JSON.stringify(prev.stepData)); // Deep clone
@@ -411,22 +419,38 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
           let painPointsUpdated = false;
           const currentRolePainPoints = newStepData.painPoints.roleSpecificPainPoints;
 
+          // Verify what's already in the pain points state
+          console.log('Current pain points state:', currentRolePainPoints);
+
           selectedRoles.forEach(role => {
-            if (role.id && !currentRolePainPoints[role.id]) {
-              currentRolePainPoints[role.id] = {
+            // Use string ID as the key for consistency
+            const roleId = role.id?.toString() || '';
+            console.log(`Processing role ${role.title} with ID ${roleId}`);
+            
+            if (roleId && !currentRolePainPoints[roleId]) {
+              // Create new entry with the string key
+              currentRolePainPoints[roleId] = {
                 description: '',
                 severity: undefined, 
                 frequency: undefined,
                 impact: undefined
               };
               painPointsUpdated = true;
+              console.log(`Added pain points structure for role ${role.title} with ID ${roleId}`);
+            } else if (roleId) {
+              console.log(`Pain points structure already exists for role ${role.title} with ID ${roleId}`);
             }
           });
 
+          console.log('Updated pain points data:', newStepData.painPoints);
+
           if (painPointsUpdated) {
+            console.log('Returning updated pain points state');
             return { ...prev, stepData: newStepData };
           }
+          
           // Always return the previous state if no updates were made to avoid returning undefined
+          console.log('No pain points updates needed');
           return prev; 
         });
       }
@@ -443,7 +467,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       //   });
       // }
     }
-  }, [currentStepIndex, JSON.stringify(assessment.stepData.roles?.selectedRoles?.map(r => r.id)), wizardSteps]); // More specific dependency
+  }, [currentStepIndex, assessment.stepData.roles?.selectedRoles, wizardSteps]); // Track the entire selectedRoles array
 
   // Sync state with URL step parameter AND update maxReachedStepIndex if needed
   // This useEffect was likely misplaced in the previous diff, ensure it's at the correct scope level.
@@ -458,16 +482,23 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
 
   // Sync form values from assessment.stepData when navigating between steps
   useEffect(() => {
-    const stepId = wizardSteps[currentStepIndex].id as keyof WizardStepData;
-    if (assessment.stepData && assessment.stepData[stepId]) {
-      form.reset({
-        ...form.getValues(),
-        [stepId]: assessment.stepData[stepId],
-      }, {});
+    const stepId = wizardSteps[currentStepIndex].id;
+    if (assessment.stepData) {
+      // Special handling for the review step to load all data
+      if (stepId === 'review') {
+        // For the review step, use the full assessment data
+        form.reset(assessment.stepData as any, {});
+      } else if (assessment.stepData[stepId as keyof typeof assessment.stepData]) {
+        // For other steps, only update that specific step's data
+        form.reset({
+          ...form.getValues(),
+          [stepId]: assessment.stepData[stepId as keyof typeof assessment.stepData],
+        }, {});
+      }
     }
     // Clear validation errors when changing steps
     setValidationError(null);
-  }, [currentStepIndex]);
+  }, [currentStepIndex, form, assessment.stepData]);
 
   // Effect to clear validation error when form fields are updated
   useEffect(() => {
@@ -484,17 +515,29 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const saveCurrentStep = useCallback(async (onSuccess?: () => void) => {
     // Only update local state and localStorage, no API/database writes
     const wizardFormData = form.getValues();
-    setAssessment(prev => ({
-      ...prev,
-      stepData: wizardFormData,
-      updatedAt: new Date().toISOString(),
-      // Important: We're not including strategicFocus here as it's managed separately
-    }));
+    console.log('Saving form data for step:', wizardSteps[currentStepIndex].id, wizardFormData);
+    
+    setAssessment(prev => {
+      // Merge new form data with existing step data to ensure we keep all data
+      const updatedStepData = {
+        ...prev.stepData,
+        ...wizardFormData
+      };
+      console.log('Updated step data:', updatedStepData);
+      
+      return {
+        ...prev,
+        stepData: updatedStepData,
+        updatedAt: new Date().toISOString(),
+        // Important: We're not including strategicFocus here as it's managed separately
+      };
+    });
+    
     if (assessment.id) {
       saveToLocalCache(assessment.id, wizardFormData);
     }
     if (onSuccess) onSuccess();
-  }, [form, assessment.id]);
+  }, [form, assessment.id, currentStepIndex, wizardSteps]);
 
   // --- Enhance navigation handlers with transition state ---
   const handleNext = useCallback(async () => {
@@ -608,21 +651,45 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         description: "Preparing to submit assessment..."
       });
       
-      const wizardFormData = form.getValues();
+      // IMPORTANT: Merge all step data from both form and assessment state to ensure we have everything
+      const formData = form.getValues();
+      const combinedStepData = {
+        ...assessment.stepData,  // Start with current assessment state
+        ...formData,             // Overlay form data 
+      };
       
-      // Log the complete form data for debugging
-      console.log("Form data to be submitted:", JSON.stringify(wizardFormData, null, 2));
+      console.log("Current assessment state:", assessment);
+      console.log("Form values:", formData);
+      console.log("Combined step data:", combinedStepData);
+      
+      // Ensure pain points data is correctly structured with string keys
+      if (combinedStepData.roles?.selectedRoles?.length && combinedStepData.painPoints?.roleSpecificPainPoints) {
+        // Create a fresh copy to work with
+        const cleanPainPoints = { ...combinedStepData.painPoints };
+        cleanPainPoints.roleSpecificPainPoints = {};
+        
+        // Add pain points for each role using string keys
+        combinedStepData.roles.selectedRoles.forEach(role => {
+          const roleId = role.id?.toString() || '';
+          if (roleId && combinedStepData.painPoints?.roleSpecificPainPoints?.[roleId]) {
+            cleanPainPoints.roleSpecificPainPoints[roleId] = combinedStepData.painPoints.roleSpecificPainPoints[roleId];
+          }
+        });
+        
+        combinedStepData.painPoints = cleanPainPoints;
+        console.log("Cleaned pain points data:", cleanPainPoints);
+      }
       
       // Check if AI Adoption Score inputs were provided
       const hasAiAdoptionScoreInputs = 
-        wizardFormData.aiAdoptionScoreInputs && 
-        Object.keys(wizardFormData.aiAdoptionScoreInputs).length > 0;
+        combinedStepData.aiAdoptionScoreInputs && 
+        Object.keys(combinedStepData.aiAdoptionScoreInputs).length > 0;
       
       if (hasAiAdoptionScoreInputs) {
-        console.log("AI Adoption Score inputs provided:", JSON.stringify(wizardFormData.aiAdoptionScoreInputs, null, 2));
+        console.log("AI Adoption Score inputs:", JSON.stringify(combinedStepData.aiAdoptionScoreInputs, null, 2));
         
-        // Validate that all inputs are numbers (not undefined or null)
-        const inputs = wizardFormData.aiAdoptionScoreInputs;
+        // Validate inputs are numbers
+        const inputs = combinedStepData.aiAdoptionScoreInputs;
         const validInputs = inputs ? Object.entries(inputs).every(([key, value]) => 
           typeof value === 'number' && !isNaN(value)
         ) : false;
@@ -634,17 +701,17 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         console.warn("No AI Adoption Score inputs provided. AI Adoption Score will not be calculated.");
       }
       
-      // Prepare the payload with all necessary data
+      // Prepare the payload with the combined data
       const payload = {
-        basics: wizardFormData.basics,
-        stepData: wizardFormData,
+        basics: combinedStepData.basics,
+        stepData: combinedStepData,
         organizationId: 1, // Placeholder, adjust as needed
         userId: 1, // Placeholder, adjust as needed
         strategicFocus: strategicFocus, // Include the strategicFocus field
-        industry: wizardFormData.basics?.industry,
-        industryMaturity: wizardFormData.basics?.industryMaturity,
-        companyStage: wizardFormData.basics?.companyStage,
-        aiAdoptionScoreInputs: hasAiAdoptionScoreInputs ? wizardFormData.aiAdoptionScoreInputs : undefined,
+        industry: combinedStepData.basics?.industry,
+        industryMaturity: combinedStepData.basics?.industryMaturity,
+        companyStage: combinedStepData.basics?.companyStage,
+        aiAdoptionScoreInputs: hasAiAdoptionScoreInputs ? combinedStepData.aiAdoptionScoreInputs : undefined,
       };
       
       console.log("Submitting assessment with payload:", JSON.stringify(payload, null, 2));
@@ -678,7 +745,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         companyStage: createdAssessment.companyStage,
         strategicFocus: createdAssessment.strategicFocus,
         aiAdoptionScoreInputs: createdAssessment.aiAdoptionScoreInputs,
-        stepData: (createdAssessment.stepData as Partial<WizardStepData>) || { basics: wizardFormData.basics },
+        stepData: (createdAssessment.stepData as Partial<WizardStepData>) || { basics: combinedStepData.basics },
         createdAt: createdAssessment.createdAt,
         updatedAt: createdAssessment.updatedAt,
       }));
@@ -1065,19 +1132,57 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         // Handler for role selection
         const handleRoleChange = (role: JobRole, checked: boolean | string) => {
           const currentSelection = stepData.roles?.selectedRoles || [];
-           const isChecked = checked === true;
+          const isChecked = checked === true;
           let newSelection;
+          
           if (isChecked) {
-             const dept = departments.find(d => d.id === role.departmentId);
-             const deptName = dept ? dept.name : 'Unknown Department'; 
+            const dept = departments.find(d => d.id === role.departmentId);
+            const deptName = dept ? dept.name : 'Unknown Department';
+            
+            // Ensure role ID is always included
             newSelection = [...currentSelection, { 
                 id: role.id, 
                 title: role.title, 
                 department: deptName, 
             }];
+            
+            console.log(`Added role: ${role.title} (ID: ${role.id})`);
+            console.log('Updated roles selection:', newSelection);
+            
+            // Prefetch the painPoints structure for this role to prevent it being undefined later
+            setTimeout(() => {
+              // Use a setTimeout to ensure this runs after the state update
+              setAssessment(prev => {
+                const newStepData = { ...prev.stepData };
+                
+                if (!newStepData.painPoints) {
+                  newStepData.painPoints = { roleSpecificPainPoints: {}, generalPainPoints: '' };
+                } else if (!newStepData.painPoints.roleSpecificPainPoints) {
+                  newStepData.painPoints.roleSpecificPainPoints = {};
+                }
+                
+                // Create the entry using string ID as key
+                const roleId = role.id?.toString() || '';
+                if (roleId && !newStepData.painPoints.roleSpecificPainPoints[roleId]) {
+                  newStepData.painPoints.roleSpecificPainPoints[roleId] = {
+                    description: '',
+                    severity: undefined, 
+                    frequency: undefined,
+                    impact: undefined
+                  };
+                  
+                  console.log(`Prefetched pain points for role ${role.title} (ID: ${roleId})`);
+                  return { ...prev, stepData: newStepData };
+                }
+                
+                return prev;
+              });
+            }, 0);
           } else {
             newSelection = currentSelection.filter(r => r.id !== role.id);
+            console.log(`Removed role: ${role.title} (ID: ${role.id})`);
           }
+          
           handleInputChange("roles.selectedRoles", newSelection);
         };
         
@@ -1146,6 +1251,11 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
          // Ensure painPointsData is correctly typed
         const painPointsData: Partial<WizardStepData['painPoints']> = stepData.painPoints || {};
 
+        console.log('Pain Points Step - All data:', {
+          selectedRoles,
+          painPointsData
+        });
+
         return (
           <React.Fragment>
             <h2 className="text-xl font-semibold mb-1">{title}</h2>
@@ -1153,10 +1263,17 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
             <div className="space-y-6">
               {selectedRoles.length > 0 ? (
                 selectedRoles.map((role) => {
-                  // Safe access using role ID
-                  const rolePainPoints = painPointsData.roleSpecificPainPoints?.[role.id!];
+                  // Role ID needs to be used as a string key
+                  const roleId = role.id?.toString() || '';
+                  const rolePainPoints = painPointsData.roleSpecificPainPoints?.[roleId];
+                  
+                  console.log(`Pain Points Step - Role ${role.title} (ID: ${roleId}):`, {
+                    roleData: role,
+                    painPointsData: rolePainPoints  
+                  });
+                  
                   return (
-                    <Card key={role.id}> 
+                    <Card key={role.id} data-role-id={roleId} data-role-name={role.title.replace(/\s+/g, '-').toLowerCase()} data-testid={`role-pain-points-${roleId}`}> 
                       <CardHeader>
                         <CardTitle>{role.title}</CardTitle>
                         <CardDescription>Describe the primary pain points or challenges for this role.</CardDescription>
@@ -1168,7 +1285,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                             className="mt-1"
                             value={rolePainPoints?.description || ""} // Use safely accessed data
                             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => 
-                              handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.description`, e.target.value)
+                              handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.description`, e.target.value)
                             }
                             placeholder={`e.g., Time spent on repetitive tasks, difficulty accessing data...`}
                           />
@@ -1183,7 +1300,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                               max="5"
                               value={rolePainPoints?.severity || ""} // Use safely accessed data
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                                handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.severity`, parseInt(e.target.value) || undefined)
+                                handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.severity`, parseInt(e.target.value) || undefined)
                               }
                             />
                           </div>
@@ -1196,7 +1313,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                               max="5"
                               value={rolePainPoints?.frequency || ""} // Use safely accessed data
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                                handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.frequency`, parseInt(e.target.value) || undefined)
+                                handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.frequency`, parseInt(e.target.value) || undefined)
                               }
                             />
                           </div>
@@ -1209,7 +1326,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                               max="5"
                               value={rolePainPoints?.impact || ""} // Use safely accessed data
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                                handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.impact`, parseInt(e.target.value) || undefined)
+                                handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.impact`, parseInt(e.target.value) || undefined)
                               }
                             />
                           </div>
@@ -1262,7 +1379,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                    const roleIdStr = String(role.id!); // Cast ID to string
                    const roleWorkVolume = workVolumeData[roleIdStr] || {}; // Index with string
                   return (
-                    <Card key={role.id}>
+                    <Card key={role.id} data-role-id={roleIdStr} data-role-name={role.title.replace(/\s+/g, '-').toLowerCase()} data-testid={`role-work-volume-${roleIdStr}`}>
                       <CardHeader>
                         <CardTitle>{role.title}</CardTitle>
                         <CardDescription>Assess the typical work patterns for this role.</CardDescription>
@@ -1830,7 +1947,17 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                        />
                    </div>
                    {(stepData.roles?.selectedRoles || []).map((role) => {
-                     const rolePP = stepData.painPoints?.roleSpecificPainPoints?.[role.id!] || {};
+                     // Ensure we're accessing the pain points with the right key
+                     // Role ID needs to be used as a string key
+                     const roleId = role.id?.toString() || '';
+                     const rolePP = stepData.painPoints?.roleSpecificPainPoints?.[roleId] || {};
+                     
+                     console.log(`Review step - Role ${role.title} (ID: ${roleId}):`, {
+                       roleData: role,
+                       painPointsData: rolePP,
+                       allPainPoints: stepData.painPoints?.roleSpecificPainPoints
+                     });
+                     
                      return (
                        <div key={role.id} className="border-t pt-4 mt-4">
                          <h4 className="font-medium text-sm mb-2">{role.title} Pain Points</h4>
@@ -1839,21 +1966,21 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                            <Textarea
                              className="mt-1"
                              value={rolePP.description || ""}
-                             onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.description`, e.target.value)}
+                             onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.description`, e.target.value)}
                            />
                          </div>
                          <div className="grid grid-cols-3 gap-4 mt-2">
                             <div>
                                 <Label>Severity (1-5)</Label>
-                                <Input className="mt-1" type="number" min="1" max="5" value={rolePP.severity || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.severity`, parseInt(e.target.value) || undefined)} />
+                                <Input className="mt-1" type="number" min="1" max="5" value={rolePP.severity || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.severity`, parseInt(e.target.value) || undefined)} />
                            </div>
                            <div>
                                <Label>Frequency (1-5)</Label>
-                               <Input className="mt-1" type="number" min="1" max="5" value={rolePP.frequency || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.frequency`, parseInt(e.target.value) || undefined)} />
+                               <Input className="mt-1" type="number" min="1" max="5" value={rolePP.frequency || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.frequency`, parseInt(e.target.value) || undefined)} />
                            </div>
                            <div>
                                <Label>Impact (1-5)</Label>
-                               <Input className="mt-1" type="number" min="1" max="5" value={rolePP.impact || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${role.id}.impact`, parseInt(e.target.value) || undefined)} />
+                               <Input className="mt-1" type="number" min="1" max="5" value={rolePP.impact || ""} onChange={(e) => handleInputChange(`painPoints.roleSpecificPainPoints.${roleId}.impact`, parseInt(e.target.value) || undefined)} />
                            </div>
                          </div>
                        </div>

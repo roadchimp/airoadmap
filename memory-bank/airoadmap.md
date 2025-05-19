@@ -63,6 +63,15 @@ The reports data flow follows this pattern:
   *   Both rely on the PostgreSQL implementation in pg-storage.ts
   *   listReports() implementation has a fallback mechanism that uses raw SQL if the ORM query fails
 
+*** Generating Report using OpenAI API Calls ***
+
+When you click "Generate Report" on the final assessment step, the system:
+Creates an assessment record (/api/assessments)
+Generates a report based on that assessment (/api/reports/assessment/${id})
+The report generation process involves multiple AI calls:
+generateEnhancedExecutiveSummary - Uses OpenAI to create a summary
+generateAICapabilityRecommendations - For each role in the assessment (This is being used in the Opportunities tab and generates specific AI capability recommendations for each of the top roles identified in the assessment.)
+generatePerformanceImpact - For each role and department (Used in the "Performance Metrics" tab. These predictions provide numerical metrics for expected improvements and ROI. From the screenshot, you can see "$490000 Estimated Annual ROI" in the right panel)
 
 Caching Considerations
 All routes include cache control headers and use unstable_noStore() to disable caching:

@@ -4,10 +4,11 @@ import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
+import { BarChart, FileText, ClipboardList, Route, Target, Gauge, ChartBar, Clock, Library, Settings, Home, ChevronLeft, ChevronRight } from "lucide-react";
 
 // Define interfaces directly here for simplicity, or move to types file
 interface FeatureCardProps {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   description: string;
 }
@@ -107,31 +108,36 @@ export default function LandingPageContent() {
       {/* Features Section */}
       <div className="py-20 bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Choose AI Sherpas?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Accelerate Your Organization's AI Transformation</h2>
           <p className="text-center text-gray-600 mb-16 max-w-2xl mx-auto">
-            Everything you need to implement AI technologies in your organization.
+          AI Sherpas guides your team from uncertainty to clarity with:
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <FeatureCard
-              icon="🎯"
-              title="Personalized Learning Paths"
-              description="Customized roadmaps based on your experience level and learning goals."
+              icon={<ClipboardList />}
+              title="AI Readiness Assessment"
+              description="Instantly benchmark your current GTM and operational processes to pinpoint where AI can drive the most impact."
             />
             <FeatureCard
-              icon="💡"
-              title="Practical Projects"
-              description="Hands-on projects to apply your knowledge and build your portfolio."
+              icon={<Route />}
+              title="Tailored Roadmaps"
+              description="Receive step-by-step, stage-specific plans for AI adoption—whether you're a startup, scaling SaaS, or mature enterprise."
             />
             <FeatureCard
-              icon="📚"
-              title="Curated Resources"
-              description="The best tutorials, courses, and documentation for each topic."
+              icon={<Target />}
+              title="Actionable Insights"
+              description="Get prioritized recommendations on where to automate, when to upskill, and how to measure ROI, all mapped to your business's growth and complexity."
             />
             <FeatureCard
-              icon="👥"
-              title="Community Support"
-              description="Connect with other learners and experts in the AI community."
+              icon={<Gauge />}
+              title="Continuous Benchmarking"
+              description="Track your AI adoption progress against industry standards and your own KPIs, ensuring you're always moving forward."
+            />
+              <FeatureCard
+              icon={<ChartBar />}
+              title="Expert-Backed Guidance"
+              description="Leverage proven frameworks, case studies, and best practices to avoid common pitfalls and maximize results."
             />
           </div>
         </div>

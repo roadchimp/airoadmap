@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server';
-import { storage } from '@/server/storage';
+import { storage } from '@/../../server/pg-storage';
 import { insertAssessmentSchema, wizardStepDataSchema } from '@shared/schema';
 import { ZodError } from 'zod';
-import { PgStorage } from '@/server/pg-storage';
+import { getAuthUser, requireAuth, withAuth } from '../middleware';
 
 // GET /api/assessments
-export async function GET() {
+async function getAssessmentsHandler(request: Request, authId: string) {
   try {
-    const assessments = await storage.listAssessments();
-    return NextResponse.json(assessments);
+    // Get user profile to determine organization
+    const profile = await storage.getUserProfileByAuthId(authId);
+    
+    // Pass auth ID to storage so RLS policies are applied
+    if (profile) {
+      const assessments = await storage.listAssessments();
+      return NextResponse.json(assessments);
+    }
+    
+    return NextResponse.json({ error: "User profile not found" }, { status: 404 });
   } catch (error) {
     console.error('Error fetching assessments:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
@@ -16,12 +24,12 @@ export async function GET() {
   }
 }
 
-// POST /api/assessments
-export async function POST(request: Request) {
-  const storage = new PgStorage();
-  try {
-    await (storage as any).ensureInitialized();
+// Use withAuth middleware to handle authentication and set auth context
+export const GET = withAuth(getAssessmentsHandler);
 
+// POST /api/assessments
+async function createAssessmentHandler(request: Request, authId: string) {
+  try {
     const body = await request.json();
     console.log("Received assessment data:", JSON.stringify(body, null, 2));
 
@@ -31,7 +39,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Basic assessment information is required." }, { status: 400 });
     }
 
-    const organizationId = body.organizationId || 1;
+    // Get user profile to determine organization
+    const profile = await storage.getUserProfileByAuthId(authId);
+    
+    if (!profile) {
+      return NextResponse.json({ error: "User profile not found" }, { status: 404 });
+    }
+
+    // Get organizationId from user profile
+    const organizationId = profile.organization_id || body.organizationId || 1;
 
     // Clone the stepData to ensure we're not modifying the original
     const fullStepData = JSON.parse(JSON.stringify(body.stepData || {}));
@@ -43,8 +59,8 @@ export async function POST(request: Request) {
 
     const assessmentPayload: typeof insertAssessmentSchema._input = {
       title: validatedBasics.reportName || `Assessment for ${validatedBasics.companyName}`,
-      organizationId: organizationId,
-      userId: body.userId || 1,
+      organizationId,
+      userId: parseInt(authId), // Use the authenticated user's ID
       status: 'draft',
       
       industry: body.industry || validatedBasics.industry || "",
@@ -66,7 +82,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid input", details: error.errors }, { status: 400 });
     }
     return NextResponse.json({ error: "Failed to create assessment" }, { status: 500 });
-  } finally {
-    await storage.disconnect();
   }
-} 
+}
+
+// Use withAuth middleware to handle authentication and set auth context
+export const POST = withAuth(createAssessmentHandler); 

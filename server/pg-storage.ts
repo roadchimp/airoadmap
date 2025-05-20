@@ -14,6 +14,7 @@ import {
   aiCapabilities, jobRoles, jobDescriptions, jobScraperConfigs,
   aiTools, capabilityToolMapping, assessmentScores, assessmentResponses,
   insertAssessmentSchema,
+  userProfiles,
   
   // Import new tables and schemas (values)
   performanceMetrics,
@@ -48,7 +49,9 @@ import type {
   JobRolePerformanceMetrics, 
   MetricRules, 
   OrganizationScoreWeights,
-  InsertOrganizationScoreWeights
+  InsertOrganizationScoreWeights,
+  UserProfile,
+  InsertUserProfile
 
 } from '../shared/schema.ts';
 
@@ -136,19 +139,52 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  // User Profile methods
+  async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(userProfiles).values(profile).returning();
+    return result[0];
+  }
+
+  async getUserProfileByAuthId(authId: string): Promise<UserProfile | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(userProfiles).where(eq(userProfiles.auth_id, authId));
+    return result[0];
+  }
+
   // Organization methods
-  async getOrganization(id: number): Promise<Organization | undefined> {
+  async getOrganization(id: number, authId?: string): Promise<Organization | undefined> {
+    await this.ensureInitialized();
+    await this.setAuthContext(authId);
     const result = await this.db.select().from(organizations).where(eq(organizations.id, id));
     return result[0];
   }
 
-  async listOrganizations(): Promise<Organization[]> {
+  async listOrganizations(authId?: string): Promise<Organization[]> {
+    await this.ensureInitialized();
+    await this.setAuthContext(authId);
     return await this.db.select().from(organizations);
   }
 
   async createOrganization(org: InsertOrganization): Promise<Organization> {
     const result = await this.db.insert(organizations).values(org).returning();
     return result[0];
+  }
+
+  async deleteOrganization(id: number): Promise<void> {
+    await this.ensureInitialized();
+    
+    // First check if organization exists to prevent error on non-existent ID
+    const result = await this.db.select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.id, id));
+  
+    if (result.length > 0) {
+      await this.db.delete(organizations).where(eq(organizations.id, id));
+      console.log(`Deleted organization with ID: ${id}`);
+    } else {
+      console.warn(`Organization with ID ${id} not found for deletion`);
+    }
   }
 
   // Department methods
@@ -1047,6 +1083,21 @@ export class PgStorage implements IStorage {
     
     // As with get, ensure numeric types are handled correctly if not automatically by Drizzle/Zod.
     return result[0] as OrganizationScoreWeights;
+  }
+
+  // Helper method to set the auth context for RLS policies
+  private async setAuthContext(authId?: string): Promise<void> {
+    await this.ensureInitialized();
+    if (authId) {
+      try {
+        await this.db.execute(sql`SELECT set_config('app.current_auth_id', ${authId}, true)`);
+      } catch (error) {
+        console.error('Error setting auth context:', error);
+      }
+    } else {
+      // Clear the auth context if no authId is provided
+      await this.db.execute(sql`SELECT set_config('app.current_auth_id', '', true)`);
+    }
   }
 }
 

@@ -22,8 +22,8 @@ const Landing: React.FC = () => {
               <div className="relative group">
                 <button className="text-white hover:text-gray-300">Resources</button>
               </div>
-              <Link to="/login">
-                <Button variant="outline" className="bg-red-600 text-white border-red-600 hover:bg-red-700">
+              <Link to="/signup">
+                <Button className="bg-red-600 hover:bg-red-700 text-white">
                   Get Started
                 </Button>
               </Link>

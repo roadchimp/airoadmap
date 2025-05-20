@@ -13,12 +13,29 @@ export const users = pgTable("users", {
   role: text("role").default("consultant").notNull(),
 });
 
+// Users table (for additional user data beyond Supabase Auth)
+export const userProfiles = pgTable('user_profiles', {
+  id: serial('id').primaryKey(),
+  auth_id: text('auth_id').notNull().unique(), // Supabase auth.users.id
+  organization_id: integer('organization_id').references(() => organizations.id),
+  full_name: text('full_name'),
+  avatar_url: text('avatar_url'),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
   fullName: true,
   email: true,
   role: true,
+});
+
+export const insertUserProfileSchema = createInsertSchema(userProfiles).pick({
+  auth_id: true,
+  organization_id: true,
+  full_name: true,
+  avatar_url: true,
 });
 
 // Company/Organization model
@@ -28,6 +45,7 @@ export const organizations = pgTable("organizations", {
   industry: text("industry").notNull(),
   size: text("size").notNull(), // Small, Medium, Large, Enterprise
   description: text("description"),
+  created_at: timestamp('created_at').defaultNow().notNull(),
 });
 
 //added a field for the organization's industry
@@ -580,6 +598,11 @@ export const assessmentResults = pgTable("assessment_results", {
   };
 });
 
+// Dummy table for testing
+export const dummy_table = pgTable('dummy_table', {
+  id: serial('id').primaryKey(),
+});
+
 // Add infer types for new tables
 export type AssessmentResponse = typeof assessmentResponses.$inferSelect;
 export type InsertAssessmentResponse = typeof assessmentResponses.$inferInsert;
@@ -739,3 +762,6 @@ export const selectOrganizationScoreWeightsSchema = createSelectSchema(organizat
 // Organization Score Weights Types
 export type OrganizationScoreWeights = z.infer<typeof selectOrganizationScoreWeightsSchema>;
 export type InsertOrganizationScoreWeights = z.infer<typeof insertOrganizationScoreWeightsSchema>;
+
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;

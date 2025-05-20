@@ -29,6 +29,20 @@
       "when": 1747010198216,
       "tag": "0003_safe_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1747656083013,
+      "tag": "0004_groovy_quentin_quire",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1747687865877,
+      "tag": "0005_powerful_captain_britain",
+      "breakpoints": true
     }
   ]
 }

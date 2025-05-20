@@ -7,6 +7,8 @@ import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useAuth } from '@/hooks/UseAuth';
+import { useRouter } from 'next/navigation';
 
 interface SidebarNavProps {
   onClose?: () => void;
@@ -20,6 +22,17 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
   onToggleCollapse 
 }) => {
   const pathname = usePathname();
+  const { logout, isAuthenticated, user } = useAuth();
+  const router = useRouter();
+
+  // Get user display name - prefer full name, fall back to email
+  const displayName = user?.user_metadata?.full_name || 
+                      user?.user_metadata?.name || 
+                      user?.email?.split('@')[0] || 
+                      'User';
+  
+  // Get user email
+  const userEmail = user?.email || 'user@example.com';
 
   const isActive = (path: string, exact: boolean = false) => {
     // Specific check for dashboard vs. others
@@ -32,7 +45,8 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
     }
     // Broader check for nested routes like /assessment/*
     return pathname.startsWith(path);
-  }
+  };
+
 
   // Define common active/inactive styles to avoid repetition
   const activeLinkClasses = 'bg-red-100 text-red-700';
@@ -42,6 +56,10 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
   const baseLinkClasses = 'flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-colors';
   const baseIconClasses = 'mr-3 h-5 w-5';
 
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   return (
     // Main container: Vertical flex, full height, fixed width, background, right border
@@ -230,8 +248,8 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
               </div>
               {/* Name & Email */}
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700">Consultant User</p>
-                <p className="text-xs text-gray-500">consultant@example.com</p>
+                <p className="text-sm font-medium text-gray-700">{displayName}</p>
+                <p className="text-xs text-gray-500">{userEmail}</p>
               </div>
             </div>
           ) : (
@@ -243,13 +261,15 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
             </div>
           )}
           
-          {/* Logout Button - Icon matches image */}
+          {/* Sign out text/button - Shown only when expanded */}
           {!collapsed && (
-            <button className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
+            <Button
+              onClick={handleLogout}
+              variant="ghost"
+              className="text-sm text-gray-600 hover:text-red-600 p-0 h-auto"
+            >
+              Sign out
+            </Button>
           )}
         </div>
       </div>

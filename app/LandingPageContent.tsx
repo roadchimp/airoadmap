@@ -67,11 +67,16 @@ export default function LandingPageContent() {
               <div className="relative group">
                 <button className="text-white hover:text-gray-300">Resources</button>
               </div>
-              <Link href="/dashboard">
+              <Link href="/signup">
                 <Button className="bg-red-600 text-white border-transparent hover:bg-red-700">
                   Get Started
                 </Button>
-              </Link>
+              </Link>             
+              <Link href="/login">
+                <Button className="bg-red-600 text-white border-transparent hover:bg-red-700">
+                  Sign In
+                </Button>
+              </Link>             
             </div>
           </div>
         </div>

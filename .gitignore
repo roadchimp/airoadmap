@@ -87,3 +87,12 @@ logs/
 # Ignore server test and script directories
 server/tests/
 server/scripts/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/playwright/.auth/
+/playwright/downloads/
+/playwright/videos/
+/playwright/screenshots/

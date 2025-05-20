@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css"; // Assuming global styles exist here
-import { ThemeProvider } from "next-themes"; // Assuming this is the correct provider
 import Providers from "./providers";
+import ClientProviders from "./client-providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,16 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning often needed with next-themes */}
       <body className={inter.className}> 
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light" // Or your desired default
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ClientProviders>
           <Providers>
             {children}
           </Providers>
-        </ThemeProvider>
+        </ClientProviders>
       </body>
     </html>
   );

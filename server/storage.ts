@@ -45,7 +45,11 @@ import {
   organizationScoreWeights,
   type OrganizationScoreWeights,
   type InsertOrganizationScoreWeights,
-  insertOrganizationScoreWeightsSchema 
+  insertOrganizationScoreWeightsSchema,
+  // Add user profile imports
+  userProfiles,
+  type UserProfile,
+  type InsertUserProfile
 } from "../shared/schema";
 
 import { PgStorage } from './pg-storage.ts';
@@ -67,10 +71,15 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
+  // User Profile methods
+  createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
+  getUserProfileByAuthId(authId: string): Promise<UserProfile | undefined>;
+  
   // Organization methods
-  getOrganization(id: number): Promise<Organization | undefined>;
-  listOrganizations(): Promise<Organization[]>;
+  getOrganization(id: number, authId?: string): Promise<Organization | undefined>;
+  listOrganizations(authId?: string): Promise<Organization[]>;
   createOrganization(org: InsertOrganization): Promise<Organization>;
+  deleteOrganization(id: number): Promise<void>;
   
   // Department methods
   getDepartment(id: number): Promise<Department | undefined>;
@@ -192,6 +201,7 @@ export class MemStorage implements IStorage {
   // Add map for organization score weights in MemStorage
   private organizationScoreWeightsMap: Map<number, OrganizationScoreWeights>;
 
+
   constructor() {
     this.users = new Map();
     this.organizations = new Map();
@@ -247,12 +257,28 @@ export class MemStorage implements IStorage {
     return user;
   }
   
+  // User Profile methods
+  async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
+    // Implementation needed
+    throw new Error("Method not implemented in MemStorage");
+  }
+  
+  async getUserProfileByAuthId(authId: string): Promise<UserProfile | undefined> {
+    // Implementation needed
+    throw new Error("Method not implemented in MemStorage");
+  }
+  
+  // Helper method to maintain API compatibility with PgStorage
+  private setAuthContext(authId?: string): void {
+    // In-memory storage doesn't need auth context, but we include this for API compatibility
+  }
+  
   // Organization methods
-  async getOrganization(id: number): Promise<Organization | undefined> {
+  async getOrganization(id: number, authId?: string): Promise<Organization | undefined> {
     return this.organizations.get(id);
   }
   
-  async listOrganizations(): Promise<Organization[]> {
+  async listOrganizations(authId?: string): Promise<Organization[]> {
     return Array.from(this.organizations.values());
   }
   
@@ -261,10 +287,15 @@ export class MemStorage implements IStorage {
     const organization = { 
       ...org, 
       id,
-      description: org.description || null // Ensure description is never undefined
+      description: org.description || null,
+      created_at: new Date()
     };
     this.organizations.set(id, organization);
     return organization;
+  }
+
+  async deleteOrganization(id: number): Promise<void> {
+    this.organizations.delete(id);
   }
   
   // Department methods

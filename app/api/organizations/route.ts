@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/../../server/pg-storage';
-import { withAuth } from '../middleware';
+import { withAuthGet, withAuthPost } from '../middleware';
 import { unstable_noStore } from 'next/cache';
 
 /**
@@ -26,7 +26,7 @@ async function getOrganizationsHandler(request: Request, authId: string) {
 }
 
 // Export the handler wrapped with auth middleware
-export const GET = withAuth(getOrganizationsHandler);
+export const GET = withAuthGet(getOrganizationsHandler);
 
 // Handler for creating organizations
 async function createOrganizationHandler(request: Request, authId: string) {
@@ -67,4 +67,4 @@ async function createOrganizationHandler(request: Request, authId: string) {
 }
 
 // Export the handler wrapped with auth middleware
-export const POST = withAuth(createOrganizationHandler); 
+export const POST = withAuthPost(createOrganizationHandler); 

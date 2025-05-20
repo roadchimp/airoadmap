@@ -16,6 +16,10 @@ export async function GET(
   
   // Get the authenticated user
   const { user } = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  
   const id = parseInt(params.id);
   
   if (isNaN(id)) {
@@ -27,7 +31,7 @@ export async function GET(
   
   try {
     // Pass the auth ID to the storage layer for RLS policy enforcement
-    const organization = await storage.getOrganization(id, user?.id);
+    const organization = await storage.getOrganization(id, user.id);
     
     if (!organization) {
       return NextResponse.json(

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { storage } from '@/../../server/pg-storage';
 import { insertAssessmentSchema, wizardStepDataSchema } from '@shared/schema';
 import { ZodError } from 'zod';
-import { getAuthUser, requireAuth, withAuth } from '../middleware';
+import { getAuthUser, requireAuth, withAuthGet, withAuthPost } from '../middleware';
 
 // GET /api/assessments
 async function getAssessmentsHandler(request: Request, authId: string) {
@@ -24,8 +24,8 @@ async function getAssessmentsHandler(request: Request, authId: string) {
   }
 }
 
-// Use withAuth middleware to handle authentication and set auth context
-export const GET = withAuth(getAssessmentsHandler);
+// Use withAuthGet middleware to handle authentication and set auth context
+export const GET = withAuthGet(getAssessmentsHandler);
 
 // POST /api/assessments
 async function createAssessmentHandler(request: Request, authId: string) {
@@ -85,5 +85,5 @@ async function createAssessmentHandler(request: Request, authId: string) {
   }
 }
 
-// Use withAuth middleware to handle authentication and set auth context
-export const POST = withAuth(createAssessmentHandler); 
+// Use withAuthPost middleware to handle authentication and set auth context
+export const POST = withAuthPost(createAssessmentHandler); 

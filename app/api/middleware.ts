@@ -57,11 +57,11 @@ export async function requireAuth(request: Request) {
 }
 
 /**
- * Auth middleware that sets up authentication context for storage operations
+ * Auth middleware that sets up authentication context for storage operations (GET)
  * This ensures RLS policies are applied with the correct user context
  */
-export async function withAuth(handler: (request: Request, authId: string) => Promise<Response>) {
-  return async (request: Request) => {
+export function withAuthGet(handler: (request: Request, authId: string) => Promise<Response>) {
+  return async function GET(request: Request) {
     // Check authentication
     const authResponse = await requireAuth(request);
     if (authResponse) {
@@ -75,6 +75,35 @@ export async function withAuth(handler: (request: Request, authId: string) => Pr
     // Call the handler with the auth ID
     return handler(request, authId);
   };
+}
+
+/**
+ * Auth middleware that sets up authentication context for storage operations (POST)
+ * This ensures RLS policies are applied with the correct user context
+ */
+export function withAuthPost(handler: (request: Request, authId: string) => Promise<Response>) {
+  return async function POST(request: Request) {
+    // Check authentication
+    const authResponse = await requireAuth(request);
+    if (authResponse) {
+      return authResponse; // Return auth error if present
+    }
+    
+    // Get authenticated user
+    const { user } = await getAuthUser();
+    const authId = user!.id; // We know user exists because requireAuth passed
+    
+    // Call the handler with the auth ID
+    return handler(request, authId);
+  };
+}
+
+/**
+ * @deprecated Use withAuthGet or withAuthPost instead
+ */
+export function withAuth(handler: (request: Request, authId: string) => Promise<Response>) {
+  console.warn('withAuth is deprecated, use withAuthGet or withAuthPost instead');
+  return withAuthGet(handler);
 }
 
 /**

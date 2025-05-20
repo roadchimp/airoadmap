@@ -115,24 +115,24 @@ const WizardLayout: React.FC<WizardLayoutProps> = ({
 
   return (
     <div className="flex flex-1 bg-gray-100 relative">
-      {/* Fullscreen toggle button */}
-      <button
-        onClick={toggleFullscreenMode}
-        className="absolute top-2 left-2 z-30 p-1.5 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 focus:outline-none text-[#e84c2b] hover:text-[#d13c1c] transition-colors"
-        aria-label={fullscreenMode ? "Exit fullscreen mode" : "Enter fullscreen mode"}
-      >
-        {fullscreenMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-      </button>
-
       {/* Main content */}
       <div className={`flex-1 p-4 md:p-6 bg-transparent transition-all duration-300 ${
         sidebarCollapsed || fullscreenMode ? 'md:pr-6 md:max-w-none' : 'md:max-w-[calc(100%-20rem)]'
       }`}>
         <div className="mx-auto max-w-4xl">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Step {currentStepIndex + 1}: {steps[currentStepIndex].title}
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Step {currentStepIndex + 1}: {steps[currentStepIndex].title}
+              </h2>
+              <button
+                onClick={toggleFullscreenMode}
+                className="flex items-center justify-center w-7 h-7 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 focus:outline-none text-[#e84c2b] hover:text-[#d13c1c] transition-colors"
+                aria-label={fullscreenMode ? "Exit fullscreen mode" : "Enter fullscreen mode"}
+              >
+                {fullscreenMode ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+              </button>
+            </div>
             <p className="mt-1 text-gray-600">
               {steps[currentStepIndex].description}
             </p>

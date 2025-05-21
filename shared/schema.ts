@@ -97,7 +97,7 @@ export const insertJobRoleSchema = createInsertSchema(jobRoles, {
 });
 
 // Enum for AI Capability Priority
-export const capabilityPriorityEnum = pgEnum('capability_priority', ['Low', 'Medium', 'High']);
+export const capabilityPriorityEnum = pgEnum('capability_priority_enum', ['High', 'Medium', 'Low']);
 
 // Basic type for ImplementationFactors, expand as needed
 export type ImplementationFactors = {
@@ -106,65 +106,91 @@ export type ImplementationFactors = {
   changeManagement?: number;
 };
 
-// AI Capability model - UPDATED
+// AI Capability model - UPDATED to be GLOBAL
 export const aiCapabilitiesTable = pgTable("ai_capabilities", {
-  id: integer("id").primaryKey(), // Use integer to preserve migrated IDs
+  id: integer("id").primaryKey(), // Global ID, potentially pre-populated or managed elsewhere
   name: text("name").notNull(),
-  category: text("category").notNull(), // Keep this for the capability's category
+  category: text("category").notNull(),
   description: text("description"),
-  implementationEffort: text("implementation_effort"), // High, Medium, Low (Qualitative)
-  businessValue: text("business_value"), // High, Medium, Low (Qualitative)
-  easeScore: numeric("ease_score"), // Quantitative score for ease (e.g., 1-5) - Potentially Feasibility (Lower is better?)
-  valueScore: numeric("value_score"), // Quantitative score for value (e.g., 1-5) - Value (Higher is better)
+  // Global/default values (optional, can be null if not applicable globally)
+  defaultImplementationEffort: text("default_implementation_effort"), 
+  defaultBusinessValue: text("default_business_value"),
+  defaultEaseScore: numeric("default_ease_score"), 
+  defaultValueScore: numeric("default_value_score"),
+  defaultFeasibilityScore: numeric("default_feasibility_score"),
+  defaultImpactScore: numeric("default_impact_score"),
 
-  // New fields from Functional Requirements
-  feasibilityScore: numeric("feasibility_score"), // X-axis for Priority Matrix (Higher is better/more feasible)
-  impactScore: numeric("impact_score"), // For bubble size in Priority Matrix (0-100)
-  priority: capabilityPriorityEnum("priority").default('Medium'), // For display in Capabilities Table
-  rank: integer("rank"), // For display and sorting in Capabilities Table
-  implementationFactors: jsonb("implementation_factors"), // For CapabilityDetailModal { techComplexity: %, dataReadiness: %, changeMgmt: % }
-  quickImplementation: boolean("quick_implementation").default(false), // For CapabilityDetailModal
-  hasDependencies: boolean("has_dependencies").default(false), // For CapabilityDetailModal
-
-  // Fields to migrate from ai_tools (make them nullable initially)
-  primary_category: text("primary_category"), // Keep original tool category if needed? Or rename? Decide.
+  // Fields to migrate from ai_tools (make them nullable initially) - these seem global
+  primary_category: text("primary_category"), 
   license_type: text("license_type"),
   website_url: text("website_url"),
-  tags: text("tags").array(), // Assuming PostgreSQL array type
+  tags: text("tags").array(),
 
-  // Standard Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 
-  // New fields from AiTool
-  recommendedTools: jsonb("recommended_tools"), // Store as JSONB array of tool IDs or simplified tool objects
-  applicableRoles: jsonb("applicable_roles"), // Store as JSONB array of role IDs or simplified role objects
-  roleImpact: jsonb("role_impact"), // Store as JSONB object: { [roleId: string]: number }
-
-  // New field from Functional Requirements
-  assessmentId: integer("assessment_id").references(() => assessments.id, { onDelete: 'cascade' }),
+  // REMOVED: assessmentId - capabilities are global
+  // REMOVED: valueScore, feasibilityScore, impactScore, priority, rank, implementationFactors, quickImplementation, hasDependencies - these are contextual
+  // REMOVED: recommendedTools, applicableRoles, roleImpact - these are likely contextual or relations to other global entities
 });
 
+// New table for assessment-specific context of AI Capabilities
+export const assessmentCapabilityContext = pgTable("assessment_capability_context", {
+  id: serial("id").primaryKey(),
+  assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
+  aiCapabilityId: integer("ai_capability_id").notNull().references(() => aiCapabilitiesTable.id, { onDelete: 'cascade' }),
+  
+  // Contextual scores and details for this capability within this assessment
+  valueScore: numeric("value_score").notNull(),
+  feasibilityScore: numeric("feasibility_score").notNull(),
+  impactScore: numeric("impact_score"), // Nullable if not always available
+  priority: capabilityPriorityEnum("priority").default('Medium'),
+  rank: integer("rank"), // Nullable
+  
+  // Contextual implementation details (if different from global defaults)
+  implementationEffort: text("implementation_effort"), 
+  businessValue: text("business_value"), 
+  easeScore: numeric("ease_score"), // This might be feasibilityScore or a separate contextual measure
+  
+  // Contextual notes or justification specific to this assessment
+  contextualNotes: text("contextual_notes"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+    uniqueContext: uniqueIndex("assessment_capability_unique_idx").on(table.assessmentId, table.aiCapabilityId)
+}));
+
 export const insertAICapabilitySchema = createInsertSchema(aiCapabilitiesTable, {
+  id: z.number().int(), // Assuming ID is provided for global capabilities
   name: z.string().min(3, "Name must be at least 3 characters"),
   category: z.string().min(1, "Category is required"),
   description: z.string().optional(),
-  easeScore: z.string().optional().nullable(),
-  valueScore: z.string().optional().nullable(),
-  feasibilityScore: z.preprocess(val => val ? parseFloat(String(val)) : null, z.number().min(0).max(100).optional().nullable()),
-  impactScore: z.preprocess(val => val ? parseFloat(String(val)) : null, z.number().min(0).max(100).optional().nullable()),
-  rank: z.preprocess(val => val ? parseInt(String(val), 10) : null, z.number().int().optional().nullable()),
-  implementationFactors: z.custom<ImplementationFactors>().optional().nullable(),
-  quickImplementation: z.boolean().default(false).optional(),
-  hasDependencies: z.boolean().default(false).optional(),
-  assessmentId: z.number().int().optional().nullable(),
+  defaultEaseScore: z.string().optional().nullable(),
+  defaultValueScore: z.string().optional().nullable(),
+  defaultFeasibilityScore: z.string().optional().nullable(), // Will be preprocessed if needed by Zod
+  defaultImpactScore: z.string().optional().nullable(),    // Will be preprocessed if needed by Zod
   primary_category: z.string().optional().nullable(),
   license_type: z.string().optional().nullable(),
   website_url: z.string().url().optional().nullable(),
   tags: z.array(z.string()).optional().default([]),
+  defaultBusinessValue: z.enum(["Low", "Medium", "High", "Very High"]).optional().nullable(), 
+  defaultImplementationEffort: z.enum(["Low", "Medium", "High"]).optional().nullable(),
+  // Ensure all fields from aiCapabilitiesTable are represented here if needed for insertion
+});
+
+export const insertAssessmentCapabilityContextSchema = createInsertSchema(assessmentCapabilityContext, {
+  assessmentId: z.number().int(),
+  aiCapabilityId: z.number().int(),
+  valueScore: z.string(), // Drizzle numeric becomes string for insert
+  feasibilityScore: z.string(), // Drizzle numeric becomes string for insert
+  impactScore: z.string().optional().nullable(),
+  rank: z.number().int().optional().nullable(),
   priority: z.enum(capabilityPriorityEnum.enumValues).optional().default('Medium'),
-  businessValue: z.enum(["Low", "Medium", "High", "Very High"]).optional().default("Medium"), 
-  implementationEffort: z.enum(["Low", "Medium", "High"]).optional().default("Medium"),
+  implementationEffort: z.enum(["Low", "Medium", "High"]).optional().nullable(),
+  businessValue: z.enum(["Low", "Medium", "High", "Very High"]).optional().nullable(),
+  easeScore: z.string().optional().nullable(),
+  contextualNotes: z.string().optional().nullable(),
 });
 
 // Assessment model
@@ -821,3 +847,7 @@ export const insertCapabilityRoleImpactSchema = createInsertSchema(capabilityRol
 
 export type CapabilityRoleImpact = typeof capabilityRoleImpacts.$inferSelect;
 export type InsertCapabilityRoleImpact = typeof capabilityRoleImpacts.$inferInsert;
+
+// New types for the context table
+export type AssessmentCapabilityContext = typeof assessmentCapabilityContext.$inferSelect;
+export type InsertAssessmentCapabilityContext = typeof assessmentCapabilityContext.$inferInsert;

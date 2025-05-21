@@ -11,9 +11,10 @@ import { z } from 'zod'; // Import z for z.infer
 // Import Drizzle schema tables and schemas (values)
 import { 
   assessments, departments, organizations, users, reports, 
-  aiCapabilitiesTable, // Corrected: Was aiCapabilities, should be aiCapabilitiesTable
+  aiCapabilitiesTable,
+  assessmentAICapabilitiesTable, // Add this import
   jobRoles, jobDescriptions, jobScraperConfigs,
-  aiTools as aiToolsTable, // Already aliased
+  aiTools as aiToolsTable,
   capabilityToolMapping, assessmentScores, assessmentResponses,
   insertAssessmentSchema,
   userProfiles,
@@ -62,8 +63,9 @@ import type {
   UserProfile,
   InsertUserProfile,
   CapabilityJobRole as CapabilityJobRoleType,
-  CapabilityRoleImpact as CapabilityRoleImpactType
-
+  CapabilityRoleImpact as CapabilityRoleImpactType,
+  AssessmentAICapability, // Add this import
+  InsertAssessmentAICapability, // Add this import
 } from '../shared/schema.ts';
 
 // Load root .env file for local development
@@ -343,8 +345,10 @@ export class PgStorage implements IStorage {
     //   conditions.push(inArray(aiCapabilitiesTable.id, subQuery.map(r => r.capId)));
     // }
 
+    // Note: assessmentId filtering is handled via the assessmentAICapabilities table
     if (options?.assessmentId) {
-      conditions.push(eq(aiCapabilitiesTable.assessmentId, parseInt(options.assessmentId, 10)));
+      console.log("assessmentId filtering in listAICapabilities is not implemented with the new schema");
+      // This would require joining with assessmentAICapabilities table
     }
 
     if (conditions.length > 0) {
@@ -421,6 +425,248 @@ export class PgStorage implements IStorage {
     await this.ensureInitialized();
     const result = await this.db.insert(aiCapabilitiesTable).values(capability).returning();
     return result[0];
+  }
+
+  /**
+   * Find an existing AI capability by name and category or create a new one if it doesn't exist
+   */
+  async findOrCreateGlobalAICapability(
+    capabilityName: string, 
+    capabilityCategory: string, 
+    description?: string,
+    defaults?: {
+      defaultBusinessValue?: string | null;
+      defaultImplementationEffort?: string | null;
+      defaultEaseScore?: string | null;
+      defaultValueScore?: string | null;
+      defaultFeasibilityScore?: string | null;
+      defaultImpactScore?: string | null;
+      tags?: string[];
+    }
+  ): Promise<BaseAICapability> {
+    await this.ensureInitialized();
+    
+    // First try to find an existing capability with the same name and category
+    const existingCapability = await this.db
+      .select()
+      .from(aiCapabilitiesTable)
+      .where(
+        and(
+          eq(aiCapabilitiesTable.name, capabilityName),
+          eq(aiCapabilitiesTable.category, capabilityCategory)
+        )
+      )
+      .limit(1);
+    
+    if (existingCapability.length > 0) {
+      return existingCapability[0] as BaseAICapability;
+    }
+    
+    // If not found, create a new global capability
+    const newCapability: InsertAICapability = {
+      name: capabilityName,
+      category: capabilityCategory,
+      description: description || null,
+      defaultBusinessValue: defaults?.defaultBusinessValue || null,
+      defaultImplementationEffort: defaults?.defaultImplementationEffort || null,
+      defaultEaseScore: defaults?.defaultEaseScore || null,
+      defaultValueScore: defaults?.defaultValueScore || null,
+      defaultFeasibilityScore: defaults?.defaultFeasibilityScore || null,
+      defaultImpactScore: defaults?.defaultImpactScore || null,
+      tags: defaults?.tags || [],
+    };
+    
+    const result = await this.db.insert(aiCapabilitiesTable).values(newCapability).returning();
+    return result[0] as BaseAICapability;
+  }
+
+  /**
+   * Create an assessment-specific AI capability link
+   */
+  async createAssessmentAICapability(
+    data: InsertAssessmentAICapability
+  ): Promise<AssessmentAICapability> {
+    await this.ensureInitialized();
+    
+    // Import the Zod schema to validate and transform the data
+    const { insertAssessmentAICapabilitySchema } = await import('../shared/schema');
+    
+    // Validate and transform the data to ensure numeric scores
+    const validatedData = insertAssessmentAICapabilitySchema.parse(data);
+    
+    // Check if this assessment-capability pair already exists
+    const existingLink = await this.db
+      .select()
+      .from(assessmentAICapabilitiesTable)
+      .where(
+        and(
+          eq(assessmentAICapabilitiesTable.assessmentId, validatedData.assessmentId),
+          eq(assessmentAICapabilitiesTable.aiCapabilityId, validatedData.aiCapabilityId)
+        )
+      )
+      .limit(1);
+      
+    if (existingLink.length > 0) {
+      // If it exists, update it with new values
+      const updatedLink = await this.db
+        .update(assessmentAICapabilitiesTable)
+        .set({
+          ...validatedData,
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(assessmentAICapabilitiesTable.assessmentId, validatedData.assessmentId),
+            eq(assessmentAICapabilitiesTable.aiCapabilityId, validatedData.aiCapabilityId)
+          )
+        )
+        .returning();
+        
+      return updatedLink[0] as AssessmentAICapability;
+    }
+    
+    // If not, create a new link
+    const result = await this.db
+      .insert(assessmentAICapabilitiesTable)
+      .values(validatedData)
+      .returning();
+      
+    return result[0] as AssessmentAICapability;
+  }
+
+  /**
+   * Get AI capabilities for an assessment with both global and assessment-specific data
+   */
+  async getAssessmentAICapabilities(assessmentId: number): Promise<FullAICapability[]> {
+    await this.ensureInitialized();
+    
+    // Join aiCapabilitiesTable with assessmentAICapabilitiesTable to get both global and assessment-specific data
+    const joinedCapabilities = await this.db
+      .select({
+        // Global capability fields
+        id: aiCapabilitiesTable.id,
+        name: aiCapabilitiesTable.name,
+        category: aiCapabilitiesTable.category,
+        description: aiCapabilitiesTable.description,
+        defaultBusinessValue: aiCapabilitiesTable.defaultBusinessValue,
+        defaultImplementationEffort: aiCapabilitiesTable.defaultImplementationEffort,
+        defaultEaseScore: aiCapabilitiesTable.defaultEaseScore,
+        defaultValueScore: aiCapabilitiesTable.defaultValueScore,
+        defaultFeasibilityScore: aiCapabilitiesTable.defaultFeasibilityScore,
+        defaultImpactScore: aiCapabilitiesTable.defaultImpactScore,
+        tags: aiCapabilitiesTable.tags,
+        createdAt: aiCapabilitiesTable.createdAt,
+        updatedAt: aiCapabilitiesTable.updatedAt,
+        
+        // Assessment-specific fields
+        assessmentId: assessmentAICapabilitiesTable.assessmentId,
+        valueScore: assessmentAICapabilitiesTable.valueScore,
+        feasibilityScore: assessmentAICapabilitiesTable.feasibilityScore,
+        impactScore: assessmentAICapabilitiesTable.impactScore,
+        easeScore: assessmentAICapabilitiesTable.easeScore,
+        priority: assessmentAICapabilitiesTable.priority,
+        rank: assessmentAICapabilitiesTable.rank,
+        implementationEffort: assessmentAICapabilitiesTable.implementationEffort,
+        businessValue: assessmentAICapabilitiesTable.businessValue,
+        assessmentNotes: assessmentAICapabilitiesTable.assessmentNotes
+      })
+      .from(aiCapabilitiesTable)
+      .innerJoin(
+        assessmentAICapabilitiesTable,
+        eq(aiCapabilitiesTable.id, assessmentAICapabilitiesTable.aiCapabilityId)
+      )
+      .where(eq(assessmentAICapabilitiesTable.assessmentId, assessmentId));
+    
+    // If no results, return empty array
+    if (joinedCapabilities.length === 0) {
+      return [];
+    }
+    
+    // Get all capability IDs to fetch related data
+    const capabilityIds = joinedCapabilities.map((c: { id: number }) => c.id);
+    
+    // Fetch all applicable roles for these capabilities
+    const allApplicableRolesRecords = await this.db
+      .select()
+      .from(capabilityJobRoles)
+      .innerJoin(jobRoles, eq(capabilityJobRoles.jobRoleId, jobRoles.id))
+      .where(inArray(capabilityJobRoles.capabilityId, capabilityIds));
+
+    const rolesByCapabilityId = new Map<number, BaseJobRole[]>();
+    allApplicableRolesRecords.forEach((record: { capability_job_roles: CapabilityJobRoleType, job_roles: BaseJobRole }) => {
+      const capId = record.capability_job_roles.capabilityId;
+      if (!rolesByCapabilityId.has(capId)) {
+        rolesByCapabilityId.set(capId, []);
+      }
+      rolesByCapabilityId.get(capId)!.push(record.job_roles as BaseJobRole);
+    });
+    
+    // Fetch all recommended tools for these capabilities
+    const allRecommendedToolsRecords = await this.db
+      .select({
+        capabilityId: capabilityToolMapping.capability_id,
+        tool_id: aiToolsTable.tool_id,
+        tool_name: aiToolsTable.tool_name,
+        primary_category: aiToolsTable.primary_category,
+        license_type: aiToolsTable.license_type,
+        description: aiToolsTable.description,
+        website_url: aiToolsTable.website_url,
+        tags: aiToolsTable.tags,
+      })
+      .from(capabilityToolMapping)
+      .innerJoin(aiToolsTable, eq(capabilityToolMapping.tool_id, aiToolsTable.tool_id))
+      .where(inArray(capabilityToolMapping.capability_id, capabilityIds));
+
+    const toolsByCapabilityId = new Map<number, AiTool[]>();
+    allRecommendedToolsRecords.forEach((record: AiTool & { capabilityId: number }) => {
+      const capId = record.capabilityId;
+      if (!toolsByCapabilityId.has(capId)) {
+        toolsByCapabilityId.set(capId, []);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { capabilityId, ...toolData } = record;
+      toolsByCapabilityId.get(capId)!.push(toolData as AiTool);
+    });
+    
+    // Combine all data into FullAICapability objects
+    const fullCapabilities: FullAICapability[] = joinedCapabilities.map((jc: any) => {
+      // Extract global capability fields
+      const baseCapability: BaseAICapability = {
+        id: jc.id,
+        name: jc.name,
+        category: jc.category,
+        description: jc.description,
+        defaultBusinessValue: jc.defaultBusinessValue,
+        defaultImplementationEffort: jc.defaultImplementationEffort,
+        defaultEaseScore: jc.defaultEaseScore,
+        defaultValueScore: jc.defaultValueScore,
+        defaultFeasibilityScore: jc.defaultFeasibilityScore,
+        defaultImpactScore: jc.defaultImpactScore,
+        tags: jc.tags,
+        createdAt: jc.createdAt,
+        updatedAt: jc.updatedAt
+      };
+      
+      // Add assessment-specific fields
+      return {
+        ...baseCapability,
+        assessmentId: jc.assessmentId,
+        valueScore: jc.valueScore,
+        feasibilityScore: jc.feasibilityScore,
+        impactScore: jc.impactScore,
+        easeScore: jc.easeScore,
+        priority: jc.priority,
+        rank: jc.rank,
+        implementationEffort: jc.implementationEffort,
+        businessValue: jc.businessValue,
+        assessmentNotes: jc.assessmentNotes,
+        applicableRoles: rolesByCapabilityId.get(jc.id) || [],
+        recommendedTools: toolsByCapabilityId.get(jc.id) || [],
+        roleImpact: undefined // Not fetching role impacts for the list view
+      };
+    });
+    
+    return fullCapabilities;
   }
 
   // Assessment methods
@@ -1324,7 +1570,7 @@ export class PgStorage implements IStorage {
     return this.db.select().from(aiToolsTable).where(inArray(aiToolsTable.tool_id, toolIds));
   }
 
-  async getCapabilitiesForTool(toolId: number): Promise<Pick<BaseAICapability, 'id' | 'name' | 'valueScore'>[]> {
+  async getCapabilitiesForTool(toolId: number): Promise<Pick<BaseAICapability, 'id' | 'name' | 'category' | 'description'>[]> {
     await this.ensureInitialized();
     const mappings = await this.db
       .select({ capabilityId: capabilityToolMapping.capability_id })
@@ -1339,7 +1585,8 @@ export class PgStorage implements IStorage {
       .select({
         id: aiCapabilitiesTable.id,
         name: aiCapabilitiesTable.name,
-        valueScore: aiCapabilitiesTable.valueScore
+        category: aiCapabilitiesTable.category,
+        description: aiCapabilitiesTable.description
       })
       .from(aiCapabilitiesTable)
       .where(inArray(aiCapabilitiesTable.id, capabilityIds));

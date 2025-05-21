@@ -1,4 +1,4 @@
-import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department, InsertAICapability } from "@shared/schema";
+import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department, InsertAICapability, InsertAssessmentAICapability } from "@shared/schema";
 import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "./aiService";
 import { storage } from '@/server/storage';
 
@@ -196,7 +196,18 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
   const rawAiCapabilityRecommendations = results.slice(
     numOtherPromisesBeforeAICapabilities, 
     numOtherPromisesBeforeAICapabilities + aiSuggestionsPromises.length
-  ) as Array<Array<Omit<InsertAICapability, 'assessmentId' | 'id' | 'createdAt' | 'updatedAt'>>>;
+  ) as Array<Array<Partial<InsertAssessmentAICapability & { 
+    capabilityName: string; 
+    capabilityCategory: string; 
+    capabilityDescription?: string; 
+    defaultBusinessValue?: string | null;
+    defaultImplementationEffort?: string | null;
+    defaultEaseScore?: string | null;
+    defaultValueScore?: string | null;
+    defaultFeasibilityScore?: string | null;
+    defaultImpactScore?: string | null;
+    tags?: string[] | null;
+  }>>>;
 
   const performanceResults = results.slice(
     numOtherPromisesBeforeAICapabilities + aiSuggestionsPromises.length
@@ -211,29 +222,52 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
 
     if (Array.isArray(roleRecommendations)) {
       for (const rec of roleRecommendations) {
-        // Construct the object to insert, ensuring all required fields for InsertAICapability are present
-        // and that scores are numbers.
-        const capabilityToSave: InsertAICapability = {
-          id: Date.now() + Math.floor(Math.random() * 1000), // TEMPORARY: Placeholder ID - NOT PRODUCTION SAFE
-          name: rec.name,
-          category: rec.category || "Uncategorized",
-          description: rec.description || "",
-          valueScore: rec.valueScore !== undefined && rec.valueScore !== null ? String(rec.valueScore) : null,
-          feasibilityScore: rec.feasibilityScore !== undefined && rec.feasibilityScore !== null ? String(rec.feasibilityScore) : null,
-          impactScore: rec.impactScore !== undefined && rec.impactScore !== null ? String(rec.impactScore) : null,
-          priority: rec.priority || 'Medium',
-          rank: typeof rec.rank === 'string' ? parseInt(rec.rank) : rec.rank,
-          assessmentId: assessmentId,
-          implementationEffort: rec.implementationEffort || "Medium",
-          businessValue: rec.businessValue || "Medium",
-          easeScore: rec.easeScore !== undefined && rec.easeScore !== null ? String(rec.easeScore) : null,
-        };
         try {
-          await storage.createAICapability(capabilityToSave);
-          roleAISuggestions.push({ name: capabilityToSave.name, description: capabilityToSave.description || "" });
+          // Step 1: Find or create the global AI capability
+          const globalCapability = await storage.findOrCreateGlobalAICapability(
+            rec.capabilityName || `Unknown Capability ${i}`, // Required with fallback
+            rec.capabilityCategory || "Uncategorized", // Required with fallback
+            rec.capabilityDescription, // Optional
+            {
+              // Optional defaults for the global capability
+              defaultBusinessValue: rec.defaultBusinessValue,
+              defaultImplementationEffort: rec.defaultImplementationEffort,
+              defaultEaseScore: rec.defaultEaseScore,
+              defaultValueScore: rec.defaultValueScore,
+              defaultFeasibilityScore: rec.defaultFeasibilityScore,
+              defaultImpactScore: rec.defaultImpactScore,
+              tags: rec.tags || []
+            }
+          );
+          
+          // Step 2: Create the assessment-specific capability link
+          const assessmentCapability: InsertAssessmentAICapability = {
+            assessmentId: assessmentId,
+            aiCapabilityId: globalCapability.id,
+            valueScore: rec.valueScore,
+            feasibilityScore: rec.feasibilityScore,
+            impactScore: rec.impactScore,
+            easeScore: rec.easeScore,
+            priority: rec.priority || 'Medium',
+            rank: rec.rank,
+            implementationEffort: rec.implementationEffort || "Medium",
+            businessValue: rec.businessValue || "Medium",
+            assessmentNotes: rec.assessmentNotes
+          };
+          
+          await storage.createAssessmentAICapability(assessmentCapability);
+          
+          // Add to the list of suggestions for the report
+          roleAISuggestions.push({ 
+            name: globalCapability.name, 
+            description: globalCapability.description || "" 
+          });
         } catch (error) {
-          console.error(`Error saving AI capability recommendation: ${rec.name}`, error);
-          roleAISuggestions.push({ name: rec.name, description: (rec.description || "") + " (Error saving details)" });
+          console.error(`Error saving AI capability recommendation: ${String(rec.capabilityName || "Unknown")}`, error);
+          roleAISuggestions.push({ 
+            name: String(rec.capabilityName || "Unknown Capability"), 
+            description: String(rec.capabilityDescription || "") + " (Error saving details)" 
+          });
         }
       }
     }

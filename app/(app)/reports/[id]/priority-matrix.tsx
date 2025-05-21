@@ -16,10 +16,28 @@ interface CapabilityBubbleProps {
 }
 
 function CapabilityBubble({ capability, onClick }: CapabilityBubbleProps) {
-  const x = capability.feasibilityScore ? parseFloat(String(capability.feasibilityScore)) : 0; // Normalize to 0-100 if not already
-  const y = capability.valueScore ? parseFloat(String(capability.valueScore)) : 0; // Normalize to 0-100 if not already
-  const size = calculateBubbleSize(capability.impactScore ? parseFloat(String(capability.impactScore)) : undefined);
-  const color = getValueBasedColor(capability.valueScore ? parseFloat(String(capability.valueScore)) : undefined);
+  // Use assessment-specific scores if available, otherwise fall back to default scores
+  // Convert to number safely (handles both string and number inputs)
+  const feasibilityScore = Number(capability.feasibilityScore ?? capability.defaultFeasibilityScore ?? 0);
+  const valueScore = Number(capability.valueScore ?? capability.defaultValueScore ?? 0);
+  const impactScore = Number(capability.impactScore ?? capability.defaultImpactScore ?? 0);
+  
+  // Log detailed debug info about the conversion
+  console.debug(`Converting scores for ${capability.name}:`, {
+    originalValueScore: capability.valueScore,
+    originalFeasibilityScore: capability.feasibilityScore,
+    defaultValueScore: capability.defaultValueScore,
+    defaultFeasibilityScore: capability.defaultFeasibilityScore,
+    convertedValueScore: valueScore,
+    convertedFeasibilityScore: feasibilityScore,
+    convertedImpactScore: impactScore,
+  });
+  
+  // Use the values directly now that they're properly converted to numbers
+  const x = feasibilityScore;
+  const y = valueScore;
+  const size = calculateBubbleSize(impactScore || undefined);
+  const color = getValueBasedColor(valueScore || undefined);
 
   // Ensure x and y are percentages for positioning
   // The scores are assumed to be 0-100.
@@ -27,6 +45,8 @@ function CapabilityBubble({ capability, onClick }: CapabilityBubbleProps) {
   // For now, assuming 0-100 for direct percentage use.
   const positionX = Math.max(0, Math.min(100, x));
   const positionY = Math.max(0, Math.min(100, y));
+
+  console.log(`Rendering bubble for ${capability.name}: x=${positionX}, y=${positionY}, size=${size}`);
 
   return (
     <div
@@ -36,7 +56,7 @@ function CapabilityBubble({ capability, onClick }: CapabilityBubbleProps) {
         width: `${size}px`,
         height: `${size}px`,
         left: `${positionX}%`, // position based on feasibility score
-        bottom: `${positionY}%`, // position based on value score
+        bottom: `${positionY}%`, // Bottom based on value score (higher = higher up)
         transform: 'translate(-50%, 50%)', // Center bubble on the point
         backgroundColor: color,
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
@@ -77,7 +97,7 @@ function MatrixAxes() {
       
       {/* Corner labels for Feasibility axis */}
       <div className="absolute bottom-4 right-4 text-xs font-medium text-gray-500">High</div>
-      {/* Low Feasibility label (already covered by Low on Value Axis if placed at bottom-left) */}
+      <div className="absolute bottom-4 left-16 text-xs font-medium text-gray-500">Low</div>
     </>
   );
 }
@@ -85,21 +105,21 @@ function MatrixAxes() {
 function MatrixQuadrants() {
   return (
     <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 pointer-events-none z-0">
-      {/* Top-left: Quick Wins (High Value, Low Feasibility) */}
+      {/* Bottom-left: Strategic Investments (High Value, Low Feasibility) */}
       <div className="border-r border-b border-dashed border-gray-300 flex items-center justify-center p-4">
-        <span className="text-lg font-semibold text-red-700 opacity-50">Quick Wins</span>
+        <span className="text-lg font-semibold text-red-700 opacity-50">Strategic Investments</span>
       </div>
-      {/* Top-right: Strategic Investments (High Value, High Feasibility) */}
+      {/* Bottom-right: Quick Wins (High Value, High Feasibility) */}
       <div className="border-l border-b border-dashed border-gray-300 flex items-center justify-center p-4">
-        <span className="text-lg font-semibold text-orange-700 opacity-50">Strategic Investments</span>
+        <span className="text-lg font-semibold text-orange-700 opacity-50">Quick Wins</span>
       </div>
-      {/* Bottom-left: Low-Hanging Fruit (Low Value, Low Feasibility) */}
+      {/* Top-left: Deprioritize (Low Value, Low Feasibility) */}
       <div className="border-r border-t border-dashed border-gray-300 flex items-center justify-center p-4">
-        <span className="text-lg font-semibold text-blue-700 opacity-50">Low-Hanging Fruit</span>
+        <span className="text-lg font-semibold text-blue-700 opacity-50">Deprioritize</span>
       </div>
-      {/* Bottom-right: Deprioritize (Low Value, High Feasibility) */}
+      {/* Top-right: Low-Hanging Fruit (Low Value, High Feasibility) */}
       <div className="border-l border-t border-dashed border-gray-300 flex items-center justify-center p-4">
-        <span className="text-lg font-semibold text-gray-600 opacity-50">Deprioritize</span>
+        <span className="text-lg font-semibold text-gray-600 opacity-50">Low-Hanging Fruit</span>
       </div>
     </div>
   );
@@ -130,10 +150,45 @@ export function PriorityMatrix({ capabilities }: PriorityMatrixProps) {
     return <div className="p-4 text-center text-gray-500">No capabilities data available for the matrix.</div>;
   }
   
+  // Debug: Log sample data for capabilities
+  console.log('Sample capability data:', capabilities.slice(0, 3).map(c => ({
+    name: c.name,
+    valueScore: c.valueScore,
+    feasibilityScore: c.feasibilityScore,
+    defaultValueScore: c.defaultValueScore,
+    defaultFeasibilityScore: c.defaultFeasibilityScore,
+    // Convert to check if any numeric value (either as string or number)
+    hasValueScore: c.valueScore !== null && c.valueScore !== undefined || 
+                  c.defaultValueScore !== null && c.defaultValueScore !== undefined,
+    hasFeasibilityScore: c.feasibilityScore !== null && c.feasibilityScore !== undefined || 
+                        c.defaultFeasibilityScore !== null && c.defaultFeasibilityScore !== undefined
+  })));
+  
   // Filter out capabilities that don't have scores needed for plotting
   const plottableCapabilities = capabilities.filter(
-    cap => typeof cap.valueScore === 'number' && typeof cap.feasibilityScore === 'number'
+    cap => {
+      // First check assessment-specific scores, fall back to default scores
+      const hasValueScore = cap.valueScore !== null && cap.valueScore !== undefined || 
+                          cap.defaultValueScore !== null && cap.defaultValueScore !== undefined;
+      const hasFeasibilityScore = cap.feasibilityScore !== null && cap.feasibilityScore !== undefined || 
+                                cap.defaultFeasibilityScore !== null && cap.defaultFeasibilityScore !== undefined;
+      const result = hasValueScore && hasFeasibilityScore;
+      
+      // Log for debugging
+      if (!result) {
+        console.log(`Filtering out capability "${cap.name}" - missing scores:`, { 
+          valueScore: cap.valueScore, 
+          defaultValueScore: cap.defaultValueScore,
+          feasibilityScore: cap.feasibilityScore, 
+          defaultFeasibilityScore: cap.defaultFeasibilityScore 
+        });
+      }
+      
+      return result;
+    }
   );
+  
+  console.log(`Found ${plottableCapabilities.length} capabilities with valid scores out of ${capabilities.length} total`);
 
   if (plottableCapabilities.length === 0) {
     return <div className="p-4 text-center text-gray-500">No capabilities have the required scores for plotting.</div>;

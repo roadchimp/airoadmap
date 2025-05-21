@@ -428,3 +428,55 @@ export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 ## Recent Updates
 
 - **Local Caching**: The assessment wizard now uses local caching for step data, committing to the database only on final submission.
+
+## Database Schema Restructuring (September 2024)
+
+### AI Capabilities Database Restructuring
+
+The database has been restructured to separate global AI capabilities from assessment-specific capabilities:
+
+1. **Global AI Capabilities (`ai_capabilities` table)**
+   - Stores global definitions of AI capabilities regardless of assessment
+   - Added new columns with `default_` prefix:
+     - `default_implementation_effort`
+     - `default_business_value`
+     - `default_ease_score`
+     - `default_value_score`
+     - `default_feasibility_score`
+     - `default_impact_score`
+   - Has a unique index on `name` and `category`
+
+2. **Assessment-Specific Capabilities (`assessment_ai_capabilities` table)**
+   - New join table linking assessments to global capabilities
+   - Stores assessment-specific scores, priorities, and context:
+     - `assessment_id` - reference to assessment
+     - `ai_capability_id` - reference to global capability
+     - `value_score`, `feasibility_score`, `impact_score`, `ease_score`
+     - `priority`, `rank`, `implementation_effort`, `business_value`
+     - `assessment_notes` - contextual notes for this specific assessment
+
+3. **Additional Context (`assessment_capability_context` table)**
+   - Provides additional context for capabilities within a specific assessment
+   - Similar structure to `assessment_ai_capabilities` but with different fields
+
+### UI Updates for Reports
+
+The Reports UI has been updated to accommodate the new database schema:
+
+1. **CapabilitiesTable Component**
+   - Updated to reference `defaultValueScore`, `defaultFeasibilityScore`, etc. instead of direct properties
+   - Fixed display of capability scores and priorities with fallbacks to default values
+
+2. **CapabilityDetailModal Component**
+   - Removed references to no-longer-existing properties like `implementationFactors`, `quickImplementation`, etc.
+   - Implemented default values for visualization
+
+3. **CSV Export Functionality**
+   - Updated to use the proper fields from the restructured database schema
+   - Added fallbacks to maintain backward compatibility
+
+4. **Type Compatibility**
+   - Fixed TypeScript errors related to the changed `FullAICapability` structure
+   - Ensured all components properly reference the new schema
+
+The priority enum was also renamed from `capability_priority` to `capability_priority_enum` for better naming consistency.

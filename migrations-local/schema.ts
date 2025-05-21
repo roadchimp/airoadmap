@@ -1,111 +1,36 @@
-import { table } from "console";
+import { pgTable, foreignKey, unique, serial, text, integer, timestamp, numeric, jsonb, boolean, uniqueIndex, pgPolicy, primaryKey, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
-import { pgTable, pgEnum, uniqueIndex, integer, text, timestamp, foreignKey, serial, jsonb, numeric, unique, boolean, primaryKey } from "drizzle-orm/pg-core"
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
 
-// AI Tools model
-export const aiTools = pgTable("ai_tools", {
-	toolId: integer("tool_id").primaryKey().notNull(), // Use integer PK based on existing script
-	toolName: text("tool_name").notNull(), //.unique(), // Making unique later if needed after cleanup
-	primaryCategory: text("primary_category"), // Category of the tool itself
-	licenseType: text("license_type"),
-	description: text("description"),
-	websiteUrl: text("website_url"),
-	tags: text("tags").array(),
+export const aiPotentialEnum = pgEnum("ai_potential_enum", ['Low', 'Medium', 'High'])
+export const assessmentStatus = pgEnum("assessment_status", ['draft', 'submitted', 'completed'])
+export const capabilityPriority = pgEnum("capability_priority", ['Low', 'Medium', 'High'])
+export const companyStageEnum = pgEnum("company_stage_enum", ['Startup', 'Early Growth', 'Scaling', 'Mature'])
+export const industryMaturityEnum = pgEnum("industry_maturity_enum", ['Mature', 'Immature'])
+export const performanceMetricsRelevanceEnum = pgEnum("performance_metrics_relevance_enum", ['low', 'medium', 'high'])
+
+
+export const userProfiles = pgTable("user_profiles", {
+	id: serial().primaryKey().notNull(),
+	authId: text("auth_id").notNull(),
+	organizationId: integer("organization_id"),
+	fullName: text("full_name"),
+	avatarUrl: text("avatar_url"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
- 	uniqueIndex("idx_ai_tools_tool_name").using("btree", table.toolName.asc().nullsLast().op("text_ops")),
- ]);
-
-// Unique index for toolName this was used in the old script
-// }, (table) => ({
-//     toolNameIdx: uniqueIndex("idx_ai_tools_tool_name").on(table.tool_name), // Keep unique index attempt
-// }));
-// End AI Tools model
-
-// Define Zod schema for insertion, omitting generated fields
-export const insertAiToolSchema = createInsertSchema(aiTools).omit({
-	toolId: true, // Explicitly omit tool_id
-	createdAt: true,
-	updatedAt: true,
-  }).extend({
-	tags: z.array(z.string()).optional().default([]), // Keep tag handling
-  });
-
-// End AI Tools model
-
-// Assessment Results model
-export const assessmentResults = pgTable("assessment_results", {
-	resultId: serial("result_id").primaryKey().notNull(),
-	assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
-	identifiedThemes: jsonb("identified_themes"), // e.g., [{ theme: "Efficiency", keywords: ["...", "..."] }]
-	rankedPriorities: jsonb("ranked_priorities"), // e.g., [{ capabilityId: 1, value_score: 4, ease_score: 5, rank: 1 }, ...]
-	recommendedCapabilities: jsonb("recommended_capabilities"), // Array of ai_capabilities.id or objects { id: X, rationale: "..." }
-	capabilityRationale: jsonb("capability_rationale"), // { capabilityId: X, explanation: "..." }
-	existingToolAnalysis: text("existing_tool_analysis"),
-	recommendedTools: jsonb("recommended_tools"), // Array of ai_tools.id or objects { id: Y, reason: "..." }
-	rolloutCommentary: text("rollout_commentary"),
-	heatmapData: jsonb("heatmap_data"), // Structure for Value vs. Ease heatmap
-	processingStatus: text("processing_status").default('Pending').notNull(), // 'Pending', 'Processing', 'Success', 'Failed'
-	errorMessage: text("error_message"),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	completedAt: timestamp("completed_at", { mode: 'string' }),
-}, (table) => [
-	uniqueIndex("assessment_id_unique_idx").using("btree", table.assessmentId.asc().nullsLast().op("int4_ops")),
 	foreignKey({
-			columns: [table.assessmentId],
-			foreignColumns: [assessments.id],
-			name: "assessment_results_assessment_id_assessments_id_fk"
-		}).onDelete("cascade"),
+			columns: [table.organizationId],
+			foreignColumns: [organizations.id],
+			name: "user_profiles_organization_id_organizations_id_fk"
+		}),
+	unique("user_profiles_auth_id_unique").on(table.authId),
 ]);
-// End Assessment Results model
-// AI Capability model 
-export const aiCapabilities = pgTable("ai_capabilities", {
-	id: integer("id").primaryKey().notNull(), // Use integer to preserve migrated IDs
-	name: text("name").notNull(),
-	category: text("category").notNull(), // Keep this for the capability's category
-	description: text("description"),
-	implementationEffort: text("implementation_effort"), // High, Medium, Low (Qualitative)
-	businessValue: text("business_value"), // High, Medium, Low (Qualitative)
-	easeScore: numeric("ease_score"), // Quantitative score for ease (e.g., 1-5)
-	valueScore: numeric("value_score"), // Quantitative score for value (e.g., 1-5)
-	primaryCategory: text("primary_category"),
-	licenseType: text("license_type"),
-	websiteUrl: text("website_url"),
-	tags: text("tags").array(), // Assuming PostgreSQL array type
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+
+export const dummyTable = pgTable("dummy_table", {
+	id: serial().primaryKey().notNull(),
 });
 
-export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick({
-	id: true, // Include ID for potential inserts if needed later
-	name: true,
-	category: true,
-	description: true,
-	implementationEffort: true,
-	businessValue: true,
-	easeScore: true,
-	valueScore: true,
-	primaryCategory: true,
-	licenseType: true,
-	websiteUrl: true,
-	tags: true,
-  }).extend({
-	businessValue: z.enum(["Low", "Medium", "High", "Very High"]).default("Medium"),
-	implementationEffort: z.enum(["Low", "Medium", "High"]).default("Medium"),
-	// Ensure tags are treated as an array, potentially empty
-	tags: z.array(z.string()).optional().default([]),
-	// Make migrated fields optional in Zod if they can be null in the DB
-	primary_category: z.string().optional(),
-	license_type: z.string().optional(),
-	website_url: z.string().optional(),
-  });
-// End AI Capability model
-
 export const assessmentScores = pgTable("assessment_scores", {
-	id: serial("id").primaryKey().notNull(),
+	id: serial().primaryKey().notNull(),
 	wizardStepId: text("wizard_step_id").notNull(),
 	timeSavings: numeric("time_savings").notNull(),
 	qualityImpact: numeric("quality_impact").notNull(),
@@ -122,242 +47,66 @@ export const assessmentScores = pgTable("assessment_scores", {
 	unique("assessment_scores_wizard_step_id_unique").on(table.wizardStepId),
 ]);
 
-// Department model
-export const departments = pgTable("departments", {
-	id: serial("id").primaryKey().notNull(),
-	name: text("name").notNull(),
-	description: text("description"),
-});
-
-export const insertDepartmentSchema = createInsertSchema(departments).pick({
-	name: true,
-	description: true,
-  });
-
-// End Department model	
-
-// Job Description models
 export const jobDescriptions = pgTable("job_descriptions", {
-	id: serial("id").primaryKey().notNull(),
-	title: text("title").notNull(),
-	company: text("company"),
-	location: text("location"),
+	id: serial().primaryKey().notNull(),
+	title: text().notNull(),
+	company: text(),
+	location: text(),
 	jobBoard: text("job_board").notNull(),
 	sourceUrl: text("source_url").notNull(),
 	rawContent: text("raw_content").notNull(),
 	processedContent: jsonb("processed_content"),
-	keywords: text("keywords").array(),
+	keywords: text().array(),
 	dateScraped: timestamp("date_scraped", { mode: 'string' }).defaultNow().notNull(),
 	dateProcessed: timestamp("date_processed", { mode: 'string' }),
-	status: text("status").default('raw').notNull(), // raw, processed, error
-	error: text("error"),
+	status: text().default('raw').notNull(),
+	error: text(),
 });
 
-export const insertJobDescriptionSchema = createInsertSchema(jobDescriptions).pick({
-  title: true,
-  company: true,
-  location: true,
-  jobBoard: true,
-  sourceUrl: true,
-  rawContent: true,
-  keywords: true,
-  status: true,
-});
-
-// End Job Description models
-
-// Assessment model
-export const assessmentStatusEnum = pgEnum('assessment_status', ['draft', 'submitted', 'completed']); // Added 'submitted' as a potential state
-
-export const assessments = pgTable("assessments", {
-	id: serial("id").primaryKey().notNull(),
-	title: text("title").notNull(),
-	organizationId: integer("organization_id").notNull().references(() => organizations.id),
-	userId: integer("user_id").notNull().references(() => users.id),
-	status: assessmentStatusEnum("status").default("draft").notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-	stepData: jsonb("step_data"),
-});
-// Schema for selecting/retrieving assessments
-export const selectAssessmentSchema = createSelectSchema(assessments);
-
-// Schema for inserting new assessments (omitting db-generated fields)
-export const insertAssessmentSchema = createInsertSchema(assessments).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-// Schema for updating assessments (making fields optional)
-export const updateAssessmentSchema = insertAssessmentSchema.partial().extend({
-  // updatedAt should likely be set automatically on update, not provided by client
-  // stepData updates might need special handling (see note below)
-});
-
-// End Assessment model
-
-
-
-
-// Job Role model
-export const jobRoles = pgTable("job_roles", {
-	id: serial("id").primaryKey().notNull(),
-	title: text("title").notNull(),
-	departmentId: integer("department_id").notNull(),
-	description: text("description"),
-	keyResponsibilities: text("key_responsibilities").array(),
-	aiPotential: text("ai_potential"), // High, Medium, Low
-});
-
-export const insertJobRoleSchema = createInsertSchema(jobRoles).pick({
-  title: true,
-  departmentId: true,
-  description: true,
-  keyResponsibilities: true,
-  aiPotential: true,
-}).extend({
-	keyResponsibilities: z.union([
-	  z.string().transform(str => 
-		str.split('\n')
-		  .map(s => s.trim())
-		  .filter(s => s.length > 0)
-	  ),
-	  z.array(z.string())
-	]).default([])
-  });
-
-// Job Scraper Config model
 export const jobScraperConfigs = pgTable("job_scraper_configs", {
-	id: serial("id").primaryKey().notNull(),
-	name: text("name").notNull(),
+	id: serial().primaryKey().notNull(),
+	name: text().notNull(),
 	targetWebsite: text("target_website").notNull(),
-	keywords: text("keywords").array(),
-	location: text("location"),
+	keywords: text().array(),
+	location: text(),
 	isActive: boolean("is_active").default(true).notNull(),
 	cronSchedule: text("cron_schedule").default('0 0 * * *').notNull(),
 	lastRun: timestamp("last_run", { mode: 'string' }),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 });
 
-export const insertJobScraperConfigSchema = createInsertSchema(jobScraperConfigs).pick({
-  name: true,
-  targetWebsite: true,
-  keywords: true,
-  location: true,	
-  isActive: true,
-  cronSchedule: true,
-});
-// End Job Scraper Config model
-
-// Company/Organization model
-export const organizations = pgTable("organizations", {
-	id: serial("id").primaryKey().notNull(),
-	name: text("name").notNull(),
-	industry: text("industry").notNull(),
-	size: text("size").notNull(), // Small, Medium, Large, Enterprise
-	description: text("description"),
-});
-
-export const insertOrganizationSchema = createInsertSchema(organizations).pick({
-	name: true,
-	industry: true, 
-	size: true,
-	description: true,
-  });
-
-// End Company/Organization model
-
-// Scoring types
-export const scoringCriteria = {
-	valuePotential: {
-	  timeSavings: "time_savings",
-	  qualityImpact: "quality_impact",
-	  strategicAlignment: "strategic_alignment"
-	},
-	easeOfImplementation: {
-	  dataReadiness: "data_readiness",
-	  technicalFeasibility: "technical_feasibility",
-	  adoptionRisk: "adoption_risk"
-	}
-  } as const;
-  
-  export type ScoringCriterion = typeof scoringCriteria.valuePotential[keyof typeof scoringCriteria.valuePotential] | 
-								typeof scoringCriteria.easeOfImplementation[keyof typeof scoringCriteria.easeOfImplementation];
-  
-  export type ScoreValue = 1 | 2 | 3 | 4 | 5;
-  
-  export type RoleScore = {
-	valuePotential: {
-	  timeSavings: ScoreValue;
-	  qualityImpact: ScoreValue;
-	  strategicAlignment: ScoreValue;
-	  total: number;
-	};
-	easeOfImplementation: {
-	  dataReadiness: ScoreValue;
-	  technicalFeasibility: ScoreValue;
-	  adoptionRisk: ScoreValue;
-	  total: number;
-	};
-	totalScore: number;
-  };
-  
-  export type AssessmentScores = {
-	roleScores: Record<number, RoleScore>;
-	timestamp: string;
-  };
-// End Scoring types
-// Report model
-export const reports = pgTable("reports", {
-	id: serial("id").primaryKey().notNull(),
-	assessmentId: integer("assessment_id").notNull().references(() => assessments.id),
-	generatedAt: timestamp("generated_at", { mode: 'string' }).defaultNow().notNull(),
-	executiveSummary: text("executive_summary"),
-	prioritizationData: jsonb("prioritization_data"), // Heatmap and prioritization list data
-	aiSuggestions: jsonb("ai_suggestions"), // AI capability suggestions
-	performanceImpact: jsonb("performance_impact"), // KPI estimates
-	consultantCommentary: text("consultant_commentary"), // Consultant commentary
-});
-
-export const insertReportSchema = createInsertSchema(reports).pick({
-	assessmentId: true,
-	executiveSummary: true,
-	prioritizationData: true,
-	aiSuggestions: true,
-	performanceImpact: true,
-	consultantCommentary: true,
-  });
-// End Report model
-
-// User model for authentication (minimal for v1)
-export const users = pgTable("users", {
+export const assessments = pgTable("assessments", {
 	id: serial().primaryKey().notNull(),
-	username: text().notNull(),
-	password: text().notNull(),
-	fullName: text("full_name").notNull(),
-	email: text().notNull(),
-	role: text().default('consultant').notNull(),
+	title: text().notNull(),
+	organizationId: integer("organization_id").notNull(),
+	userId: integer("user_id").notNull(),
+	status: assessmentStatus().default('draft').notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	stepData: jsonb("step_data"),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	industry: text().default('Unknown').notNull(),
+	industryMaturity: industryMaturityEnum("industry_maturity").default('Immature').notNull(),
+	companyStage: companyStageEnum("company_stage").default('Startup').notNull(),
+	strategicFocus: text("strategic_focus").array(),
+	aiAdoptionScoreInputs: jsonb("ai_adoption_score_inputs"),
 }, (table) => [
-	unique("users_username_unique").on(table.username),
+	foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organizations.id],
+			name: "assessments_organization_id_organizations_id_fk"
+		}),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "assessments_user_id_users_id_fk"
+		}),
 ]);
 
-export const insertUserSchema = createInsertSchema(users).pick({
-	username: true,
-	password: true,
-	fullName: true,
-	email: true,
-	role: true,
-  });
-
-// End User model
-
-// Assessment Responses model
 export const assessmentResponses = pgTable("assessment_responses", {
 	responseId: serial("response_id").primaryKey().notNull(),
-	assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
-	userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-	questionIdentifier: text("question_identifier").notNull(), // Could be a path like "painPoints.roleX.severity" or a specific question ID
+	assessmentId: integer("assessment_id").notNull(),
+	userId: integer("user_id").notNull(),
+	questionIdentifier: text("question_identifier").notNull(),
 	responseText: text("response_text"),
 	responseNumeric: numeric("response_numeric"),
 	responseBoolean: boolean("response_boolean"),
@@ -375,12 +124,203 @@ export const assessmentResponses = pgTable("assessment_responses", {
 			name: "assessment_responses_user_id_users_id_fk"
 		}).onDelete("cascade"),
 ]);
-// End Assessment Responses model
 
-// Capability Tool Mapping model
+export const users = pgTable("users", {
+	id: serial().primaryKey().notNull(),
+	username: text().notNull(),
+	password: text().notNull(),
+	fullName: text("full_name").notNull(),
+	email: text().notNull(),
+	role: text().default('consultant').notNull(),
+}, (table) => [
+	unique("users_username_unique").on(table.username),
+]);
+
+export const assessmentResults = pgTable("assessment_results", {
+	resultId: serial("result_id").primaryKey().notNull(),
+	assessmentId: integer("assessment_id").notNull(),
+	identifiedThemes: jsonb("identified_themes"),
+	rankedPriorities: jsonb("ranked_priorities"),
+	recommendedCapabilities: jsonb("recommended_capabilities"),
+	capabilityRationale: jsonb("capability_rationale"),
+	existingToolAnalysis: text("existing_tool_analysis"),
+	recommendedTools: jsonb("recommended_tools"),
+	rolloutCommentary: text("rollout_commentary"),
+	heatmapData: jsonb("heatmap_data"),
+	processingStatus: text("processing_status").default('Pending').notNull(),
+	errorMessage: text("error_message"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	completedAt: timestamp("completed_at", { mode: 'string' }),
+}, (table) => [
+	uniqueIndex("assessment_id_unique_idx").using("btree", table.assessmentId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.assessmentId],
+			foreignColumns: [assessments.id],
+			name: "assessment_results_assessment_id_assessments_id_fk"
+		}).onDelete("cascade"),
+]);
+
+export const aiTools = pgTable("ai_tools", {
+	toolId: integer("tool_id").primaryKey().notNull(),
+	toolName: text("tool_name").notNull(),
+	primaryCategory: text("primary_category"),
+	licenseType: text("license_type"),
+	description: text(),
+	websiteUrl: text("website_url"),
+	tags: text().array(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("idx_ai_tools_tool_name").using("btree", table.toolName.asc().nullsLast().op("text_ops")),
+]);
+
+export const jobRoles = pgTable("job_roles", {
+	id: serial().primaryKey().notNull(),
+	title: text().notNull(),
+	departmentId: integer("department_id").notNull(),
+	description: text(),
+	keyResponsibilities: text("key_responsibilities").array(),
+	aiPotential: aiPotentialEnum("ai_potential").default('Medium'),
+}, (table) => [
+	foreignKey({
+			columns: [table.departmentId],
+			foreignColumns: [departments.id],
+			name: "job_roles_department_id_departments_id_fk"
+		}),
+]);
+
+export const performanceMetrics = pgTable("performance_metrics", {
+	id: serial().primaryKey().notNull(),
+	name: text().notNull(),
+	unit: text(),
+	description: text(),
+}, (table) => [
+	unique("performance_metrics_name_unique").on(table.name),
+]);
+
+export const departments = pgTable("departments", {
+	id: serial().primaryKey().notNull(),
+	name: text().notNull(),
+	description: text(),
+});
+
+export const metricRules = pgTable("metric_rules", {
+	id: serial().primaryKey().notNull(),
+	metricId: integer("metric_id").notNull(),
+	ruleCondition: jsonb("rule_condition"),
+	weight: numeric().notNull(),
+	description: text(),
+}, (table) => [
+	foreignKey({
+			columns: [table.metricId],
+			foreignColumns: [performanceMetrics.id],
+			name: "metric_rules_metric_id_performance_metrics_id_fk"
+		}).onDelete("cascade"),
+]);
+
+export const organizationScoreWeights = pgTable("organization_score_weights", {
+	organizationId: integer("organization_id").primaryKey().notNull(),
+	adoptionRateWeight: numeric("adoption_rate_weight").default('0.2').notNull(),
+	timeSavedWeight: numeric("time_saved_weight").default('0.2').notNull(),
+	costEfficiencyWeight: numeric("cost_efficiency_weight").default('0.2').notNull(),
+	performanceImprovementWeight: numeric("performance_improvement_weight").default('0.2').notNull(),
+	toolSprawlReductionWeight: numeric("tool_sprawl_reduction_weight").default('0.2').notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.organizationId],
+			foreignColumns: [organizations.id],
+			name: "organization_score_weights_organization_id_organizations_id_fk"
+		}).onDelete("cascade"),
+]);
+
+export const reports = pgTable("reports", {
+	id: serial().primaryKey().notNull(),
+	assessmentId: integer("assessment_id").notNull(),
+	generatedAt: timestamp("generated_at", { mode: 'string' }).defaultNow().notNull(),
+	executiveSummary: text("executive_summary"),
+	prioritizationData: jsonb("prioritization_data"),
+	aiSuggestions: jsonb("ai_suggestions"),
+	performanceImpact: jsonb("performance_impact"),
+	consultantCommentary: text("consultant_commentary"),
+	aiAdoptionScoreDetails: jsonb("ai_adoption_score_details"),
+	roiDetails: jsonb("roi_details"),
+}, (table) => [
+	foreignKey({
+			columns: [table.assessmentId],
+			foreignColumns: [assessments.id],
+			name: "reports_assessment_id_assessments_id_fk"
+		}),
+]);
+
+export const organizations = pgTable("organizations", {
+	id: serial().primaryKey().notNull(),
+	name: text().notNull(),
+	industry: text().notNull(),
+	size: text().notNull(),
+	description: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	pgPolicy("update_own_organization", { as: "permissive", for: "update", to: ["public"], using: sql`(EXISTS ( SELECT 1
+   FROM user_profiles
+  WHERE ((user_profiles.organization_id = organizations.id) AND (user_profiles.auth_id = current_setting('app.current_auth_id'::text, true)))))` }),
+	pgPolicy("view_own_organization", { as: "permissive", for: "select", to: ["public"] }),
+]);
+
+export const aiCapabilities = pgTable("ai_capabilities", {
+	id: integer().primaryKey().notNull(),
+	name: text().notNull(),
+	category: text().notNull(),
+	description: text(),
+	implementationEffort: text("implementation_effort"),
+	businessValue: text("business_value"),
+	easeScore: numeric("ease_score"),
+	valueScore: numeric("value_score"),
+	primaryCategory: text("primary_category"),
+	licenseType: text("license_type"),
+	websiteUrl: text("website_url"),
+	tags: text().array(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	feasibilityScore: numeric("feasibility_score"),
+	impactScore: numeric("impact_score"),
+	priority: capabilityPriority().default('Medium'),
+	rank: integer(),
+	implementationFactors: jsonb("implementation_factors"),
+	quickImplementation: boolean("quick_implementation").default(false),
+	hasDependencies: boolean("has_dependencies").default(false),
+	recommendedTools: jsonb("recommended_tools"),
+	applicableRoles: jsonb("applicable_roles"),
+	roleImpact: jsonb("role_impact"),
+	assessmentId: integer("assessment_id"),
+}, (table) => [
+	foreignKey({
+			columns: [table.assessmentId],
+			foreignColumns: [assessments.id],
+			name: "ai_capabilities_assessment_id_assessments_id_fk"
+		}).onDelete("cascade"),
+]);
+
+export const capabilityJobRoles = pgTable("capability_job_roles", {
+	capabilityId: integer("capability_id").notNull(),
+	jobRoleId: integer("job_role_id").notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.capabilityId],
+			foreignColumns: [aiCapabilities.id],
+			name: "capability_job_roles_capability_id_ai_capabilities_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.jobRoleId],
+			foreignColumns: [jobRoles.id],
+			name: "capability_job_roles_job_role_id_job_roles_id_fk"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.capabilityId, table.jobRoleId], name: "capability_job_roles_capability_id_job_role_id_pk"}),
+]);
+
 export const capabilityToolMapping = pgTable("capability_tool_mapping", {
-	capabilityId: integer("capability_id").notNull().references(() => aiCapabilities.id, { onDelete: 'cascade' }),
-	toolId: integer("tool_id").notNull().references(() => aiTools.toolId, { onDelete: 'cascade' }), // References tool_id PK
+	capabilityId: integer("capability_id").notNull(),
+	toolId: integer("tool_id").notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.capabilityId],
@@ -395,245 +335,37 @@ export const capabilityToolMapping = pgTable("capability_tool_mapping", {
 	primaryKey({ columns: [table.capabilityId, table.toolId], name: "capability_tool_mapping_capability_id_tool_id_pk"}),
 ]);
 
-// Update the Wizard Step Data schema
-export const wizardStepDataSchema = z.object({
-	basics: z.object({
-	  companyName: z.string(),
-	  industry: z.string(),
-	  size: z.string(),
-	  goals: z.string(),
-	  stakeholders: z.array(z.string()),
-	}).optional(),
-	
-	roles: z.object({
-	  selectedDepartments: z.array(z.string()),
-	  selectedRoles: z.array(z.object({
-		id: z.number().optional(),
-		title: z.string(),
-		department: z.string(),
-		description: z.string().optional(),
-		responsibilities: z.array(z.string()).optional(),
-	  })),
-	  prioritizedRoles: z.array(z.number()).optional(),
-	  customDepartment: z.string().optional(),
-	}).optional(),
-	
-	painPoints: z.object({
-	  roleSpecificPainPoints: z.record(z.string(), z.object({
-		description: z.string().optional(),
-		severity: z.number().optional(),
-		frequency: z.number().optional(),
-		impact: z.number().optional(),
-	  })),
-	  generalPainPoints: z.string().optional(),
-	}).optional(),
-	
-	workVolume: z.object({
-	  roleWorkVolume: z.record(z.string(), z.object({
-		volume: z.string().optional(),
-		timeSpent: z.string().optional(),
-		complexity: z.string().optional(),
-		errorRisk: z.string().optional(),
-		repetitiveness: z.number().optional(),
-		isDataDriven: z.boolean().optional(),
-		dataDescription: z.string().optional(),
-		hasPredictiveTasks: z.boolean().optional(),
-		predictiveTasksDescription: z.string().optional(),
-		needsContentGeneration: z.boolean().optional(),
-		contentGenerationDescription: z.string().optional(),
-		decisionComplexity: z.string().optional(),
-	  })),
-	}).optional(),
-	
-	techStack: z.object({
-	  currentSystems: z.string().optional(),
-	  dataAvailability: z.array(z.string()).optional(),
-	  existingAutomation: z.string().optional(),
-	  dataQuality: z.string().optional(),
-	  dataQualityIssues: z.string().optional(),
-	  approvals: z.string().optional(),
-	  dataAccessibility: z.string().optional(), // Add this
-	  systemsIntegration: z.string().optional(), // Add this
-	  relevantTools: z.string().optional(), // Add this
-	  notes: z.string().optional(), // Add this
-	}).optional(),
-	
-	adoption: z.object({
-	  roleAdoption: z.record(z.string(), z.object({
-		openness: z.string().optional(),
-		skillsReadiness: z.string().optional(),
-		benefits: z.string().optional(),
-		successCriteria: z.string().optional(),
-		risks: z.string().optional(),
-		suitability: z.number().optional(),    
-	  })),
-	  changeReadiness: z.string().optional(),
-	  stakeholderAlignment: z.string().optional(),
-	  expectedChallenges: z.string().optional(),
-	  successMetrics: z.string().optional(),
-	  trainingNeeds: z.string().optional(),  
-	}).optional(),
-  
-	scores: z.object({
-	  assessmentScores: z.custom<AssessmentScores>(),
-	}).optional(),
-  }).strict();
+export const jobRolePerformanceMetrics = pgTable("job_role_performance_metrics", {
+	jobRoleId: integer("job_role_id").notNull(),
+	performanceMetricId: integer("performance_metric_id").notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.jobRoleId],
+			foreignColumns: [jobRoles.id],
+			name: "job_role_performance_metrics_job_role_id_job_roles_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.performanceMetricId],
+			foreignColumns: [performanceMetrics.id],
+			name: "job_role_performance_metrics_performance_metric_id_performance_"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.jobRoleId, table.performanceMetricId], name: "job_role_performance_metrics_job_role_id_performance_metric_id_"}),
+]);
 
-  // End Wizard Step Data schema
-
-  // Priority matrix types
-export const priorityLevels = ["high", "medium", "low", "not_recommended"] as const;
-export type PriorityLevel = typeof priorityLevels[number];
-
-export const effortLevels = ["low", "medium", "high"] as const;
-export type EffortLevel = typeof effortLevels[number];
-
-export const valueLevels = ["high", "medium", "low"] as const;
-export type ValueLevel = typeof valueLevels[number];
-// End Priority matrix types
-
-// Types
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
-export type Organization = typeof organizations.$inferSelect;
-export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;	
-
-
-export type Department = typeof departments.$inferSelect;
-export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
-
-export type JobRole = typeof jobRoles.$inferSelect;
-export type InsertJobRole = z.infer<typeof insertJobRoleSchema>;
-
-export type AICapability = typeof aiCapabilities.$inferSelect;
-export type InsertAICapability = z.infer<typeof insertAICapabilitySchema>;
-
-export type Assessment = typeof assessments.$inferSelect;
-export type InsertAssessment = z.infer<typeof insertAssessmentSchema>;
-export type NewAssessment = typeof assessments.$inferInsert;
-
-export type Report = typeof reports.$inferSelect;
-export type InsertReport = z.infer<typeof insertReportSchema>;
-
-export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
-
-export type PrioritizedItem = {
-  id: number;
-  title: string;
-  department: string;
-  valueScore: number;
-  effortScore: number;
-  priority: PriorityLevel;
-  valueLevel: ValueLevel;
-  effortLevel: EffortLevel;
-};
-
-export type HeatmapData = {
-  matrix: {
-    [key in ValueLevel]: {
-      [key in EffortLevel]: {
-        priority: PriorityLevel;
-        items: Array<{
-          id: number;
-          title: string;
-          department: string;
-        }>;
-      };
-    };
-  };
-};
-
-export type AISuggestion = {
-  roleId: number;
-  roleTitle: string;
-  capabilities: Array<{
-    name: string;
-    description: string;
-  }>;
-};
-
-export type PerformanceImpact = {
-  roleImpacts: Array<{
-    roleTitle: string;
-    metrics: Array<{
-      name: string;
-      improvement: number;
-    }>;
-  }>;
-  estimatedRoi: number;
-};
-
-export type JobDescription = typeof jobDescriptions.$inferSelect;
-export type InsertJobDescription = z.infer<typeof insertJobDescriptionSchema>;
-
-export type JobScraperConfig = typeof jobScraperConfigs.$inferSelect;
-export type InsertJobScraperConfig = z.infer<typeof insertJobScraperConfigSchema>;
-
-export type ProcessedJobContent = {
-  skills: string[];
-  experience: string[];
-  education: string[];
-  responsibilities: string[];
-  benefits: string[];
-  requiredSkills: string[];
-  preferredSkills: string[];
-  salaryRange?: {
-    min?: number;
-    max?: number;
-    currency?: string;
-  };
-  jobType?: string;
-  industry?: string;
-  seniorityLevel?: string;
-};
-
-// Add infer types for new tables
-export type AssessmentResponse = typeof assessmentResponses.$inferSelect;
-export type InsertAssessmentResponse = typeof assessmentResponses.$inferInsert;
-
-export type AiTool = typeof aiTools.$inferSelect;
-// Define InsertAiTool based on the Zod schema
-export type InsertAiTool = z.infer<typeof insertAiToolSchema>;
-// Define the type for form data, excluding generated fields
-export type AiToolFormData = Omit<AiTool, 'tool_id' | 'created_at' | 'updated_at'>; // Keep this if used elsewhere
-
-export type CapabilityToolMapping = typeof capabilityToolMapping.$inferSelect;
-export type InsertCapabilityToolMapping = typeof capabilityToolMapping.$inferInsert;
-
-export type AssessmentResult = typeof assessmentResults.$inferSelect;
-export type InsertAssessmentResult = typeof assessmentResults.$inferInsert;
-
-export type AssessmentScore = typeof assessmentScores.$inferSelect;
-export type InsertAssessmentScore = typeof assessmentScores.$inferInsert;
-
-// Type for JobRole including department name
-export type JobRoleWithDepartment = JobRole & {
-	departmentName: string;
-  };
-
-// End Types
-
-// Interface for Assessment Score Data
-export interface AssessmentScoreData {
-	id: string;
-	wizardStepId: string;
-	timeSavings: ScoreValue;
-	qualityImpact: ScoreValue;
-	strategicAlignment: ScoreValue;
-	dataReadiness: ScoreValue;
-	technicalFeasibility: ScoreValue;
-	adoptionRisk: ScoreValue;
-	valuePotentialTotal: number;
-	easeOfImplementationTotal: number;
-	totalScore: number;
-	createdAt: Date;
-	updatedAt: Date;
-  }
-  
-  // Interface for Assessment Score Response
-  export interface AssessmentScoreResponse {
-	success: boolean;
-	message?: string;
-	data?: AssessmentScoreData;
-  }
+export const capabilityRoleImpacts = pgTable("capability_role_impacts", {
+	capabilityId: integer("capability_id").notNull(),
+	jobRoleId: integer("job_role_id").notNull(),
+	impactScore: numeric("impact_score").notNull(),
+}, (table) => [
+	foreignKey({
+			columns: [table.capabilityId],
+			foreignColumns: [aiCapabilities.id],
+			name: "capability_role_impacts_capability_id_ai_capabilities_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.jobRoleId],
+			foreignColumns: [jobRoles.id],
+			name: "capability_role_impacts_job_role_id_job_roles_id_fk"
+		}).onDelete("cascade"),
+	primaryKey({ columns: [table.capabilityId, table.jobRoleId], name: "capability_role_impacts_capability_id_job_role_id_pk"}),
+]);

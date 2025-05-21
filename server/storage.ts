@@ -55,7 +55,9 @@ import {
   CapabilityRoleImpact as CapabilityRoleImpactType,
   capabilityJobRoles as capabilityJobRolesTable,
   capabilityToolMapping as capabilityToolMappingTable,
-  capabilityRoleImpacts as capabilityRoleImpactsTable
+  capabilityRoleImpacts as capabilityRoleImpactsTable,
+  AssessmentAICapability,
+  InsertAssessmentAICapability
 } from "../shared/schema";
 
 export { type BaseAiTool as AiTool }; // Re-export BaseAiTool as AiTool
@@ -89,17 +91,29 @@ export interface ReportWithMetricsAndRules extends ReportWithAssessmentDetails {
   metricRules?: MetricRules[];
 }
 
-// Define the enriched AICapability type
+// Define the enriched AICapability type with assessment-specific fields
 export type FullAICapability = BaseAICapability & {
+  // Global capability enrichments
   applicableRoles?: BaseJobRole[]; // Array of JobRole objects or their IDs/names
   roleImpact?: Record<string, number>; // roleId as string to impactScore
   recommendedTools?: BaseAiTool[];
-  // implementationFactors is already a jsonb field on BaseAICapability from shared/schema.ts
+  
+  // Assessment-specific fields from assessment_ai_capabilities table
+  assessmentId?: number;
+  valueScore?: number | null; 
+  feasibilityScore?: number | null;
+  impactScore?: number | null;
+  easeScore?: number | null;
+  priority?: string | null;
+  rank?: number | null;
+  implementationEffort?: string | null;
+  businessValue?: string | null;
+  assessmentNotes?: string | null;
 };
 
 // Define Tool with its mapped capabilities
 export type ToolWithMappedCapabilities = BaseAiTool & {
-  mappedCapabilities?: Pick<BaseAICapability, 'id' | 'name' | 'valueScore'>[];
+  mappedCapabilities?: Pick<BaseAICapability, 'id' | 'name' | 'category' | 'description'>[];
 };
 
 // modify the interface with any CRUD methods
@@ -135,6 +149,26 @@ export interface IStorage {
   getAICapability(id: number): Promise<FullAICapability | undefined>;
   listAICapabilities(options?: { assessmentId?: string; roleIds?: string[]; categoryFilter?: string[] }): Promise<FullAICapability[]>;
   createAICapability(capability: InsertAICapability): Promise<BaseAICapability>;
+  
+  // New AICapability methods for global capabilities and assessment-specific links
+  findOrCreateGlobalAICapability(
+    capabilityName: string, 
+    capabilityCategory: string, 
+    description?: string,
+    defaults?: {
+      defaultBusinessValue?: string | null;
+      defaultImplementationEffort?: string | null;
+      defaultEaseScore?: string | null;
+      defaultValueScore?: string | null;
+      defaultFeasibilityScore?: string | null;
+      defaultImpactScore?: string | null;
+      tags?: string[];
+    }
+  ): Promise<BaseAICapability>;
+  
+  createAssessmentAICapability(data: InsertAssessmentAICapability): Promise<AssessmentAICapability>;
+  
+  getAssessmentAICapabilities(assessmentId: number): Promise<FullAICapability[]>;
   
   // Assessment methods
   getAssessment(id: number): Promise<Assessment | undefined>;
@@ -184,7 +218,7 @@ export interface IStorage {
 
   // New methods for tools with mapped capabilities
   getTools(options?: { assessmentId?: string; categoryFilter?: string[] }): Promise<ToolWithMappedCapabilities[]>;
-  getCapabilitiesForTool(toolId: number): Promise<Pick<BaseAICapability, 'id' | 'name' | 'valueScore'>[]>;
+  getCapabilitiesForTool(toolId: number): Promise<Pick<BaseAICapability, 'id' | 'name' | 'category' | 'description'>[]>;
 
   // Assessment Score methods
   upsertAssessmentScore(score: Omit<AssessmentScoreData, 'id' | 'createdAt' | 'updatedAt'>): Promise<AssessmentScoreData>;

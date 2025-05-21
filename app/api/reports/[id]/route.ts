@@ -39,11 +39,24 @@ export async function GET(
       console.log(`Fetching capabilities for assessmentId: ${reportDetails.assessmentId}`);
       // Fetch capabilities related to the assessment
       try {
-        capabilities = await storage.listAICapabilities({ assessmentId: String(reportDetails.assessmentId) });
-        console.log(`Successfully fetched ${capabilities.length} capabilities`);
+        capabilities = await storage.getAssessmentAICapabilities(reportDetails.assessmentId);
+        console.log(`Successfully fetched ${capabilities.length} capabilities with scores for assessment`);
+        // Enhanced logging to debug capability data
+        if (capabilities.length > 0) {
+          console.log(`Sample capability data:`, JSON.stringify(capabilities[0], null, 2));
+        } else {
+          console.log(`No capabilities found with scores for assessment ${reportDetails.assessmentId}`);
+        }
       } catch (capError) {
-        console.error(`Error fetching capabilities: ${capError}`);
-        capabilities = [];
+        console.error(`Error fetching capabilities with assessment data: ${capError}`);
+        // Fall back to global capabilities if assessment-specific fetch fails
+        try {
+          capabilities = await storage.listAICapabilities({ assessmentId: String(reportDetails.assessmentId) });
+          console.log(`Fallback: fetched ${capabilities.length} global capabilities`);
+        } catch (fallbackError) {
+          console.error(`Error in fallback capability fetch: ${fallbackError}`);
+          capabilities = [];
+        }
       }
       
       // Fetch tools relevant to the assessment (if applicable)

@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { WizardStepData, JobRole, Department, InsertAICapability } from '@shared/schema';
+import { WizardStepData, JobRole, Department, InsertAICapability, InsertAssessmentAICapability, capabilityPriorityEnum } from '@shared/schema';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 
@@ -55,6 +55,31 @@ function cacheResponse(prompt: string, model: string, response: any): void {
     const keysToDelete = Array.from(responseCache.keys()).slice(0, 100);
     keysToDelete.forEach(key => responseCache.delete(key));
   }
+}
+
+// Type for the AI's structured response
+interface AIRecommendationResponse {
+  capabilityName: string;
+  capabilityCategory: string;
+  capabilityDescription?: string;
+  tags?: string[];
+  // Default/Global Scores
+  defaultBusinessValue?: string | null;
+  defaultImplementationEffort?: string | null;
+  defaultEaseScore?: string | null;
+  defaultValueScore?: string | null;
+  defaultFeasibilityScore?: string | null;
+  defaultImpactScore?: string | null;
+  // Assessment-Specific Scores & Details
+  valueScore?: string | null; // Represent numeric as string for schema
+  feasibilityScore?: string | null;
+  impactScore?: string | null;
+  easeScore?: string | null;
+  priority?: typeof capabilityPriorityEnum.enumValues[number] | null;
+  rank?: number | null;
+  implementationEffort?: string | null;
+  businessValue?: string | null;
+  assessmentNotes?: string | null;
 }
 
 /**
@@ -133,103 +158,147 @@ export async function generateAICapabilityRecommendations(
   role: JobRole,
   department: Department,
   painPoints: any
-): Promise<Array<Partial<InsertAICapability>>> {
+): Promise<Array<Partial<InsertAssessmentAICapability & { 
+  capabilityName: string; 
+  capabilityCategory: string; 
+  capabilityDescription?: string; 
+  defaultBusinessValue?: string | null;
+  defaultImplementationEffort?: string | null;
+  defaultEaseScore?: string | null;
+  defaultValueScore?: string | null;
+  defaultFeasibilityScore?: string | null;
+  defaultImpactScore?: string | null;
+  tags?: string[] | null;
+}>>> {
   try {
     if (!openai) {
-      return fallbackAICapabilities(role);
+      return fallbackAICapabilities(role, department);
     }
 
     const painPointDescription = painPoints
       ? `Pain points include: Severity: ${painPoints.severity}/5, Frequency: ${painPoints.frequency}/5, Impact: ${painPoints.impact}/5. Description: ${painPoints.description || "Not provided"}`
-      : "No specific pain points provided.";
+      : "No specific pain points provided for this role.";
 
-    const prompt = `As an AI transformation consultant, recommend 3-4 specific AI capabilities that would best address the needs of this role:
-    
-    Role: ${role.title}
-    Department: ${department.name}
-    Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(", ") : "Not provided"}
-    ${painPointDescription}
-    
-    For each capability, provide a JSON object with the following fields:
-    - "name": string (Specific name/title for the capability)
-    - "description": string (Brief description of what it does and how it helps this specific role)
-    - "category": string (e.g., "Automation", "Analytics", "Content Generation", "Customer Interaction", "Decision Support")
-    - "valueScore": number (A score from 1 to 100 representing the potential value to the business for this role. Higher is better.)
-    - "feasibilityScore": number (A score from 1 to 100 representing the ease of implementation/technical feasibility. Higher is more feasible.)
-    - "impactScore": number (A score from 1 to 100 representing the overall impact this capability could have if implemented successfully for this role. Higher is better.)
-    - "priority": string (Suggested priority: "High", "Medium", or "Low")
-    - "rank": number (A suggested rank for this capability among the recommendations, e.g., 1, 2, 3)
-    - "implementationEffort": string (Qualitative effort: "High", "Medium", "Low")
-    - "businessValue": string (Qualitative business value: "Very High", "High", "Medium", "Low")
+    const prompt = `
+Context:
+Role: ${role.title}
+Department: ${department.name}
+${painPointDescription}
 
-    Return a JSON array of these objects. For example:
-    [{"name": "Automated Report Generation", "description": "...", "category": "Automation", "valueScore": 80, "feasibilityScore": 70, "impactScore": 90, "priority": "High", "rank": 1, "implementationEffort": "Medium", "businessValue": "High"}, ...]
-    Ensure the output is ONLY the JSON array.`;
+Based on the provided context, identify and recommend 3-5 AI capabilities.
+For each AI capability, provide the following information in a JSON array format. Each object in the array should represent one AI capability:
 
-    const model = "gpt-4";
-    
-    const cachedResponse = getCachedResponse(prompt, model);
-    if (cachedResponse) {
-      if (Array.isArray(cachedResponse) && cachedResponse.every(c => c.name && typeof c.valueScore === 'number')) {
-         return cachedResponse as Array<Partial<InsertAICapability>>;
-      } else {
-        console.log("Cached response for generateAICapabilityRecommendations has old format, re-fetching.");
-      }
-    }
+1.  "capabilityName": A concise name for the AI capability (e.g., "Automated Data Entry", "Predictive Maintenance Analytics").
+2.  "capabilityCategory": A general category for this capability (e.g., "Automation", "Analytics", "Content Generation", "Decision Support").
+3.  "capabilityDescription": (Optional) A brief general description of what this AI capability does.
+4.  "tags": (Optional) An array of 2-3 relevant global tags for this capability (e.g., ["data_processing", "efficiency", "nlp"]).
+
+5.  "defaultBusinessValue": (Optional) The general, typical business value this capability offers (e.g., "Low", "Medium", "High", "Very High").
+6.  "defaultImplementationEffort": (Optional) The general, typical effort to implement this capability (e.g., "Low", "Medium", "High").
+7.  "defaultEaseScore": (Optional) A general score (0-100) indicating how easy this capability is to implement typically.
+8.  "defaultValueScore": (Optional) A general score (0-100) indicating the typical value this capability provides.
+9.  "defaultFeasibilityScore": (Optional) A general score (0-100) indicating the typical technical feasibility.
+10. "defaultImpactScore": (Optional) A general score (0-100) indicating the typical impact this capability can have.
+
+Now, for the *specific context of the Role (${role.title}) and Department (${department.name})*:
+11. "valueScore": A score (0-100) for the potential value this capability offers *to this specific role/department*.
+12. "feasibilityScore": A score (0-100) for the technical feasibility of implementing this capability *for this specific role/department*.
+13. "impactScore": (Optional) A score (0-100) for the potential impact this capability can have *on this specific role/department*.
+14. "easeScore": (Optional) A score (0-100) for how easy it would be to implement this capability *for this specific role/department*.
+15. "priority": The priority for implementing this capability *for this role/department* ("High", "Medium", or "Low").
+16. "rank": (Optional) A numerical rank (e.g., 1, 2, 3) for this capability recommendation *within this assessment context*.
+17. "implementationEffort": The estimated effort to implement this capability *for this specific role/department* (e.g., "Low", "Medium", "High").
+18. "businessValue": The estimated business value this capability would bring *to this specific role/department* (e.g., "Low", "Medium", "High", "Very High").
+19. "assessmentNotes": (Optional) Brief notes or justification for why this capability is recommended for *this specific role/department*, considering their pain points.
+
+Return ONLY a valid JSON array of these objects. Example of one object:
+{
+  "capabilityName": "AI-Powered Email Triage",
+  "capabilityCategory": "Productivity Automation",
+  "capabilityDescription": "Automatically categorizes and prioritizes incoming emails for faster response.",
+  "tags": ["email", "automation", "nlp"],
+  "defaultBusinessValue": "Medium",
+  "defaultImplementationEffort": "Medium",
+  "defaultEaseScore": "70",
+  "defaultValueScore": "75",
+  "defaultFeasibilityScore": "80",
+  "defaultImpactScore": "60",
+  "valueScore": "85",
+  "feasibilityScore": "75",
+  "impactScore": "80",
+  "easeScore": "70",
+  "priority": "High",
+  "rank": 1,
+  "implementationEffort": "Medium",
+  "businessValue": "High",
+  "assessmentNotes": "Addresses significant time lost to manual email sorting, directly impacting ${role.title}'s efficiency in the ${department.name} department."
+}
+`;
 
     const response = await openai.chat.completions.create({
-      model,
+      model: "gpt-4-turbo-preview", // Or your preferred model
       messages: [
-        { role: "system", content: "You are an AI transformation consultant providing specific, actionable recommendations in JSON format." },
+        { role: "system", content: "You are an expert AI strategy consultant. You provide detailed, structured AI capability recommendations in JSON format." },
         { role: "user", content: prompt }
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: "json_object" }, // Request JSON output
+      temperature: 0.3,
     });
 
     const content = response.choices[0].message.content;
+    if (!content) {
+      console.error("OpenAI returned empty content.");
+      return fallbackAICapabilities(role, department);
+    }
+
     try {
-      let parsedContent;
-      if (content) {
-        const rawParsed = JSON.parse(content);
-        if (Array.isArray(rawParsed)) {
-          parsedContent = rawParsed;
-        } else if (typeof rawParsed === 'object' && rawParsed !== null) {
-          const arrayKey = Object.keys(rawParsed).find(key => Array.isArray(rawParsed[key]));
-          if (arrayKey) {
-            parsedContent = rawParsed[arrayKey];
-          } else {
-            console.warn("AI capability recommendations did not return a direct array or a known keyed array. Attempting to use as is, but might be incorrect.", rawParsed);
-            parsedContent = [];
-          }
-        } else {
-          parsedContent = [];
-        }
+      // Assuming the response is an object with a key (e.g., "recommendations") that holds the array
+      const parsedResponse = JSON.parse(content);
+      let recommendationsArray: AIRecommendationResponse[];
+
+      // Check if the parsed response is directly an array or an object containing the array
+      if (Array.isArray(parsedResponse)) {
+        recommendationsArray = parsedResponse;
+      } else if (parsedResponse && typeof parsedResponse === 'object' && Array.isArray(Object.values(parsedResponse)[0])) {
+        // Common case: { "recommendations": [...] } or similar
+        recommendationsArray = Object.values(parsedResponse)[0] as AIRecommendationResponse[];
       } else {
-        parsedContent = [];
+        console.error("Parsed OpenAI response is not in the expected array format:", parsedResponse);
+        return fallbackAICapabilities(role, department);
       }
       
-      const validatedCapabilities = (Array.isArray(parsedContent) ? parsedContent : []).filter(
-        cap => cap && typeof cap.name === 'string' && 
-               typeof cap.valueScore === 'number' && 
-               typeof cap.feasibilityScore === 'number' &&
-               typeof cap.impactScore === 'number'
-      ).map(cap => ({
-        ...cap,
-        valueScore: parseFloat(String(cap.valueScore)),
-        feasibilityScore: parseFloat(String(cap.feasibilityScore)),
-        impactScore: parseFloat(String(cap.impactScore)),
-        rank: cap.rank ? parseInt(String(cap.rank), 10) : undefined,
+      return recommendationsArray.map(rec => ({
+        // Global capability fields
+        capabilityName: rec.capabilityName,
+        capabilityCategory: rec.capabilityCategory,
+        capabilityDescription: rec.capabilityDescription,
+        tags: rec.tags,
+        defaultBusinessValue: rec.defaultBusinessValue,
+        defaultImplementationEffort: rec.defaultImplementationEffort,
+        defaultEaseScore: rec.defaultEaseScore ? String(rec.defaultEaseScore) : null,
+        defaultValueScore: rec.defaultValueScore ? String(rec.defaultValueScore) : null,
+        defaultFeasibilityScore: rec.defaultFeasibilityScore ? String(rec.defaultFeasibilityScore) : null,
+        defaultImpactScore: rec.defaultImpactScore ? String(rec.defaultImpactScore) : null,
+        // AssessmentAICapability fields
+        valueScore: rec.valueScore ? String(rec.valueScore) : null,
+        feasibilityScore: rec.feasibilityScore ? String(rec.feasibilityScore) : null,
+        impactScore: rec.impactScore ? String(rec.impactScore) : null,
+        easeScore: rec.easeScore ? String(rec.easeScore) : null,
+        priority: rec.priority,
+        rank: rec.rank,
+        implementationEffort: rec.implementationEffort,
+        businessValue: rec.businessValue,
+        assessmentNotes: rec.assessmentNotes,
       }));
-
-      cacheResponse(prompt, model, validatedCapabilities);
-      return validatedCapabilities as Array<Partial<InsertAICapability>>;
-    } catch (error) {
-      console.error("Error parsing JSON response for AI Capabilities:", error, "Raw content:", content);
-      return fallbackAICapabilities(role);
+    } catch (e) {
+      console.error("Error parsing OpenAI response JSON:", e);
+      console.error("Problematic AI response content:", content);
+      return fallbackAICapabilities(role, department);
     }
+
   } catch (error) {
-    console.error("Error generating AI capability recommendations with OpenAI:", error);
-    return fallbackAICapabilities(role);
+    console.error("Error generating AI capability recommendations:", error);
+    return fallbackAICapabilities(role, department);
   }
 }
 
@@ -311,38 +380,76 @@ Our recommended approach is a phased implementation starting with these high-imp
 /**
  * Fallback function for AI capabilities
  */
-function fallbackAICapabilities(role: JobRole): Array<Partial<InsertAICapability>> {
-  console.warn(`Using fallback AI capabilities for role: ${role.title}`);
-  // All numeric fields should be strings for InsertAICapability to align with Drizzle's expectation for `numeric` type.
-  // Zod's preprocess will handle conversion for fields like feasibilityScore and impactScore.
-  return [
+function fallbackAICapabilities(role: JobRole, department: Department): Array<Partial<InsertAssessmentAICapability & { 
+  capabilityName: string; 
+  capabilityCategory: string; 
+  capabilityDescription?: string; 
+  defaultBusinessValue?: string | null;
+  defaultImplementationEffort?: string | null;
+  defaultEaseScore?: string | null;
+  defaultValueScore?: string | null;
+  defaultFeasibilityScore?: string | null;
+  defaultImpactScore?: string | null;
+  tags?: string[] | null;
+}>> {
+  console.warn(`Using fallback AI capabilities for role: ${role.title} in ${department.name}`);
+  const capabilities = [
     {
-      name: `Automated ${role.title} Task Processing`,
-      description: `Automates repetitive tasks specific to the ${role.title} role, improving efficiency. (Fallback Data)`,
-      category: "Automation",
-      valueScore: "65",       // String
-      feasibilityScore: "70", // String
-      impactScore: "75",       // String
-      priority: "Medium",
-      rank: 1, // rank is integer, so number is fine
+      capabilityName: `Automated ${role.title} Task Processing`,
+      capabilityCategory: "Automation",
+      capabilityDescription: `Automates repetitive tasks specific to the ${role.title} role. (Fallback Data)`,
+      tags: ["automation", role.title.toLowerCase().replace(/\s+/g, '_')],
+      defaultBusinessValue: "Medium",
+      defaultImplementationEffort: "Medium",
+      defaultEaseScore: "60",
+      defaultValueScore: "65",
+      defaultFeasibilityScore: "70",
+      defaultImpactScore: "55",
+      valueScore: "70", 
+      feasibilityScore: "65",
+      impactScore: "60",
+      easeScore: "60",
+      priority: "Medium" as typeof capabilityPriorityEnum.enumValues[number],
+      rank: 1,
       implementationEffort: "Medium",
       businessValue: "High",
-      easeScore: "70",         // String
+      assessmentNotes: `Significant potential to reduce manual workload for ${role.title} in ${department.name}. (Fallback Data)`
     },
     {
-      name: `${role.title} Data Analysis & Insights`,
-      description: `Provides data-driven insights to support ${role.title} decision-making. (Fallback Data)`,
-      category: "Analytics",
-      valueScore: "75",       // String
-      feasibilityScore: "60", // String
-      impactScore: "80",       // String
-      priority: "High",
-      rank: 2, // rank is integer, so number is fine
-      implementationEffort: "Medium",
+      capabilityName: `AI-Powered Decision Support for ${department.name}`,
+      capabilityCategory: "Analytics & Decision Support",
+      capabilityDescription: `Provides data-driven insights to aid ${role.title} in making informed decisions. (Fallback Data)`,
+      tags: ["analytics", "decision_support", department.name.toLowerCase().replace(/\s+/g, '_')],
+      defaultBusinessValue: "High",
+      defaultImplementationEffort: "High",
+      defaultEaseScore: "50",
+      defaultValueScore: "75",
+      defaultFeasibilityScore: "60",
+      defaultImpactScore: "70",
+      valueScore: "80",
+      feasibilityScore: "55",
+      impactScore: "75",
+      easeScore: "50",
+      priority: "High" as typeof capabilityPriorityEnum.enumValues[number],
+      rank: 2,
+      implementationEffort: "High",
       businessValue: "Very High",
-      easeScore: "60",         // String
+      assessmentNotes: `Could enhance strategic decision-making for ${role.title} by leveraging data analytics. (Fallback Data)`
     }
   ];
+  // Ensure all returned objects match the complex partial type
+  return capabilities.map(cap => ({
+    ...cap, // Spread all defined properties
+    // Explicitly ensure all numeric scores that should be strings are strings
+    defaultEaseScore: cap.defaultEaseScore ? String(cap.defaultEaseScore) : null,
+    defaultValueScore: cap.defaultValueScore ? String(cap.defaultValueScore) : null,
+    defaultFeasibilityScore: cap.defaultFeasibilityScore ? String(cap.defaultFeasibilityScore) : null,
+    defaultImpactScore: cap.defaultImpactScore ? String(cap.defaultImpactScore) : null,
+    valueScore: cap.valueScore ? String(cap.valueScore) : null,
+    feasibilityScore: cap.feasibilityScore ? String(cap.feasibilityScore) : null,
+    impactScore: cap.impactScore ? String(cap.impactScore) : null,
+    easeScore: cap.easeScore ? String(cap.easeScore) : null,
+  }));
 }
 
 /**

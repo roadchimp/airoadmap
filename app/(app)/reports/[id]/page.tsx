@@ -21,6 +21,7 @@ import { CapabilityDetailModal } from "./CapabilityDetailModal"
 import { ReportHeader } from "./report-header"
 import { ReportSettingsModal } from "./report-settings-modal"
 import { RecommendedToolsTable } from "./RecommendedToolsTable"
+import { MatrixDebugger } from "./matrix-debugger"
 import { getReportData } from '@/app/actions/reportActions'
 import { AiTool, AICapability } from '@shared/schema.ts'
 
@@ -168,10 +169,10 @@ export default function ReportPage({ params }: ReportPageProps) {
       cap.name,
       cap.category,
       cap.description || '',
-      cap.valueScore,
-      cap.feasibilityScore,
-      cap.impactScore,
-      cap.priority
+      cap.valueScore || cap.defaultValueScore || 'N/A',
+      cap.feasibilityScore || cap.defaultFeasibilityScore || 'N/A',
+      cap.impactScore || cap.defaultImpactScore || 'N/A',
+      cap.priority || 'Medium'
     ].map(String).join(',')) // Ensure all are strings for CSV
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...csvRows].join('\n')
     const encodedUri = encodeURI(csvContent)
@@ -451,15 +452,30 @@ export default function ReportPage({ params }: ReportPageProps) {
           </TabsContent>
 
           {/* Priority Matrix Tab */}
-          <TabsContent value="prioritization-matrix" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>AI Capability Prioritization Matrix</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PriorityMatrix capabilities={allCapabilities} />
-              </CardContent>
-            </Card>
+          <TabsContent value="prioritization-matrix" className="h-full">
+            <div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <CategoryFilter
+                allCategories={allUniqueCategories}
+                selectedCategories={selectedCategories}
+                onChange={handleCategoryChange}
+              />
+              
+              <div className="flex items-center gap-2 ml-auto">
+                <Button variant="outline" size="sm" onClick={() => setIsSettingsModalOpen(true)}>
+                  <SettingsIconLucide className="h-4 w-4 mr-1" />
+                  Settings
+                </Button>
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-bold mb-4">AI Capability Prioritization Matrix</h2>
+            
+            <PriorityMatrix 
+              capabilities={filteredCapabilities} 
+            />
+
+            {/* Add the Matrix Debugger here */}
+            <MatrixDebugger capabilities={filteredCapabilities} />
           </TabsContent>
 
           {/* AI Capabilities Tab */}
@@ -471,15 +487,15 @@ export default function ReportPage({ params }: ReportPageProps) {
                   Detailed list of identified AI capabilities, their potential impact, and implementation considerations.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="md:col-span-1">
+              <CardContent className="space-y-6">
+                <div className="w-full">
                   <CategoryFilter 
-                    allUniqueCategories={allUniqueCategories}
+                    allCategories={allUniqueCategories}
                     selectedCategories={selectedCategories}
-                    onCategoryChange={handleCategoryChange}
+                    onChange={handleCategoryChange}
                   />
                 </div>
-                <div className="md:col-span-3">
+                <div>
                   <CapabilitiesTable 
                     capabilities={filteredCapabilities}
                     onCapabilityClick={handleCapabilityClick}

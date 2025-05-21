@@ -62,23 +62,23 @@ export function CapabilitiesTable({
         </TableRow>
       </TableHeader>
       <TableBody className="bg-white divide-y divide-gray-200">
-        {paginatedCapabilities.map((capability) => (
+        {paginatedCapabilities.map((capability, index) => (
           <TableRow 
             key={capability.id} 
             onClick={() => onCapabilityClick(capability)} 
             className="hover:bg-gray-50 cursor-pointer"
           >
-            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.rank ?? 'N/A'}</TableCell>
+            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.rank || index + 1}</TableCell>
             <TableCell className="px-4 py-3 text-sm font-medium text-gray-900">{capability.name}</TableCell>
             <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.category}</TableCell>
             <TableCell className="px-4 py-3 text-sm text-gray-700 max-w-xs truncate">
               {capability.description ? capability.description.substring(0, 100) + (capability.description.length > 100 ? '...' : '') : 'No description'}
             </TableCell>
-            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.valueScore ?? 'N/A'}</TableCell>
-            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.feasibilityScore ?? 'N/A'}</TableCell>
-            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.impactScore ?? 'N/A'}</TableCell>
+            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.valueScore ?? capability.defaultValueScore ?? 'N/A'}</TableCell>
+            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.feasibilityScore ?? capability.defaultFeasibilityScore ?? 'N/A'}</TableCell>
+            <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{capability.impactScore ?? capability.defaultImpactScore ?? 'N/A'}</TableCell>
             <TableCell className="px-4 py-3 whitespace-nowrap text-sm">
-              <Badge variant={getPriorityBadgeVariant(capability.priority)}>{capability.priority ?? 'N/A'}</Badge>
+              <Badge variant={getPriorityBadgeVariant(capability.priority || 'Medium')}>{capability.priority || 'Medium'}</Badge>
             </TableCell>
           </TableRow>
         ))}

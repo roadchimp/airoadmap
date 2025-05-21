@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { pgTable, pgEnum, text, serial, integer, jsonb, timestamp, boolean, numeric, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
+import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
 // User model for authentication (minimal for v1)
 export const users = pgTable("users", {
@@ -108,7 +109,7 @@ export type ImplementationFactors = {
 
 // AI Capability model - UPDATED to be GLOBAL
 export const aiCapabilitiesTable = pgTable("ai_capabilities", {
-  id: integer("id").primaryKey(), // Global ID, potentially pre-populated or managed elsewhere
+  id: serial("id").primaryKey(), // Auto-incrementing primary key for global capabilities
   name: text("name").notNull(),
   category: text("category").notNull(),
   description: text("description"),
@@ -119,19 +120,52 @@ export const aiCapabilitiesTable = pgTable("ai_capabilities", {
   defaultValueScore: numeric("default_value_score"),
   defaultFeasibilityScore: numeric("default_feasibility_score"),
   defaultImpactScore: numeric("default_impact_score"),
+  tags: text("tags").array(), // Global tags for the capability
 
-  // Fields to migrate from ai_tools (make them nullable initially) - these seem global
-  primary_category: text("primary_category"), 
-  license_type: text("license_type"),
-  website_url: text("website_url"),
-  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueNameCategory: uniqueIndex("ai_capabilities_name_category_idx").on(table.name, table.category),
+}));
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+export type AICapability = InferSelectModel<typeof aiCapabilitiesTable>;
+export type InsertAICapability = InferInsertModel<typeof aiCapabilitiesTable>;
 
-  // REMOVED: assessmentId - capabilities are global
-  // REMOVED: valueScore, feasibilityScore, impactScore, priority, rank, implementationFactors, quickImplementation, hasDependencies - these are contextual
-  // REMOVED: recommendedTools, applicableRoles, roleImpact - these are likely contextual or relations to other global entities
+// NEW Linking table for Assessment-specific AI Capability details and scores
+export const assessmentAICapabilitiesTable = pgTable("assessment_ai_capabilities", {
+  id: serial("id").primaryKey(),
+  assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
+  aiCapabilityId: integer("ai_capability_id").notNull().references(() => aiCapabilitiesTable.id, { onDelete: 'cascade' }),
+  
+  // Assessment-specific scores and details
+  valueScore: numeric("value_score"), // e.g., value for this specific assessment's context
+  feasibilityScore: numeric("feasibility_score"),
+  impactScore: numeric("impact_score"),
+  easeScore: numeric("ease_score"),
+  priority: capabilityPriorityEnum("priority"),
+  rank: integer("rank"), // Rank within this assessment
+  implementationEffort: text("implementation_effort"), // Effort for this specific assessment
+  businessValue: text("business_value"), // Value for this specific assessment
+  
+  // Justification or notes specific to this assessment's recommendation
+  assessmentNotes: text("assessment_notes"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  uniqueAssessmentCapability: uniqueIndex("assessment_ai_capability_idx").on(table.assessmentId, table.aiCapabilityId),
+}));
+
+export type AssessmentAICapability = InferSelectModel<typeof assessmentAICapabilitiesTable>;
+export type InsertAssessmentAICapability = InferInsertModel<typeof assessmentAICapabilitiesTable>;
+
+// Add a schema with transformations to ensure numeric values
+export const insertAssessmentAICapabilitySchema = createInsertSchema(assessmentAICapabilitiesTable, {
+  valueScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  feasibilityScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  impactScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  easeScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  priority: z.enum(capabilityPriorityEnum.enumValues).optional().default('Medium'),
 });
 
 // New table for assessment-specific context of AI Capabilities
@@ -166,13 +200,10 @@ export const insertAICapabilitySchema = createInsertSchema(aiCapabilitiesTable, 
   name: z.string().min(3, "Name must be at least 3 characters"),
   category: z.string().min(1, "Category is required"),
   description: z.string().optional(),
-  defaultEaseScore: z.string().optional().nullable(),
-  defaultValueScore: z.string().optional().nullable(),
-  defaultFeasibilityScore: z.string().optional().nullable(), // Will be preprocessed if needed by Zod
-  defaultImpactScore: z.string().optional().nullable(),    // Will be preprocessed if needed by Zod
-  primary_category: z.string().optional().nullable(),
-  license_type: z.string().optional().nullable(),
-  website_url: z.string().url().optional().nullable(),
+  defaultEaseScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  defaultValueScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  defaultFeasibilityScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  defaultImpactScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
   tags: z.array(z.string()).optional().default([]),
   defaultBusinessValue: z.enum(["Low", "Medium", "High", "Very High"]).optional().nullable(), 
   defaultImplementationEffort: z.enum(["Low", "Medium", "High"]).optional().nullable(),
@@ -428,14 +459,11 @@ export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type Department = typeof departments.$inferSelect;
 export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
 
-export type JobRole = typeof jobRoles.$inferSelect;
-export type InsertJobRole = z.infer<typeof insertJobRoleSchema>;
+export type JobRole = InferSelectModel<typeof jobRoles>;
+export type InsertJobRole = InferInsertModel<typeof jobRoles>;
 
-export type AICapability = typeof aiCapabilitiesTable.$inferSelect;
-export type InsertAICapability = typeof aiCapabilitiesTable.$inferInsert;
-
-export type Assessment = typeof assessments.$inferSelect;
-export type InsertAssessment = z.infer<typeof insertAssessmentSchema>;
+export type Assessment = InferSelectModel<typeof assessments>;
+export type InsertAssessment = InferInsertModel<typeof assessments>;
 export type NewAssessment = typeof assessments.$inferInsert;
 
 export type Report = typeof reports.$inferSelect;

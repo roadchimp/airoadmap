@@ -28,13 +28,13 @@ export function CapabilityDetailModal({
 }: CapabilityDetailModalProps) {
   if (!isOpen || !capability) return null;
 
-  // Safely access implementationFactors with type checking
-  const techComplexity = typeof capability.implementationFactors === 'object' && capability.implementationFactors !== null && 'technicalComplexity' in capability.implementationFactors ? capability.implementationFactors.technicalComplexity as number : 0;
-  const dataReadiness = typeof capability.implementationFactors === 'object' && capability.implementationFactors !== null && 'dataReadiness' in capability.implementationFactors ? capability.implementationFactors.dataReadiness as number : 0;
-  const changeManagement = typeof capability.implementationFactors === 'object' && capability.implementationFactors !== null && 'changeManagement' in capability.implementationFactors ? capability.implementationFactors.changeManagement as number : 0;
+  // Default implementation factors since they're no longer in the restructured schema
+  const techComplexity = 50; // Default value
+  const dataReadiness = 50; // Default value
+  const changeManagement = 50; // Default value
   
-  const quickImplementationText = capability.quickImplementation ? "Yes" : "No";
-  const hasDependenciesText = capability.hasDependencies ? "Yes" : "No";
+  const quickImplementationText = "No"; // Default value after schema change
+  const hasDependenciesText = "No"; // Default value after schema change
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-[99] p-4 overflow-y-auto">
@@ -131,11 +131,11 @@ export function CapabilityDetailModal({
               </div>
               <div className="flex items-center">
                 <span className="text-xs text-gray-500 mr-2">Quick Implementation:</span>
-                <span className={`text-xs font-medium ${quickImplementationText === "Yes" ? "text-green-600" : "text-red-600"}`}>{quickImplementationText}</span>
+                <span className="text-xs font-medium text-red-600">{quickImplementationText}</span>
               </div>
               <div className="flex items-center">
                 <span className="text-xs text-gray-500 mr-2">Has Dependencies:</span>
-                <span className={`text-xs font-medium ${hasDependenciesText === "Yes" ? "text-red-600" : "text-green-600"}`}>{hasDependenciesText}</span>
+                <span className="text-xs font-medium text-green-600">{hasDependenciesText}</span>
               </div>
             </div>
           </div>

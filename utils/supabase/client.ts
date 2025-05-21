@@ -1,20 +1,22 @@
 // utils/supabase/client.ts
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient as originalCreateBrowserClient } from '@supabase/ssr';
 
-// Create a singleton instance that will be reused
-let supabaseInstance: ReturnType<typeof createSupabaseClient> | null = null;
+// Create a singleton instance
+let supabaseInstance: ReturnType<typeof originalCreateBrowserClient> | null = null;
 
 export const createClient = () => {
-  // If we already have an instance, return it
   if (supabaseInstance) {
     return supabaseInstance;
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-  
-  // Create a new instance and store it
-  supabaseInstance = createSupabaseClient(supabaseUrl, supabaseKey);
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase URL or Anon Key is missing. Check your environment variables.');
+  }
+
+  supabaseInstance = originalCreateBrowserClient(supabaseUrl, supabaseKey);
   
   return supabaseInstance;
 };

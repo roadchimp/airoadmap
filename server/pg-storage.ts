@@ -3,7 +3,7 @@ import { drizzle as drizzleNeonHttp } from 'drizzle-orm/neon-http';
 import { neon, neonConfig } from '@neondatabase/serverless';
 import { eq, sql, asc, and, inArray } from 'drizzle-orm';
 // Using dynamic import for pg which works better with ESM
-import { IStorage, ReportWithMetricsAndRules } from './storage.ts';
+import { IStorage, ReportWithMetricsAndRules, FullAICapability, ToolWithMappedCapabilities, AiTool as BaseAiTool } from './storage.ts';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import { z } from 'zod'; // Import z for z.infer
@@ -11,8 +11,10 @@ import { z } from 'zod'; // Import z for z.infer
 // Import Drizzle schema tables and schemas (values)
 import { 
   assessments, departments, organizations, users, reports, 
-  aiCapabilities, jobRoles, jobDescriptions, jobScraperConfigs,
-  aiTools, capabilityToolMapping, assessmentScores, assessmentResponses,
+  aiCapabilitiesTable, // Corrected: Was aiCapabilities, should be aiCapabilitiesTable
+  jobRoles, jobDescriptions, jobScraperConfigs,
+  aiTools as aiToolsTable, // Already aliased
+  capabilityToolMapping, assessmentScores, assessmentResponses,
   insertAssessmentSchema,
   userProfiles,
   
@@ -24,7 +26,11 @@ import {
   insertMetricRuleSchema,
   insertJobRolePerformanceMetricSchema,
   organizationScoreWeights as organizationScoreWeightsTable,
-  insertOrganizationScoreWeightsSchema as dzInsertOrganizationScoreWeightsSchema
+  insertOrganizationScoreWeightsSchema as dzInsertOrganizationScoreWeightsSchema,
+
+  // New join tables
+  capabilityJobRoles,
+  capabilityRoleImpacts
 
 } from '../shared/schema.ts';
 
@@ -33,25 +39,30 @@ import type {
   User, InsertUser,
   Organization, InsertOrganization,
   Department, InsertDepartment,
-  JobRole, InsertJobRole, JobRoleWithDepartment,
-  AICapability, InsertAICapability,
+  JobRole as BaseJobRole, // Renamed to avoid potential conflicts if we enrich it
+  InsertJobRole, JobRoleWithDepartment,
+  AICapability as BaseAICapability, // Renamed for clarity
+  InsertAICapability,
   Assessment, InsertAssessment, WizardStepData,
   Report, InsertReport,
   JobDescription, InsertJobDescription, ProcessedJobContent,
   JobScraperConfig, InsertJobScraperConfig,
-  AiTool, // DB Type (snake_case) - THIS IS THE ONE TO USE
-  InsertAiTool, // DB Insert Type (snake_case)
-  CapabilityToolMapping, InsertCapabilityToolMapping,
+  AiTool, 
+  InsertAiTool, 
+  CapabilityToolMapping as CapabilityToolMappingType, // Type for the join table
+  InsertCapabilityToolMapping,
   AssessmentScoreData,
   AssessmentResponse, InsertAssessmentResponse,
   ReportWithAssessmentDetails,
   PerformanceMetrics, 
-  JobRolePerformanceMetrics, 
+  JobRolePerformanceMetrics as JobRolePerformanceMetricsType, 
   MetricRules, 
   OrganizationScoreWeights,
   InsertOrganizationScoreWeights,
   UserProfile,
-  InsertUserProfile
+  InsertUserProfile,
+  CapabilityJobRole as CapabilityJobRoleType,
+  CapabilityRoleImpact as CapabilityRoleImpactType
 
 } from '../shared/schema.ts';
 
@@ -203,7 +214,7 @@ export class PgStorage implements IStorage {
   }
 
   // JobRole methods
-  async getJobRole(id: number): Promise<JobRole | undefined> {
+  async getJobRole(id: number): Promise<BaseJobRole | undefined> {
     const result = await this.db.select().from(jobRoles).where(eq(jobRoles.id, id));
     return result[0];
   }
@@ -233,23 +244,182 @@ export class PgStorage implements IStorage {
       .orderBy(asc(jobRoles.title)); // Optional: order by title
   }
 
-  async createJobRole(role: InsertJobRole): Promise<JobRole> {
+  async createJobRole(role: InsertJobRole): Promise<BaseJobRole> {
     const result = await this.db.insert(jobRoles).values(role).returning();
     return result[0];
   }
 
   // AICapability methods
-  async getAICapability(id: number): Promise<AICapability | undefined> {
-    const result = await this.db.select().from(aiCapabilities).where(eq(aiCapabilities.id, id));
-    return result[0];
+  async getAICapability(id: number): Promise<FullAICapability | undefined> {
+    await this.ensureInitialized();
+    
+    const capabilityResult = await this.db
+      .select()
+      .from(aiCapabilitiesTable)
+      .where(eq(aiCapabilitiesTable.id, id))
+      .limit(1);
+
+    if (!capabilityResult.length) {
+      return undefined;
+    }
+    const baseCapability = capabilityResult[0] as BaseAICapability;
+
+    // Fetch Applicable Roles
+    const roleRecords = await this.db
+      .select({
+        id: jobRoles.id,
+        title: jobRoles.title,
+        departmentId: jobRoles.departmentId,
+        description: jobRoles.description,
+        keyResponsibilities: jobRoles.keyResponsibilities,
+        aiPotential: jobRoles.aiPotential,
+      })
+      .from(capabilityJobRoles)
+      .innerJoin(jobRoles, eq(capabilityJobRoles.jobRoleId, jobRoles.id))
+      .where(eq(capabilityJobRoles.capabilityId, baseCapability.id));
+    
+    const applicableRoles: BaseJobRole[] = roleRecords;
+
+    // Fetch Role Impacts
+    const impactRecords = await this.db
+      .select()
+      .from(capabilityRoleImpacts)
+      .where(eq(capabilityRoleImpacts.capabilityId, baseCapability.id));
+    
+    const roleImpact: Record<string, number> = {};
+    impactRecords.forEach((record: CapabilityRoleImpactType) => {
+      // Assuming jobRoleId is a number, convert to string for Record key
+      roleImpact[String(record.jobRoleId)] = parseFloat(record.impactScore); 
+    });
+
+    // Fetch Recommended Tools
+    const toolRecords = await this.db
+      .select({
+        tool_id: aiToolsTable.tool_id,
+        tool_name: aiToolsTable.tool_name,
+        primary_category: aiToolsTable.primary_category,
+        license_type: aiToolsTable.license_type,
+        description: aiToolsTable.description,
+        website_url: aiToolsTable.website_url,
+        tags: aiToolsTable.tags,
+        // capability_id: capabilityToolMapping.capability_id // Not needed directly on tool
+      })
+      .from(capabilityToolMapping)
+      .innerJoin(aiToolsTable, eq(capabilityToolMapping.tool_id, aiToolsTable.tool_id))
+      .where(eq(capabilityToolMapping.capability_id, baseCapability.id));
+
+    const recommendedTools: AiTool[] = toolRecords;
+
+    return {
+      ...baseCapability,
+      applicableRoles,
+      roleImpact,
+      recommendedTools,
+    };
   }
 
-  async listAICapabilities(): Promise<AICapability[]> {
-    return await this.db.select().from(aiCapabilities);
+  async listAICapabilities(options?: { assessmentId?: string; roleIds?: string[]; categoryFilter?: string[] }): Promise<FullAICapability[]> {
+    await this.ensureInitialized();
+    
+    let query = this.db.select({
+      // Select all fields from aiCapabilitiesTable
+      ...aiCapabilitiesTable,
+      // Use json_agg for related entities if possible, or fetch separately
+      // For simplicity now, fetching applicableRoles per capability later or via a complex view
+    }).from(aiCapabilitiesTable);
+
+    const conditions = [];
+    if (options?.categoryFilter && options.categoryFilter.length > 0) {
+      conditions.push(inArray(aiCapabilitiesTable.category, options.categoryFilter));
+    }
+    // TODO: Add filtering for assessmentId and roleIds if necessary.
+    // This would likely involve joins with assessment-related tables or capabilityJobRoles.
+    // For assessmentId, it depends on how capabilities are linked to assessments.
+    // For roleIds, a join with capabilityJobRoles would be needed:
+    // if (options?.roleIds && options.roleIds.length > 0) {
+    //   const subQuery = this.db.selectDistinct({ capId: capabilityJobRoles.capabilityId })
+    //     .from(capabilityJobRoles)
+    //     .where(inArray(capabilityJobRoles.jobRoleId, options.roleIds.map(id => parseInt(id,10)))); // Ensure roleIds are numbers
+    //   conditions.push(inArray(aiCapabilitiesTable.id, subQuery.map(r => r.capId)));
+    // }
+
+    if (options?.assessmentId) {
+      conditions.push(eq(aiCapabilitiesTable.assessmentId, parseInt(options.assessmentId, 10)));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    const baseCapabilitiesResults = await query as BaseAICapability[];
+
+    // Efficiently fetch related data for all capabilities
+    if (baseCapabilitiesResults.length === 0) {
+      return [];
+    }
+
+    const capabilityIds = baseCapabilitiesResults.map(c => c.id);
+
+    // Fetch all applicable roles for these capabilities
+    const allApplicableRolesRecords = await this.db
+      .select()
+      .from(capabilityJobRoles)
+      .innerJoin(jobRoles, eq(capabilityJobRoles.jobRoleId, jobRoles.id))
+      .where(inArray(capabilityJobRoles.capabilityId, capabilityIds));
+
+    const rolesByCapabilityId = new Map<number, BaseJobRole[]>();
+    allApplicableRolesRecords.forEach((record: { capability_job_roles: CapabilityJobRoleType, job_roles: BaseJobRole }) => {
+      const capId = record.capability_job_roles.capabilityId;
+      if (!rolesByCapabilityId.has(capId)) {
+        rolesByCapabilityId.set(capId, []);
+      }
+      rolesByCapabilityId.get(capId)!.push(record.job_roles as BaseJobRole);
+    });
+    
+    // Fetch all recommended tools for these capabilities
+    const allRecommendedToolsRecords = await this.db
+      .select({
+          capabilityId: capabilityToolMapping.capability_id, // Keep capabilityId for mapping
+          tool_id: aiToolsTable.tool_id,
+          tool_name: aiToolsTable.tool_name,
+          primary_category: aiToolsTable.primary_category,
+          license_type: aiToolsTable.license_type,
+          description: aiToolsTable.description,
+          website_url: aiToolsTable.website_url,
+          tags: aiToolsTable.tags,
+      })
+      .from(capabilityToolMapping)
+      .innerJoin(aiToolsTable, eq(capabilityToolMapping.tool_id, aiToolsTable.tool_id))
+      .where(inArray(capabilityToolMapping.capability_id, capabilityIds));
+
+    const toolsByCapabilityId = new Map<number, AiTool[]>();
+    allRecommendedToolsRecords.forEach((record: AiTool & { capabilityId: number }) => {
+        const capId = record.capabilityId;
+        if (!toolsByCapabilityId.has(capId)) {
+            toolsByCapabilityId.set(capId, []);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { capabilityId, ...toolData } = record; // Exclude capabilityId from tool object
+        toolsByCapabilityId.get(capId)!.push(toolData as AiTool);
+    });
+    
+    // Note: RoleImpacts are not typically fetched in a list view due to volume, 
+    // but if needed, a similar pattern to applicableRoles/recommendedTools could be used.
+
+    const fullCapabilities: FullAICapability[] = baseCapabilitiesResults.map(bc => ({
+      ...bc,
+      applicableRoles: rolesByCapabilityId.get(bc.id) || [],
+      recommendedTools: toolsByCapabilityId.get(bc.id) || [],
+      roleImpact: undefined, // Explicitly set to undefined for list view
+      // roleImpact would be fetched in getAICapability or if explicitly needed here
+    }));
+    
+    return fullCapabilities;
   }
 
-  async createAICapability(capability: InsertAICapability): Promise<AICapability> {
-    const result = await this.db.insert(aiCapabilities).values(capability).returning();
+  async createAICapability(capability: InsertAICapability): Promise<BaseAICapability> {
+    await this.ensureInitialized();
+    const result = await this.db.insert(aiCapabilitiesTable).values(capability).returning();
     return result[0];
   }
 
@@ -466,41 +636,79 @@ export class PgStorage implements IStorage {
     console.log(`Deleted assessment with ID: ${id}`);
   }
   // Report methods
-  async getReport(id: number): Promise<ReportWithAssessmentDetails | undefined> {
+  async getReport(id: number): Promise<ReportWithMetricsAndRules | undefined> {
     await this.ensureInitialized();
-    const result = await this.db
+    
+    // First, get the basic report to find the assessmentId
+    const reportResult = await this.db
+      .select()
+      .from(reports)
+      .where(eq(reports.id, id))
+      .limit(1);
+
+    if (reportResult.length === 0 || !reportResult[0]) {
+      return undefined;
+    }
+    
+    // Use getReportByAssessment to get the full report data
+    const assessmentId = reportResult[0].assessmentId;
+    const fullReport = await this.getReportByAssessment(assessmentId);
+    
+    // If found, return with the correct ID
+    if (fullReport) {
+      return {
+        ...fullReport,
+        id: id // Ensure we return the correct report ID
+      };
+    }
+    
+    return undefined;
+  }
+
+  async getReportByAssessment(assessmentId: number): Promise<ReportWithMetricsAndRules | undefined> {
+    await this.ensureInitialized();
+    
+    // 1. Fetch the base report and assessment details
+    const reportResult = await this.db
       .select({
-        // Select all fields from reports table
         ...reports,
-        // Select specific fields from assessments table
         assessmentTitle: assessments.title,
         industry: assessments.industry,
         industryMaturity: assessments.industryMaturity,
         companyStage: assessments.companyStage,
         strategicFocus: assessments.strategicFocus,
-        // Select organization name from organizations table
         organizationName: organizations.name,
       })
       .from(reports)
       .leftJoin(assessments, eq(reports.assessmentId, assessments.id))
       .leftJoin(organizations, eq(assessments.organizationId, organizations.id))
-      .where(eq(reports.id, id));
-    
-    return result[0] as ReportWithAssessmentDetails | undefined;
-  }
+      .where(eq(reports.assessmentId, assessmentId))
+      .limit(1);
 
-  async getReportByAssessment(assessmentId: number): Promise<ReportWithMetricsAndRules | undefined> {
-    // 1. Fetch the base report and assessment details
-    const reportWithAssessment = await this.db.query.reports.findFirst({
-      where: eq(reports.assessmentId, assessmentId),
-      with: { assessment: true },
-    });
-
-    if (!reportWithAssessment || !reportWithAssessment.assessment) {
+    if (reportResult.length === 0 || !reportResult[0]) {
       return undefined; // Report or associated assessment not found
     }
 
-    const assessment = reportWithAssessment.assessment;
+    const reportWithAssessment = reportResult[0] as unknown as ReportWithAssessmentDetails;
+    
+    // Get the full assessment
+    const assessmentResult = await this.db
+      .select()
+      .from(assessments)
+      .where(eq(assessments.id, assessmentId))
+      .limit(1);
+      
+    const assessment = assessmentResult[0];
+    if (!assessment) {
+      return undefined;
+    }
+    
+    // Add assessment to the report
+    const reportWithAssessmentAndDetails = {
+      ...reportWithAssessment,
+      assessment
+    } as ReportWithMetricsAndRules;
+    
     // Ensure stepData is treated as WizardStepData type
     const stepData = assessment.stepData as WizardStepData | null;
 
@@ -510,10 +718,10 @@ export class PgStorage implements IStorage {
       ? stepData.roles.map((role: { id?: number }) => role.id).filter((id): id is number => id !== undefined) 
       : [];
 
-    let selectedRoles: JobRole[] = [];
+    let selectedRoles: BaseJobRole[] = [];
     // RENAME this variable to avoid collision with the imported table schema
     let fetchedPerformanceMetrics: PerformanceMetrics[] = [];
-    let metricRules: MetricRules[] = []; // Declare metricRules here
+    let metricRulesList: MetricRules[] = []; // Rename to avoid collision
 
     // 3. Fetch selected JobRoles and their associated PerformanceMetrics if IDs exist
     if (selectedJobRoleIds.length > 0) {
@@ -533,16 +741,20 @@ export class PgStorage implements IStorage {
       fetchedPerformanceMetrics = linkedMetrics.map((lm: { pm: PerformanceMetrics }) => lm.pm);
     }
 
-    // 4. Fetch all MetricRules
-    // Here 'metricRules' refers to the TABLE schema
-    metricRules = await this.db.select().from(metricRules);
+    // 4. Fetch all MetricRules - using a simpler query to avoid SQL syntax errors
+    try {
+      metricRulesList = await this.db.select().from(metricRules);
+    } catch (error) {
+      console.error('Error fetching metric rules:', error);
+      metricRulesList = []; // Default to empty array on error
+    }
 
     // 5. Construct and return the composite object
     return {
-      ...reportWithAssessment,
+      ...reportWithAssessmentAndDetails,
       selectedRoles: selectedRoles,
       performanceMetrics: fetchedPerformanceMetrics, // Use the renamed variable
-      metricRules: metricRules, // This will be an array of fetched MetricRules data
+      metricRules: metricRulesList, // Use the renamed variable
     };
   }
 
@@ -789,30 +1001,30 @@ export class PgStorage implements IStorage {
   // AITool methods
   async getAITool(id: number): Promise<AiTool | undefined> {
     await this.ensureInitialized();
-    const result = await this.db.select().from(aiTools).where(eq(aiTools.tool_id, id));
+    const result = await this.db.select().from(aiToolsTable).where(eq(aiToolsTable.tool_id, id));
     return result[0];
   }
 
   async listAITools(search?: string, category?: string, licenseType?: string): Promise<AiTool[]> {
     await this.ensureInitialized();
-    let query = this.db.select().from(aiTools).$dynamic(); 
+    let query = this.db.select().from(aiToolsTable).$dynamic(); 
 
     const conditions = [];
     if (search) {
-      conditions.push(sql`(${aiTools.tool_name} ilike ${`%${search}%`} or ${aiTools.description} ilike ${`%${search}%`})`);
+      conditions.push(sql`(${aiToolsTable.tool_name} ilike ${`%${search}%`} or ${aiToolsTable.description} ilike ${`%${search}%`})`);
     }
     if (category) {
-      conditions.push(eq(aiTools.primary_category, category));
+      conditions.push(eq(aiToolsTable.primary_category, category));
     }
     if (licenseType) {
-      conditions.push(eq(aiTools.license_type, licenseType));
+      conditions.push(eq(aiToolsTable.license_type, licenseType));
     }
 
     if (conditions.length > 0) {
       query = query.where(sql.join(conditions, sql` and `));
     }
     
-    return await query.orderBy(asc(aiTools.tool_name));
+    return await query.orderBy(asc(aiToolsTable.tool_name));
   }
 
   async createAITool(tool: InsertAiTool): Promise<AiTool> { 
@@ -823,7 +1035,7 @@ export class PgStorage implements IStorage {
         tool_name: tool.tool_name, 
     };
 
-    const result = await this.db.insert(aiTools).values(dbInsertData).returning();
+    const result = await this.db.insert(aiToolsTable).values(dbInsertData).returning();
     const newDbTool = result[0];
 
     if (!newDbTool) {
@@ -848,9 +1060,9 @@ export class PgStorage implements IStorage {
        throw new Error("No fields provided to update for AI Tool.");
     }
     
-    const result = await this.db.update(aiTools)
+    const result = await this.db.update(aiToolsTable)
       .set(finalUpdateData)
-      .where(eq(aiTools.tool_id, id))
+      .where(eq(aiToolsTable.tool_id, id))
       .returning();
       
     const updatedDbTool = result[0];
@@ -864,7 +1076,7 @@ export class PgStorage implements IStorage {
 
   async deleteAITool(id: number): Promise<void> { 
     await this.ensureInitialized();
-    const result = await this.db.delete(aiTools).where(eq(aiTools.tool_id, id)).returning({ deletedId: aiTools.tool_id });
+    const result = await this.db.delete(aiToolsTable).where(eq(aiToolsTable.tool_id, id)).returning({ deletedId: aiToolsTable.tool_id });
     
     if (result.length === 0) {
        console.warn(`Attempted to delete AI Tool with ID ${id}, but it was not found.`);
@@ -967,7 +1179,7 @@ export class PgStorage implements IStorage {
   }
 
   // Job Role Performance Metric Link methods
-  async linkJobRoleToMetric(linkData: { jobRoleId: number; performanceMetricId: number; }): Promise<JobRolePerformanceMetrics> {
+  async linkJobRoleToMetric(linkData: { jobRoleId: number; performanceMetricId: number; }): Promise<JobRolePerformanceMetricsType> {
     await this.ensureInitialized();
      // Drizzle insert requires a full object, the input 'linkData' matches the schema.
     const result = await this.db.insert(jobRolePerformanceMetrics).values(linkData).returning();
@@ -1061,32 +1273,113 @@ export class PgStorage implements IStorage {
 
   async upsertOrganizationScoreWeights(weights: InsertOrganizationScoreWeights): Promise<OrganizationScoreWeights> {
     await this.ensureInitialized();
+    const validWeights = dzInsertOrganizationScoreWeightsSchema.parse(weights);
 
-    // Validate with the Drizzle-Zod insert schema before inserting/updating
-    // const validatedWeights = dzInsertOrganizationScoreWeightsSchema.parse(weights);
-    // The type InsertOrganizationScoreWeights is already the result of Zod parsing with transformations,
-    // so numeric fields should already be numbers.
-
-    const result = await this.db.insert(organizationScoreWeightsTable)
-      .values({
-        ...weights,
-        updatedAt: new Date(), // Ensure updatedAt is set
-      })
-      .onConflictDoUpdate({
-        target: organizationScoreWeightsTable.organizationId,
-        set: {
-          ...weights, // Spread all fields from input, organizationId will match the target
-          updatedAt: new Date(), // Explicitly update the timestamp
-        },
+    const result = await this.db
+      .insert(organizationScoreWeightsTable)
+      .values(validWeights)
+      .onConflictDoUpdate({ 
+        target: organizationScoreWeightsTable.organizationId, 
+        set: { ...validWeights, updatedAt: new Date() } 
       })
       .returning();
-    
-    // As with get, ensure numeric types are handled correctly if not automatically by Drizzle/Zod.
-    return result[0] as OrganizationScoreWeights;
+    return result[0];
+  }
+
+  // New methods for capability-tool mapping
+  async mapCapabilityToTool(capabilityId: number, toolId: number): Promise<CapabilityToolMappingType> {
+    await this.ensureInitialized();
+    const [newMapping] = await this.db
+      .insert(capabilityToolMapping)
+      .values({ capability_id: capabilityId, tool_id: toolId })
+      .returning();
+    if (!newMapping) {
+      throw new Error("Failed to map capability to tool. Insert operation returned no result.");
+    }
+    return newMapping;
+  }
+
+  async unmapCapabilityFromTool(capabilityId: number, toolId: number): Promise<void> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .delete(capabilityToolMapping)
+      .where(and(eq(capabilityToolMapping.capability_id, capabilityId), eq(capabilityToolMapping.tool_id, toolId)))
+      .returning(); 
+    if (result.length === 0) {
+      console.warn(`Attempted to unmap capability ${capabilityId} from tool ${toolId}, but no such mapping was found.`);
+    }
+  }
+
+  async getToolsForCapability(capabilityId: number): Promise<BaseAiTool[]> {
+    await this.ensureInitialized();
+    const mappings = await this.db
+      .select({ toolId: capabilityToolMapping.tool_id })
+      .from(capabilityToolMapping)
+      .where(eq(capabilityToolMapping.capability_id, capabilityId));
+
+    if (mappings.length === 0) {
+      return [];
+    }
+    const toolIds = mappings.map((m: { toolId: number }) => m.toolId);
+    return this.db.select().from(aiToolsTable).where(inArray(aiToolsTable.tool_id, toolIds));
+  }
+
+  async getCapabilitiesForTool(toolId: number): Promise<Pick<BaseAICapability, 'id' | 'name' | 'valueScore'>[]> {
+    await this.ensureInitialized();
+    const mappings = await this.db
+      .select({ capabilityId: capabilityToolMapping.capability_id })
+      .from(capabilityToolMapping)
+      .where(eq(capabilityToolMapping.tool_id, toolId));
+
+    if (mappings.length === 0) {
+      return [];
+    }
+    const capabilityIds = mappings.map((m: { capabilityId: number }) => m.capabilityId);
+    return this.db
+      .select({
+        id: aiCapabilitiesTable.id,
+        name: aiCapabilitiesTable.name,
+        valueScore: aiCapabilitiesTable.valueScore
+      })
+      .from(aiCapabilitiesTable)
+      .where(inArray(aiCapabilitiesTable.id, capabilityIds));
+  }
+
+  async getTools(options?: { assessmentId?: string; categoryFilter?: string[] }): Promise<ToolWithMappedCapabilities[]> {
+    await this.ensureInitialized();
+    // Base query for tools
+    let query = this.db.select().from(aiToolsTable).$dynamic();
+
+    // Apply filters if provided
+    const conditions = [];
+    if (options?.categoryFilter && options.categoryFilter.length > 0) {
+      conditions.push(inArray(aiToolsTable.primary_category, options.categoryFilter));
+    }
+    // TODO: Add assessmentId filtering if needed. This would require joining through capabilities 
+    // and then assessments, or having a direct link if that makes sense for your data model.
+    // For now, assessmentId filtering is not implemented here.
+    if (options?.assessmentId) {
+      console.warn("getTools: assessmentId filtering is not yet implemented.");
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    const tools: BaseAiTool[] = await query;
+
+    // For each tool, fetch its mapped capabilities
+    const toolsWithCapabilities: ToolWithMappedCapabilities[] = await Promise.all(
+      tools.map(async (tool) => {
+        const capabilities = await this.getCapabilitiesForTool(tool.tool_id);
+        return { ...tool, mappedCapabilities: capabilities };
+      })
+    );
+    return toolsWithCapabilities;
   }
 
   // Helper method to set the auth context for RLS policies
-  private async setAuthContext(authId?: string): Promise<void> {
+  public async setAuthContext(authId?: string): Promise<void> {
     await this.ensureInitialized();
     if (authId) {
       try {

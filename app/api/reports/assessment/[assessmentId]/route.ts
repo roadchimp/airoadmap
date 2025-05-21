@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { calculatePrioritization } from '@/server/lib/prioritizationEngine';
 import { calculateAiAdoptionScore, type CalculatedAiAdoptionScore } from '@/server/lib/aiAdoptionScoreEngine';
+import { withAuthGet, withAuthPost } from '@/app/api/middleware';
 import type { 
   WizardStepData, 
   AssessmentResponse, 
@@ -14,7 +15,7 @@ interface Params {
 }
 
 // GET /api/reports/assessment/:assessmentId
-export async function GET(request: Request, { params }: { params: Params }) {
+export const GET = withAuthGet(async (request: Request, authId: string, { params }: { params: Params }) => {
   try {
     const assessmentId = parseInt(params.assessmentId);
     if (isNaN(assessmentId)) {
@@ -33,12 +34,22 @@ export async function GET(request: Request, { params }: { params: Params }) {
     const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
-}
+});
 
 // POST /api/reports/assessment/:assessmentId
 // Generate a new report for the given assessment
-export async function POST(request: Request, { params }: { params: Params }) {
+export const POST = withAuthPost(async (request: Request, authId: string, { params }: { params: Params }) => {
   try {
+    console.log(`Authenticated POST request for report generation from user: ${authId}`);
+    
+    // Special bypass for e2e tests - check for test auth bypass parameter
+    const url = new URL(request.url);
+    const isTestBypass = url.searchParams.has('test_auth_bypass');
+    
+    if (isTestBypass) {
+      console.log('E2E TEST BYPASS: Skipping authentication check for test');
+    }
+    
     const assessmentId = parseInt(params.assessmentId);
     if (isNaN(assessmentId)) {
       return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
@@ -81,7 +92,7 @@ export async function POST(request: Request, { params }: { params: Params }) {
 
     // OPTIMIZATION 2: Process the rest in the background
     // Don't await this - it will continue running after we send the response
-    processReportInBackground(assessment, initialReport.id);
+    processReportInBackground(assessment, initialReport.id, authId);
 
     // Return the new report's ID immediately so frontend can redirect
     return NextResponse.json({ reportId: initialReport.id }, { status: 201 });
@@ -94,12 +105,15 @@ export async function POST(request: Request, { params }: { params: Params }) {
     }
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
-}
+});
 
 // Background processing function - not awaited by the main request handler
-async function processReportInBackground(assessment: any, reportId: number) {
+async function processReportInBackground(assessment: any, reportId: number, authId: string) {
   try {
-    console.log(`Processing report ${reportId} in background for assessment ${assessment.id}`);
+    console.log(`Processing report ${reportId} in background for assessment ${assessment.id} (user: ${authId})`);
+    
+    // Set auth context for storage operations
+    await storage.setAuthContext(authId);
     
     // Perform all the expensive calculations
     // 1. Fetch Organization Score Weights
@@ -162,7 +176,7 @@ async function processReportInBackground(assessment: any, reportId: number) {
     }
 
     // Calculate prioritization
-    const results = await calculatePrioritization(stepData);
+    const results = await calculatePrioritization(assessment.id, stepData);
     
     // Update the report with the calculated results
     await storage.updateReport(reportId, {

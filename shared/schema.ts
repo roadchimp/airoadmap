@@ -96,16 +96,35 @@ export const insertJobRoleSchema = createInsertSchema(jobRoles, {
   id: true 
 });
 
+// Enum for AI Capability Priority
+export const capabilityPriorityEnum = pgEnum('capability_priority', ['Low', 'Medium', 'High']);
+
+// Basic type for ImplementationFactors, expand as needed
+export type ImplementationFactors = {
+  technicalComplexity?: number;
+  dataReadiness?: number;
+  changeManagement?: number;
+};
+
 // AI Capability model - UPDATED
-export const aiCapabilities = pgTable("ai_capabilities", {
+export const aiCapabilitiesTable = pgTable("ai_capabilities", {
   id: integer("id").primaryKey(), // Use integer to preserve migrated IDs
   name: text("name").notNull(),
   category: text("category").notNull(), // Keep this for the capability's category
   description: text("description"),
   implementationEffort: text("implementation_effort"), // High, Medium, Low (Qualitative)
   businessValue: text("business_value"), // High, Medium, Low (Qualitative)
-  easeScore: numeric("ease_score"), // Quantitative score for ease (e.g., 1-5)
-  valueScore: numeric("value_score"), // Quantitative score for value (e.g., 1-5)
+  easeScore: numeric("ease_score"), // Quantitative score for ease (e.g., 1-5) - Potentially Feasibility (Lower is better?)
+  valueScore: numeric("value_score"), // Quantitative score for value (e.g., 1-5) - Value (Higher is better)
+
+  // New fields from Functional Requirements
+  feasibilityScore: numeric("feasibility_score"), // X-axis for Priority Matrix (Higher is better/more feasible)
+  impactScore: numeric("impact_score"), // For bubble size in Priority Matrix (0-100)
+  priority: capabilityPriorityEnum("priority").default('Medium'), // For display in Capabilities Table
+  rank: integer("rank"), // For display and sorting in Capabilities Table
+  implementationFactors: jsonb("implementation_factors"), // For CapabilityDetailModal { techComplexity: %, dataReadiness: %, changeMgmt: % }
+  quickImplementation: boolean("quick_implementation").default(false), // For CapabilityDetailModal
+  hasDependencies: boolean("has_dependencies").default(false), // For CapabilityDetailModal
 
   // Fields to migrate from ai_tools (make them nullable initially)
   primary_category: text("primary_category"), // Keep original tool category if needed? Or rename? Decide.
@@ -116,31 +135,36 @@ export const aiCapabilities = pgTable("ai_capabilities", {
   // Standard Timestamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+  // New fields from AiTool
+  recommendedTools: jsonb("recommended_tools"), // Store as JSONB array of tool IDs or simplified tool objects
+  applicableRoles: jsonb("applicable_roles"), // Store as JSONB array of role IDs or simplified role objects
+  roleImpact: jsonb("role_impact"), // Store as JSONB object: { [roleId: string]: number }
+
+  // New field from Functional Requirements
+  assessmentId: integer("assessment_id").references(() => assessments.id, { onDelete: 'cascade' }),
 });
 
-export const insertAICapabilitySchema = createInsertSchema(aiCapabilities).pick({
-  id: true, // Include ID for potential inserts if needed later
-  name: true,
-  category: true,
-  description: true,
-  implementationEffort: true,
-  businessValue: true,
-  easeScore: true,
-  valueScore: true,
-  // Add migrated fields
-  primary_category: true,
-  license_type: true,
-  website_url: true,
-  tags: true,
-}).extend({
-  businessValue: z.enum(["Low", "Medium", "High", "Very High"]).default("Medium"),
-  implementationEffort: z.enum(["Low", "Medium", "High"]).default("Medium"),
-  // Ensure tags are treated as an array, potentially empty
+export const insertAICapabilitySchema = createInsertSchema(aiCapabilitiesTable, {
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  category: z.string().min(1, "Category is required"),
+  description: z.string().optional(),
+  easeScore: z.string().optional().nullable(),
+  valueScore: z.string().optional().nullable(),
+  feasibilityScore: z.preprocess(val => val ? parseFloat(String(val)) : null, z.number().min(0).max(100).optional().nullable()),
+  impactScore: z.preprocess(val => val ? parseFloat(String(val)) : null, z.number().min(0).max(100).optional().nullable()),
+  rank: z.preprocess(val => val ? parseInt(String(val), 10) : null, z.number().int().optional().nullable()),
+  implementationFactors: z.custom<ImplementationFactors>().optional().nullable(),
+  quickImplementation: z.boolean().default(false).optional(),
+  hasDependencies: z.boolean().default(false).optional(),
+  assessmentId: z.number().int().optional().nullable(),
+  primary_category: z.string().optional().nullable(),
+  license_type: z.string().optional().nullable(),
+  website_url: z.string().url().optional().nullable(),
   tags: z.array(z.string()).optional().default([]),
-  // Make migrated fields optional in Zod if they can be null in the DB
-  primary_category: z.string().optional(),
-  license_type: z.string().optional(),
-  website_url: z.string().optional(),
+  priority: z.enum(capabilityPriorityEnum.enumValues).optional().default('Medium'),
+  businessValue: z.enum(["Low", "Medium", "High", "Very High"]).optional().default("Medium"), 
+  implementationEffort: z.enum(["Low", "Medium", "High"]).optional().default("Medium"),
 });
 
 // Assessment model
@@ -381,8 +405,8 @@ export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
 export type JobRole = typeof jobRoles.$inferSelect;
 export type InsertJobRole = z.infer<typeof insertJobRoleSchema>;
 
-export type AICapability = typeof aiCapabilities.$inferSelect;
-export type InsertAICapability = z.infer<typeof insertAICapabilitySchema>;
+export type AICapability = typeof aiCapabilitiesTable.$inferSelect;
+export type InsertAICapability = typeof aiCapabilitiesTable.$inferInsert;
 
 export type Assessment = typeof assessments.$inferSelect;
 export type InsertAssessment = z.infer<typeof insertAssessmentSchema>;
@@ -567,7 +591,7 @@ export const insertAiToolSchema = createInsertSchema(aiTools).omit({
 
 // New Table: Capability Tool Mapping (Many-to-Many)
 export const capabilityToolMapping = pgTable("capability_tool_mapping", {
-  capability_id: integer("capability_id").notNull().references(() => aiCapabilities.id, { onDelete: 'cascade' }),
+  capability_id: integer("capability_id").notNull().references(() => aiCapabilitiesTable.id, { onDelete: 'cascade' }),
   tool_id: integer("tool_id").notNull().references(() => aiTools.tool_id, { onDelete: 'cascade' }), // References tool_id PK
   // Add primary key constraint for the combination
 }, (table) => ({
@@ -765,3 +789,35 @@ export type InsertOrganizationScoreWeights = z.infer<typeof insertOrganizationSc
 
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+
+// New Table: Capability Job Roles (Many-to-Many for applicableRoles)
+export const capabilityJobRoles = pgTable("capability_job_roles", {
+  capabilityId: integer("capability_id").notNull().references(() => aiCapabilitiesTable.id, { onDelete: "cascade" }),
+  jobRoleId: integer("job_role_id").notNull().references(() => jobRoles.id, { onDelete: "cascade" }),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.capabilityId, t.jobRoleId] }),
+}));
+
+export const selectCapabilityJobRoleSchema = createSelectSchema(capabilityJobRoles);
+export const insertCapabilityJobRoleSchema = createInsertSchema(capabilityJobRoles);
+
+export type CapabilityJobRole = typeof capabilityJobRoles.$inferSelect;
+export type InsertCapabilityJobRole = typeof capabilityJobRoles.$inferInsert;
+
+
+// New Table: Capability Role Impacts (Stores impact score per role for a capability)
+export const capabilityRoleImpacts = pgTable("capability_role_impacts", {
+  capabilityId: integer("capability_id").notNull().references(() => aiCapabilitiesTable.id, { onDelete: "cascade" }),
+  jobRoleId: integer("job_role_id").notNull().references(() => jobRoles.id, { onDelete: "cascade" }), // Assuming impact is per job role
+  impactScore: numeric("impact_score").notNull(), // e.g., 0-100, aligns with Capability.roleImpact
+}, (t) => ({
+  pk: primaryKey({ columns: [t.capabilityId, t.jobRoleId] }),
+}));
+
+export const selectCapabilityRoleImpactSchema = createSelectSchema(capabilityRoleImpacts);
+export const insertCapabilityRoleImpactSchema = createInsertSchema(capabilityRoleImpacts, {
+ impactScore: z.preprocess((val) => val ? parseFloat(String(val)) : undefined, z.number().min(0).max(100)),
+});
+
+export type CapabilityRoleImpact = typeof capabilityRoleImpacts.$inferSelect;
+export type InsertCapabilityRoleImpact = typeof capabilityRoleImpacts.$inferInsert;

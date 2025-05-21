@@ -46,8 +46,9 @@ function LoginForm() {
         
         setError(error.message);
       } else if (data?.user) {
-        // Successful login - redirect to dashboard
-        router.push('/dashboard');
+        // Successful login - refresh router then redirect to dashboard
+        router.refresh();
+        router.push(returnUrl);
       }
     } catch (err) {
       console.error('Login error:', err);

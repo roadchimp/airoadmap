@@ -1,10 +1,11 @@
-import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department } from "@shared/schema";
+import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department, InsertAICapability } from "@shared/schema";
 import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "./aiService";
+import { storage } from '@/server/storage';
 
 /**
  * Calculates the prioritization results based on wizard step data
  */
-export async function calculatePrioritization(stepData: WizardStepData) {
+export async function calculatePrioritization(assessmentId: number, stepData: WizardStepData) {
   // Prioritized items list
   const prioritizedItems: PrioritizedItem[] = [];
   
@@ -191,15 +192,60 @@ export async function calculatePrioritization(stepData: WizardStepData) {
   
   // Extract results
   const executiveSummary = results[0] as string;
-  const aiCapabilities = results.slice(1, 4) as any[];
-  const performanceResults = results.slice(4, 7) as any[];
+  const numOtherPromisesBeforeAICapabilities = 1;
+  const rawAiCapabilityRecommendations = results.slice(
+    numOtherPromisesBeforeAICapabilities, 
+    numOtherPromisesBeforeAICapabilities + aiSuggestionsPromises.length
+  ) as Array<Array<Omit<InsertAICapability, 'assessmentId' | 'id' | 'createdAt' | 'updatedAt'>>>;
+
+  const performanceResults = results.slice(
+    numOtherPromisesBeforeAICapabilities + aiSuggestionsPromises.length
+  ) as any[];
   
-  // Format AI suggestions
-  const aiSuggestions: AISuggestion[] = topRoles.map((item, index) => ({
-    roleId: item.id,
-    roleTitle: item.title,
-    capabilities: aiCapabilities[index]
-  }));
+  // Save AI Capabilities to the database
+  const allSavedCapabilities: AISuggestion[] = [];
+
+  for (let i = 0; i < topRoles.length; i++) {
+    const roleRecommendations = rawAiCapabilityRecommendations[i];
+    const roleAISuggestions: { name: string; description: string; }[] = [];
+
+    if (Array.isArray(roleRecommendations)) {
+      for (const rec of roleRecommendations) {
+        // Construct the object to insert, ensuring all required fields for InsertAICapability are present
+        // and that scores are numbers.
+        const capabilityToSave: InsertAICapability = {
+          id: Date.now() + Math.floor(Math.random() * 1000), // TEMPORARY: Placeholder ID - NOT PRODUCTION SAFE
+          name: rec.name,
+          category: rec.category || "Uncategorized",
+          description: rec.description || "",
+          valueScore: rec.valueScore !== undefined && rec.valueScore !== null ? String(rec.valueScore) : null,
+          feasibilityScore: rec.feasibilityScore !== undefined && rec.feasibilityScore !== null ? String(rec.feasibilityScore) : null,
+          impactScore: rec.impactScore !== undefined && rec.impactScore !== null ? String(rec.impactScore) : null,
+          priority: rec.priority || 'Medium',
+          rank: typeof rec.rank === 'string' ? parseInt(rec.rank) : rec.rank,
+          assessmentId: assessmentId,
+          implementationEffort: rec.implementationEffort || "Medium",
+          businessValue: rec.businessValue || "Medium",
+          easeScore: rec.easeScore !== undefined && rec.easeScore !== null ? String(rec.easeScore) : null,
+        };
+        try {
+          await storage.createAICapability(capabilityToSave);
+          roleAISuggestions.push({ name: capabilityToSave.name, description: capabilityToSave.description || "" });
+        } catch (error) {
+          console.error(`Error saving AI capability recommendation: ${rec.name}`, error);
+          roleAISuggestions.push({ name: rec.name, description: (rec.description || "") + " (Error saving details)" });
+        }
+      }
+    }
+     allSavedCapabilities.push({
+      roleId: topRoles[i].id,
+      roleTitle: topRoles[i].title,
+      capabilities: roleAISuggestions
+    });
+  }
+  
+  // Format AI suggestions for the report (now uses what was successfully processed/saved)
+  const aiSuggestions: AISuggestion[] = allSavedCapabilities;
   
   // Format performance impact
   const roleImpacts = topRoles.map((item, index) => ({

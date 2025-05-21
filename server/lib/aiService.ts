@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { WizardStepData, JobRole, Department } from '@shared/schema';
+import { WizardStepData, JobRole, Department, InsertAICapability } from '@shared/schema';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 
@@ -133,7 +133,7 @@ export async function generateAICapabilityRecommendations(
   role: JobRole,
   department: Department,
   painPoints: any
-): Promise<any[]> {
+): Promise<Array<Partial<InsertAICapability>>> {
   try {
     if (!openai) {
       return fallbackAICapabilities(role);
@@ -150,36 +150,81 @@ export async function generateAICapabilityRecommendations(
     Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(", ") : "Not provided"}
     ${painPointDescription}
     
-    For each capability, provide:
-    1. A specific name/title for the capability
-    2. A brief description of what it does and how it helps this specific role`;
+    For each capability, provide a JSON object with the following fields:
+    - "name": string (Specific name/title for the capability)
+    - "description": string (Brief description of what it does and how it helps this specific role)
+    - "category": string (e.g., "Automation", "Analytics", "Content Generation", "Customer Interaction", "Decision Support")
+    - "valueScore": number (A score from 1 to 100 representing the potential value to the business for this role. Higher is better.)
+    - "feasibilityScore": number (A score from 1 to 100 representing the ease of implementation/technical feasibility. Higher is more feasible.)
+    - "impactScore": number (A score from 1 to 100 representing the overall impact this capability could have if implemented successfully for this role. Higher is better.)
+    - "priority": string (Suggested priority: "High", "Medium", or "Low")
+    - "rank": number (A suggested rank for this capability among the recommendations, e.g., 1, 2, 3)
+    - "implementationEffort": string (Qualitative effort: "High", "Medium", "Low")
+    - "businessValue": string (Qualitative business value: "Very High", "High", "Medium", "Low")
+
+    Return a JSON array of these objects. For example:
+    [{"name": "Automated Report Generation", "description": "...", "category": "Automation", "valueScore": 80, "feasibilityScore": 70, "impactScore": 90, "priority": "High", "rank": 1, "implementationEffort": "Medium", "businessValue": "High"}, ...]
+    Ensure the output is ONLY the JSON array.`;
 
     const model = "gpt-4";
     
-    // Check if we have a cached response
     const cachedResponse = getCachedResponse(prompt, model);
     if (cachedResponse) {
-      return cachedResponse;
+      if (Array.isArray(cachedResponse) && cachedResponse.every(c => c.name && typeof c.valueScore === 'number')) {
+         return cachedResponse as Array<Partial<InsertAICapability>>;
+      } else {
+        console.log("Cached response for generateAICapabilityRecommendations has old format, re-fetching.");
+      }
     }
 
     const response = await openai.chat.completions.create({
       model,
       messages: [
-        { role: "system", content: "You are an AI transformation consultant providing specific, actionable recommendations." },
+        { role: "system", content: "You are an AI transformation consultant providing specific, actionable recommendations in JSON format." },
         { role: "user", content: prompt }
-      ]
+      ],
+      response_format: { type: "json_object" },
     });
 
     const content = response.choices[0].message.content;
     try {
-      const parsedContent = JSON.parse(content || "[]");
+      let parsedContent;
+      if (content) {
+        const rawParsed = JSON.parse(content);
+        if (Array.isArray(rawParsed)) {
+          parsedContent = rawParsed;
+        } else if (typeof rawParsed === 'object' && rawParsed !== null) {
+          const arrayKey = Object.keys(rawParsed).find(key => Array.isArray(rawParsed[key]));
+          if (arrayKey) {
+            parsedContent = rawParsed[arrayKey];
+          } else {
+            console.warn("AI capability recommendations did not return a direct array or a known keyed array. Attempting to use as is, but might be incorrect.", rawParsed);
+            parsedContent = [];
+          }
+        } else {
+          parsedContent = [];
+        }
+      } else {
+        parsedContent = [];
+      }
       
-      // Cache the response
-      cacheResponse(prompt, model, parsedContent);
-      
-      return parsedContent;
+      const validatedCapabilities = (Array.isArray(parsedContent) ? parsedContent : []).filter(
+        cap => cap && typeof cap.name === 'string' && 
+               typeof cap.valueScore === 'number' && 
+               typeof cap.feasibilityScore === 'number' &&
+               typeof cap.impactScore === 'number'
+      ).map(cap => ({
+        ...cap,
+        valueScore: parseFloat(String(cap.valueScore)),
+        feasibilityScore: parseFloat(String(cap.feasibilityScore)),
+        impactScore: parseFloat(String(cap.impactScore)),
+        rank: cap.rank ? parseInt(String(cap.rank), 10) : undefined,
+      }));
+
+      cacheResponse(prompt, model, validatedCapabilities);
+      return validatedCapabilities as Array<Partial<InsertAICapability>>;
     } catch (error) {
-      console.error("Error parsing JSON response:", error);
+      console.error("Error parsing JSON response for AI Capabilities:", error, "Raw content:", content);
       return fallbackAICapabilities(role);
     }
   } catch (error) {
@@ -266,34 +311,38 @@ Our recommended approach is a phased implementation starting with these high-imp
 /**
  * Fallback function for AI capabilities
  */
-function fallbackAICapabilities(role: JobRole): any[] {
-  const title = role.title.toLowerCase();
-  
-  if (title.includes("customer support") || title.includes("service")) {
-    return [
-      { name: "Natural Language Understanding", description: "For ticket categorization and automatic routing" },
-      { name: "Response Generation", description: "For template-based replies to common questions" },
-      { name: "Knowledge Base Integration", description: "To quickly pull relevant documentation" }
-    ];
-  } else if (title.includes("sales")) {
-    return [
-      { name: "RFP Response Automation", description: "For extracting key questions and generating draft responses" },
-      { name: "Sales Data Analysis", description: "For identifying trends and opportunities" },
-      { name: "Client Interaction Summarization", description: "For automatically creating call summaries and follow-up tasks" }
-    ];
-  } else if (title.includes("marketing") || title.includes("content")) {
-    return [
-      { name: "Content Generation", description: "For creating draft marketing materials" },
-      { name: "Social Media Analysis", description: "For tracking campaign performance" },
-      { name: "A/B Testing Automation", description: "For optimizing messaging and creative variants" }
-    ];
-  } else {
-    return [
-      { name: "Workflow Automation", description: "For streamlining repetitive tasks" },
-      { name: "Document Processing", description: "For extracting and organizing information" },
-      { name: "Decision Support System", description: "For data-driven recommendations based on historical patterns" }
-    ];
-  }
+function fallbackAICapabilities(role: JobRole): Array<Partial<InsertAICapability>> {
+  console.warn(`Using fallback AI capabilities for role: ${role.title}`);
+  // All numeric fields should be strings for InsertAICapability to align with Drizzle's expectation for `numeric` type.
+  // Zod's preprocess will handle conversion for fields like feasibilityScore and impactScore.
+  return [
+    {
+      name: `Automated ${role.title} Task Processing`,
+      description: `Automates repetitive tasks specific to the ${role.title} role, improving efficiency. (Fallback Data)`,
+      category: "Automation",
+      valueScore: "65",       // String
+      feasibilityScore: "70", // String
+      impactScore: "75",       // String
+      priority: "Medium",
+      rank: 1, // rank is integer, so number is fine
+      implementationEffort: "Medium",
+      businessValue: "High",
+      easeScore: "70",         // String
+    },
+    {
+      name: `${role.title} Data Analysis & Insights`,
+      description: `Provides data-driven insights to support ${role.title} decision-making. (Fallback Data)`,
+      category: "Analytics",
+      valueScore: "75",       // String
+      feasibilityScore: "60", // String
+      impactScore: "80",       // String
+      priority: "High",
+      rank: 2, // rank is integer, so number is fine
+      implementationEffort: "Medium",
+      businessValue: "Very High",
+      easeScore: "60",         // String
+    }
+  ];
 }
 
 /**

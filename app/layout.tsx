@@ -17,12 +17,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning often needed with next-themes */}
-      <body className={inter.className}> 
+    <html lang="en" suppressHydrationWarning>{/* suppressHydrationWarning often needed with next-themes */}
+      <body className={inter.className}>
         <ClientProviders>
-          <Providers>
-            {children}
-          </Providers>
+          <Providers>{children}</Providers>
         </ClientProviders>
       </body>
     </html>

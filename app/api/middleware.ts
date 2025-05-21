@@ -7,8 +7,15 @@ import { storage } from '@/../../server/pg-storage';
  * Use this in API routes to get the current user
  */
 export async function getAuthUser() {
+  console.log("Attempting to get auth user in middleware...");
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session) {
+    console.log("Auth user found in middleware:", JSON.stringify(session.user, null, 2));
+  } else {
+    console.log("No active session found in middleware.");
+  }
   
   return {
     user: session?.user || null,
@@ -42,9 +49,11 @@ export async function getAuthUserWithProfile() {
  * Use this to protect API routes
  */
 export async function requireAuth(request: Request) {
+  console.log(`requireAuth called for: ${request.method} ${request.url}`);
   const { user } = await getAuthUser();
   
   if (!user) {
+    console.error(`requireAuth: Unauthorized access attempt to ${request.method} ${request.url}. No user found.`);
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: {
@@ -53,6 +62,7 @@ export async function requireAuth(request: Request) {
     });
   }
   
+  console.log(`requireAuth: Authorized access for user ${user.id} to ${request.method} ${request.url}`);
   return null; // No response means the request can continue
 }
 
@@ -60,8 +70,8 @@ export async function requireAuth(request: Request) {
  * Auth middleware that sets up authentication context for storage operations (GET)
  * This ensures RLS policies are applied with the correct user context
  */
-export function withAuthGet(handler: (request: Request, authId: string) => Promise<Response>) {
-  return async function GET(request: Request) {
+export function withAuthGet(handler: (request: Request, authId: string, context?: any) => Promise<Response>) {
+  return async function GET(request: Request, context?: any) {
     // Check authentication
     const authResponse = await requireAuth(request);
     if (authResponse) {
@@ -72,8 +82,9 @@ export function withAuthGet(handler: (request: Request, authId: string) => Promi
     const { user } = await getAuthUser();
     const authId = user!.id; // We know user exists because requireAuth passed
     
-    // Call the handler with the auth ID
-    return handler(request, authId);
+    console.log(`withAuthGet: Calling handler for ${request.url} with authId: ${authId}`);
+    // Call the handler with the auth ID and context (including params)
+    return handler(request, authId, context);
   };
 }
 
@@ -81,8 +92,8 @@ export function withAuthGet(handler: (request: Request, authId: string) => Promi
  * Auth middleware that sets up authentication context for storage operations (POST)
  * This ensures RLS policies are applied with the correct user context
  */
-export function withAuthPost(handler: (request: Request, authId: string) => Promise<Response>) {
-  return async function POST(request: Request) {
+export function withAuthPost(handler: (request: Request, authId: string, context?: any) => Promise<Response>) {
+  return async function POST(request: Request, context?: any) {
     // Check authentication
     const authResponse = await requireAuth(request);
     if (authResponse) {
@@ -93,8 +104,9 @@ export function withAuthPost(handler: (request: Request, authId: string) => Prom
     const { user } = await getAuthUser();
     const authId = user!.id; // We know user exists because requireAuth passed
     
-    // Call the handler with the auth ID
-    return handler(request, authId);
+    console.log(`withAuthPost: Calling handler for ${request.url} with authId: ${authId}`);
+    // Call the handler with the auth ID and context (including params)
+    return handler(request, authId, context);
   };
 }
 

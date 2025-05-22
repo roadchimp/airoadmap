@@ -17,10 +17,10 @@ router.get('/', async (req, res) => {
       name: cap.name,
       description: cap.description || '',
       category: cap.category || 'Uncategorized',
-      implementationEffort: cap.implementation_effort || 'Medium',
-      businessValue: cap.business_value || 'Medium',
-      easeScore: cap.ease_score || null,
-      valueScore: cap.value_score || null
+      defaultImplementationEffort: cap.default_implementation_effort || 'Medium',
+      defaultBusinessValue: cap.default_business_value || 'Medium',
+      defaultEaseScore: cap.default_ease_score || null,
+      defaultValueScore: cap.default_value_score || null
     }));
 
     res.json(transformedCapabilities);
@@ -43,14 +43,11 @@ router.post('/', async (req, res) => {
       name: validatedData.name,
       category: validatedData.category,
       description: validatedData.description,
-      implementationEffort: validatedData.implementationEffort, // Use camelCase
-      businessValue: validatedData.businessValue, // Use camelCase
-      easeScore: validatedData.easeScore, // Add if in schema
-      valueScore: validatedData.valueScore, // Add if in schema
-      primary_category: validatedData.primary_category, // Add if in schema
-      license_type: validatedData.license_type, // Add if in schema
-      website_url: validatedData.website_url, // Add if in schema
-      tags: validatedData.tags, // Add if in schema
+      defaultImplementationEffort: validatedData.defaultImplementationEffort,
+      defaultBusinessValue: validatedData.defaultBusinessValue,
+      defaultEaseScore: validatedData.defaultEaseScore,
+      defaultValueScore: validatedData.defaultValueScore,
+      tags: validatedData.tags || [],
     });
 
     // Transform the response to match frontend schema, using camelCase from capability object
@@ -59,11 +56,10 @@ router.post('/', async (req, res) => {
       name: capability.name,
       description: capability.description || '',
       category: capability.category || 'Uncategorized',
-      implementationEffort: capability.implementationEffort || 'Medium', // Use camelCase
-      businessValue: capability.businessValue || 'Medium', // Use camelCase
-      easeScore: capability.easeScore || null, // Use camelCase
-      valueScore: capability.valueScore || null // Use camelCase
-      // Add other relevant fields if needed by frontend
+      defaultImplementationEffort: capability.defaultImplementationEffort || 'Medium',
+      defaultBusinessValue: capability.defaultBusinessValue || 'Medium',
+      defaultEaseScore: capability.defaultEaseScore || null,
+      defaultValueScore: capability.defaultValueScore || null
     };
 
     res.status(201).json(transformedCapability);

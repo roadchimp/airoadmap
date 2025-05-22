@@ -530,14 +530,14 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
       cell: ({ row }) => <div className="max-w-md truncate" title={row.getValue("description")}>{row.getValue("description") || "-"}</div>,
     },
     {
-      accessorKey: "businessValue",
+      accessorKey: "defaultBusinessValue",
       header: "Business Value",
-      cell: ({ row }) => renderStatusBadge(row.getValue("businessValue"), 'value'),
+      cell: ({ row }) => renderStatusBadge(row.getValue("defaultBusinessValue"), 'value'),
     },
     {
-      accessorKey: "implementationEffort",
+      accessorKey: "defaultImplementationEffort",
       header: "Implementation Effort",
-      cell: ({ row }) => renderStatusBadge(row.getValue("implementationEffort"), 'effort'),
+      cell: ({ row }) => renderStatusBadge(row.getValue("defaultImplementationEffort"), 'effort'),
     },
     {
       id: "actions",
@@ -989,8 +989,8 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
               name: formData.get('name') as string,
               category: formData.get('category') as string,
               description: formData.get('description') as string || undefined,
-              businessValue: formData.get('businessValue') as "High" | "Medium" | "Low" | "Very High",
-              implementationEffort: formData.get('implementationEffort') as "High" | "Medium" | "Low",
+              defaultBusinessValue: formData.get('businessValue') as "High" | "Medium" | "Low" | "Very High",
+              defaultImplementationEffort: formData.get('implementationEffort') as "High" | "Medium" | "Low",
             };
             
             if (editingAICapability) {
@@ -1038,7 +1038,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
                 <select 
                   id="businessValue" 
                   name="businessValue"
-                  defaultValue={editingAICapability?.businessValue || 'Medium'}
+                  defaultValue={editingAICapability?.defaultBusinessValue || 'Medium'}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
                 >
                   <option value="High">High</option>
@@ -1052,7 +1052,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
                 <select 
                   id="implementationEffort" 
                   name="implementationEffort"
-                  defaultValue={editingAICapability?.implementationEffort || 'Medium'}
+                  defaultValue={editingAICapability?.defaultImplementationEffort || 'Medium'}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background col-span-3"
                 >
                   <option value="High">High</option>

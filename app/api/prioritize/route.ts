@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     // Calculate prioritization (now async with AI integration)
-    const results = await calculatePrioritization(stepData);
+    const results = await calculatePrioritization(assessmentId, stepData);
 
     // Create a report with the results
     const report = await storage.createReport({

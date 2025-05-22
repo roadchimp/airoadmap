@@ -45,8 +45,18 @@ router.post('/', async (req, res) => {
       description: validatedData.description,
       defaultImplementationEffort: validatedData.defaultImplementationEffort,
       defaultBusinessValue: validatedData.defaultBusinessValue,
-      defaultEaseScore: validatedData.defaultEaseScore,
-      defaultValueScore: validatedData.defaultValueScore,
+      defaultEaseScore: validatedData.defaultEaseScore !== undefined && validatedData.defaultEaseScore !== null 
+        ? String(validatedData.defaultEaseScore) 
+        : null,
+      defaultValueScore: validatedData.defaultValueScore !== undefined && validatedData.defaultValueScore !== null 
+        ? String(validatedData.defaultValueScore) 
+        : null,
+      defaultFeasibilityScore: validatedData.defaultFeasibilityScore !== undefined && validatedData.defaultFeasibilityScore !== null 
+        ? String(validatedData.defaultFeasibilityScore) 
+        : null,
+      defaultImpactScore: validatedData.defaultImpactScore !== undefined && validatedData.defaultImpactScore !== null 
+        ? String(validatedData.defaultImpactScore) 
+        : null,
       tags: validatedData.tags || [],
     });
 

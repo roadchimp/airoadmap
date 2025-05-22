@@ -20,7 +20,25 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const validatedData = insertAICapabilitySchema.parse(body);
-    const capability = await storage.createAICapability(validatedData);
+    
+    // Convert any numeric scores to strings to match expected types
+    const formattedData = {
+      ...validatedData,
+      defaultEaseScore: validatedData.defaultEaseScore !== undefined && validatedData.defaultEaseScore !== null 
+        ? String(validatedData.defaultEaseScore) 
+        : validatedData.defaultEaseScore,
+      defaultValueScore: validatedData.defaultValueScore !== undefined && validatedData.defaultValueScore !== null 
+        ? String(validatedData.defaultValueScore) 
+        : validatedData.defaultValueScore,
+      defaultFeasibilityScore: validatedData.defaultFeasibilityScore !== undefined && validatedData.defaultFeasibilityScore !== null 
+        ? String(validatedData.defaultFeasibilityScore) 
+        : validatedData.defaultFeasibilityScore,
+      defaultImpactScore: validatedData.defaultImpactScore !== undefined && validatedData.defaultImpactScore !== null 
+        ? String(validatedData.defaultImpactScore) 
+        : validatedData.defaultImpactScore,
+    };
+    
+    const capability = await storage.createAICapability(formattedData);
     return NextResponse.json(capability, { status: 201 });
   } catch (error) {
     console.error('Error creating AI capability:', error);

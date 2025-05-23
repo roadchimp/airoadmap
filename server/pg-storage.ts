@@ -1729,17 +1729,7 @@ export class PgStorage implements IStorage {
     try {
       await this.ensureInitialized();
       
-      // Create a table to track duplicates if it doesn't exist yet
-      await this.db.execute(sql`
-        CREATE TABLE IF NOT EXISTS duplicate_capabilities (
-          duplicate_id INTEGER PRIMARY KEY REFERENCES ai_capabilities(id),
-          primary_id INTEGER NOT NULL REFERENCES ai_capabilities(id),
-          rationale TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW()
-        )
-      `);
-
-      // Get all duplicate capability IDs
+      // Query the existing duplicate_capabilities table
       const result = await this.db.execute(sql`
         SELECT duplicate_id FROM duplicate_capabilities
       `);
@@ -1751,6 +1741,7 @@ export class PgStorage implements IStorage {
       return duplicateIds;
     } catch (error) {
       console.error('Error getting duplicate capability IDs:', error);
+      // Return empty array on error to avoid blocking the batch processor
       return [];
     }
   }

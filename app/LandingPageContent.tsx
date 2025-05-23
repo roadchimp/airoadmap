@@ -65,9 +65,7 @@ export default function LandingPageContent() {
               <Link href="/" className="text-white hover:text-gray-300">Home</Link>
               <Link href="/dashboard" className="text-white hover:text-gray-300">Dashboard</Link>
               <Link href="/roadmaps" className="text-white hover:text-gray-300">Roadmaps</Link>
-              <div className="relative group">
-                <button className="text-white hover:text-gray-300">Resources</button>
-              </div>          
+              <a href="https://www.samsena.com/ai/" target="_blank" rel="noopener noreferrer" className="text-white hover:text-gray-300">Resources</a>
               <Link href="/login">
                 <Button className="bg-red-600 text-white border-transparent hover:bg-red-700">
                   Sign In
@@ -163,6 +161,13 @@ export default function LandingPageContent() {
           </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <footer className="py-8 bg-[#1a202c] text-white">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-gray-400">&copy; 2025 Sam Sena</p>
+        </div>
+      </footer>
     </div>
   );
 } 

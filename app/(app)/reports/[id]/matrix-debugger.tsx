@@ -18,18 +18,18 @@ export function MatrixDebugger({ capabilities }: MatrixDebuggerProps) {
   );
   
   const capabilitiesWithDefaultValueScore = capabilities.filter(cap => 
-    cap.defaultValueScore !== null && cap.defaultValueScore !== undefined
+    cap.default_value_score !== null && cap.default_value_score !== undefined
   );
   
   const capabilitiesWithDefaultFeasibilityScore = capabilities.filter(cap => 
-    cap.defaultFeasibilityScore !== null && cap.defaultFeasibilityScore !== undefined
+    cap.default_feasibility_score !== null && cap.default_feasibility_score !== undefined
   );
   
   const capabilitiesWithScores = capabilities.filter(cap => 
     (cap.valueScore !== null && cap.valueScore !== undefined || 
-     cap.defaultValueScore !== null && cap.defaultValueScore !== undefined) &&
+     cap.default_value_score !== null && cap.default_value_score !== undefined) &&
     (cap.feasibilityScore !== null && cap.feasibilityScore !== undefined || 
-     cap.defaultFeasibilityScore !== null && cap.defaultFeasibilityScore !== undefined)
+     cap.default_feasibility_score !== null && cap.default_feasibility_score !== undefined)
   );
   
   useEffect(() => {
@@ -46,15 +46,15 @@ export function MatrixDebugger({ capabilities }: MatrixDebuggerProps) {
     capabilities.slice(0, 3).forEach((cap, i) => {
       console.log(`Capability ${i+1}: ${cap.name}`, {
         valueScore: cap.valueScore,
-        defaultValueScore: cap.defaultValueScore, 
+        defaultValueScore: cap.default_value_score, 
         feasibilityScore: cap.feasibilityScore,
-        defaultFeasibilityScore: cap.defaultFeasibilityScore,
+        defaultFeasibilityScore: cap.default_feasibility_score,
         impactScore: cap.impactScore,
-        defaultImpactScore: cap.defaultImpactScore,
+        defaultImpactScore: cap.default_impact_score,
         priority: cap.priority,
         // Add additional debug information about type
         valueScoreType: cap.valueScore !== undefined ? typeof cap.valueScore : 'undefined',
-        defaultValueScoreType: cap.defaultValueScore !== undefined ? typeof cap.defaultValueScore : 'undefined',
+        defaultValueScoreType: cap.default_value_score !== undefined ? typeof cap.default_value_score : 'undefined',
       });
     });
   }, [capabilities, capabilitiesWithValueScore.length, capabilitiesWithFeasibilityScore.length, 
@@ -98,8 +98,8 @@ export function MatrixDebugger({ capabilities }: MatrixDebuggerProps) {
                       <td className="p-1 border">{cap.name}</td>
                       <td className="p-1 border">{cap.valueScore ?? 'N/A'}</td>
                       <td className="p-1 border">{cap.feasibilityScore ?? 'N/A'}</td>
-                      <td className="p-1 border">{cap.defaultValueScore ?? 'N/A'}</td>
-                      <td className="p-1 border">{cap.defaultFeasibilityScore ?? 'N/A'}</td>
+                      <td className="p-1 border">{cap.default_value_score ?? 'N/A'}</td>
+                      <td className="p-1 border">{cap.default_feasibility_score ?? 'N/A'}</td>
                     </tr>
                   ))}
                 </tbody>

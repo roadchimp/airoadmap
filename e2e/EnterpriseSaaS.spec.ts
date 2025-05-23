@@ -635,14 +635,38 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=review`);
       await expect(page.getByRole('heading', {name: 'Review & Submit', level: 1, exact: true })).toBeVisible();
       
+      // Before submitting, validate all required fields are filled
+      console.log("Validating form completion before review...");
+
+      // Check if any required fields are missing
+      const requiredErrors = await page.locator('input:invalid, select:invalid, [aria-invalid="true"]').all();
+      if (requiredErrors.length > 0) {
+        console.log(`Found ${requiredErrors.length} invalid fields`);
+        await page.screenshot({ path: 'invalid-fields-enterprise.png' });
+      }
+
+      // Check for any validation errors before submitting
+      console.log("Checking for validation errors...");
+      const errorMessages = await page.locator('[role="alert"], .error, .text-red-500, .text-destructive').all();
+      if (errorMessages.length > 0) {
+        console.log("Found validation errors:");
+        for (const error of errorMessages) {
+          const errorText = await error.textContent();
+          console.log(`- ${errorText}`);
+        }
+        await page.screenshot({ path: 'validation-errors-enterprise.png' });
+      }
+      
       // Debug step with performance measurement
       console.log("Preparing to submit assessment and generate report...");
       
       // Take a screenshot before generating report
       await page.screenshot({ path: 'before-generate-report.png' });
       
-      // Check if button is enabled
+      // Check if the Generate Report button is visible and enabled
       const generateReportButton = page.getByRole('button', { name: /generate report/i });
+      await expect(generateReportButton).toBeVisible();
+      await expect(generateReportButton).toBeEnabled();
       const isEnabled = await generateReportButton.isEnabled();
       console.log(`Generate Report button enabled: ${isEnabled}`);
       
@@ -650,6 +674,11 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
         console.log("Button is disabled, waiting for 5 seconds and trying again...");
         await page.waitForTimeout(5000);
       }
+
+      // Add error listener before clicking
+      page.on('pageerror', (error) => {
+        console.error('Page error occurred:', error.message);
+      });
       
       // Set up a retry mechanism for report generation
       let reportGenerated = false;
@@ -693,6 +722,17 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
           
           // Add a small wait to ensure the click is registered
           await page.waitForTimeout(1000);
+
+          // Check current URL immediately after click to catch validation failures
+          const urlAfterClick = page.url();
+          console.log(`Current URL after submit: ${urlAfterClick}`);
+
+          // If we're back at a step other than review, there was a validation error
+          if (urlAfterClick.includes('step=') && !urlAfterClick.includes('step=review')) {
+            await page.screenshot({ path: `back-to-step-${attempts}-error.png` });
+            console.error(`Form validation failed - redirected to: ${urlAfterClick}`);
+            throw new Error(`Form validation failed - redirected to: ${urlAfterClick}`);
+          }
           
           // Screenshot after clicking
           await page.screenshot({ path: `after-generate-report-click-attempt-${attempts}.png` });

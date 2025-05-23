@@ -1,9 +1,9 @@
-import { pgTable, foreignKey, unique, serial, text, integer, timestamp, numeric, jsonb, boolean, uniqueIndex, pgPolicy, primaryKey, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, foreignKey, unique, serial, text, integer, timestamp, uniqueIndex, numeric, jsonb, boolean, primaryKey, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 export const aiPotentialEnum = pgEnum("ai_potential_enum", ['Low', 'Medium', 'High'])
 export const assessmentStatus = pgEnum("assessment_status", ['draft', 'submitted', 'completed'])
-export const capabilityPriority = pgEnum("capability_priority", ['Low', 'Medium', 'High'])
+export const capabilityPriorityEnum = pgEnum("capability_priority_enum", ['High', 'Medium', 'Low'])
 export const companyStageEnum = pgEnum("company_stage_enum", ['Startup', 'Early Growth', 'Scaling', 'Mature'])
 export const industryMaturityEnum = pgEnum("industry_maturity_enum", ['Mature', 'Immature'])
 export const performanceMetricsRelevanceEnum = pgEnum("performance_metrics_relevance_enum", ['low', 'medium', 'high'])
@@ -28,6 +28,64 @@ export const userProfiles = pgTable("user_profiles", {
 export const dummyTable = pgTable("dummy_table", {
 	id: serial().primaryKey().notNull(),
 });
+
+export const assessmentAiCapabilities = pgTable("assessment_ai_capabilities", {
+	id: serial().primaryKey().notNull(),
+	assessmentId: integer("assessment_id").notNull(),
+	aiCapabilityId: integer("ai_capability_id").notNull(),
+	valueScore: numeric("value_score"),
+	feasibilityScore: numeric("feasibility_score"),
+	impactScore: numeric("impact_score"),
+	easeScore: numeric("ease_score"),
+	priority: capabilityPriorityEnum(),
+	rank: integer(),
+	implementationEffort: text("implementation_effort"),
+	businessValue: text("business_value"),
+	assessmentNotes: text("assessment_notes"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+}, (table) => [
+	uniqueIndex("assessment_ai_capability_idx").using("btree", table.assessmentId.asc().nullsLast().op("int4_ops"), table.aiCapabilityId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.assessmentId],
+			foreignColumns: [assessments.id],
+			name: "assessment_ai_capabilities_assessment_id_assessments_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.aiCapabilityId],
+			foreignColumns: [aiCapabilities.id],
+			name: "assessment_ai_capabilities_ai_capability_id_ai_capabilities_id_"
+		}).onDelete("cascade"),
+]);
+
+export const assessmentCapabilityContext = pgTable("assessment_capability_context", {
+	id: serial().primaryKey().notNull(),
+	assessmentId: integer("assessment_id").notNull(),
+	aiCapabilityId: integer("ai_capability_id").notNull(),
+	valueScore: numeric("value_score").notNull(),
+	feasibilityScore: numeric("feasibility_score").notNull(),
+	impactScore: numeric("impact_score"),
+	priority: capabilityPriorityEnum().default('Medium'),
+	rank: integer(),
+	implementationEffort: text("implementation_effort"),
+	businessValue: text("business_value"),
+	easeScore: numeric("ease_score"),
+	contextualNotes: text("contextual_notes"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	uniqueIndex("assessment_capability_unique_idx").using("btree", table.assessmentId.asc().nullsLast().op("int4_ops"), table.aiCapabilityId.asc().nullsLast().op("int4_ops")),
+	foreignKey({
+			columns: [table.assessmentId],
+			foreignColumns: [assessments.id],
+			name: "assessment_capability_context_assessment_id_assessments_id_fk"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.aiCapabilityId],
+			foreignColumns: [aiCapabilities.id],
+			name: "assessment_capability_context_ai_capability_id_ai_capabilities_"
+		}).onDelete("cascade"),
+]);
 
 export const assessmentScores = pgTable("assessment_scores", {
 	id: serial().primaryKey().notNull(),
@@ -83,7 +141,7 @@ export const assessments = pgTable("assessments", {
 	status: assessmentStatus().default('draft').notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	stepData: jsonb("step_data"),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	industry: text().default('Unknown').notNull(),
 	industryMaturity: industryMaturityEnum("industry_maturity").default('Immature').notNull(),
 	companyStage: companyStageEnum("company_stage").default('Startup').notNull(),
@@ -253,22 +311,8 @@ export const reports = pgTable("reports", {
 		}),
 ]);
 
-export const organizations = pgTable("organizations", {
-	id: serial().primaryKey().notNull(),
-	name: text().notNull(),
-	industry: text().notNull(),
-	size: text().notNull(),
-	description: text(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	pgPolicy("update_own_organization", { as: "permissive", for: "update", to: ["public"], using: sql`(EXISTS ( SELECT 1
-   FROM user_profiles
-  WHERE ((user_profiles.organization_id = organizations.id) AND (user_profiles.auth_id = current_setting('app.current_auth_id'::text, true)))))` }),
-	pgPolicy("view_own_organization", { as: "permissive", for: "select", to: ["public"] }),
-]);
-
 export const aiCapabilities = pgTable("ai_capabilities", {
-	id: integer().primaryKey().notNull(),
+	id: integer().primaryKey().generatedByDefaultAsIdentity({ name: "ai_capabilities_id_seq", startWith: 1, increment: 1, minValue: 1, maxValue: 2147483647, cache: 1 }),
 	name: text().notNull(),
 	category: text().notNull(),
 	description: text(),
@@ -284,7 +328,7 @@ export const aiCapabilities = pgTable("ai_capabilities", {
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
 	feasibilityScore: numeric("feasibility_score"),
 	impactScore: numeric("impact_score"),
-	priority: capabilityPriority().default('Medium'),
+	priority: capabilityPriorityEnum().default('Medium'),
 	rank: integer(),
 	implementationFactors: jsonb("implementation_factors"),
 	quickImplementation: boolean("quick_implementation").default(false),
@@ -293,13 +337,36 @@ export const aiCapabilities = pgTable("ai_capabilities", {
 	applicableRoles: jsonb("applicable_roles"),
 	roleImpact: jsonb("role_impact"),
 	assessmentId: integer("assessment_id"),
+	defaultImplementationEffort: text("default_implementation_effort"),
+	defaultBusinessValue: text("default_business_value"),
+	defaultEaseScore: numeric("default_ease_score"),
+	defaultValueScore: numeric("default_value_score"),
+	defaultFeasibilityScore: numeric("default_feasibility_score"),
+	defaultImpactScore: numeric("default_impact_score"),
+	isDuplicate: boolean("is_duplicate").default(false).notNull(),
+	mergedIntoId: integer("merged_into_id"),
 }, (table) => [
+	uniqueIndex("ai_capabilities_name_category_idx").using("btree", table.name.asc().nullsLast().op("text_ops"), table.category.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.assessmentId],
 			foreignColumns: [assessments.id],
 			name: "ai_capabilities_assessment_id_assessments_id_fk"
 		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.mergedIntoId],
+			foreignColumns: [table.id],
+			name: "ai_capabilities_merged_into_id_fk"
+		}).onDelete("set null"),
 ]);
+
+export const organizations = pgTable("organizations", {
+	id: serial().primaryKey().notNull(),
+	name: text().notNull(),
+	industry: text().notNull(),
+	size: text().notNull(),
+	description: text(),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+});
 
 export const capabilityJobRoles = pgTable("capability_job_roles", {
 	capabilityId: integer("capability_id").notNull(),

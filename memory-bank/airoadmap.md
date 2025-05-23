@@ -407,6 +407,7 @@ export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 ```
 
 ## Migrations
+Note: Do not auto-generate .sql files for any database modifications, as Drizzle requires the drizzle-kit generate and then migrate sequence with a _journal.json file to track sequence of migration scripts
 
 *(Migrations managed by Drizzle Kit in the `migrations/` folder)*
 

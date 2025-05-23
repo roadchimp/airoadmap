@@ -266,7 +266,7 @@ Return ONLY a valid JSON array of these objects. Example of one object:
         console.error("Parsed OpenAI response is not in the expected array format:", parsedResponse);
         return fallbackAICapabilities(role, department);
       }
-      
+      console.log("Recommendations array:", recommendationsArray);
       return recommendationsArray.map(rec => ({
         // Global capability fields
         capabilityName: rec.capabilityName,

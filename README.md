@@ -256,4 +256,81 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-For support, please open an issue in the GitHub repository or contact the maintainers. 
+For support, please open an issue in the GitHub repository or contact the maintainers.
+
+## Batch Processing System
+
+The application includes a robust batch processing system for managing AI capabilities and job roles. This system is located in `server/batch-processing/` and handles:
+
+1. Job description scraping and analysis
+2. AI capability extraction and management
+3. AI tool mapping and recommendations
+4. Capability rationalization and deduplication
+
+### Job Description Processing
+
+```bash
+# 1. Scrape new job descriptions
+npx tsx server/batch-processing/batchProcessor.ts scrape-jobs
+
+# 2. Export jobs for processing (only new ones)
+npx tsx server/batch-processing/batchProcessor.ts export-jobs
+# Or process all jobs including previously processed ones
+npx tsx server/batch-processing/batchProcessor.ts export-jobs --force
+
+# 3. Process OpenAI results
+npx tsx server/batch-processing/batchProcessor.ts process-jobs <response_file_path>
+```
+
+### AI Capability Management
+
+```bash
+# 1. Export capabilities for tool mapping (only new ones)
+npx tsx server/batch-processing/batchProcessor.ts export-capabilities
+# Or process all capabilities including previously processed ones
+npx tsx server/batch-processing/batchProcessor.ts export-capabilities --force
+
+# 2. Process OpenAI results and map tools
+npx tsx server/batch-processing/batchProcessor.ts process-tools <response_file_path>
+```
+
+### Additional Commands
+
+```bash
+# List all batch files
+npx tsx server/batch-processing/batchProcessor.ts list
+
+# Reset job processing tracking
+npx tsx server/batch-processing/batchProcessor.ts reset-tracking
+
+# Update capabilities cache
+npx tsx server/batch-processing/batchProcessor.ts update-cache
+```
+
+### Batch Processing Directory Structure
+
+```
+server/batch-processing/
+├── batchProcessor.ts          # Main batch processing script
+├── logs/                      # Log files and tracking data
+│   ├── capabilities.json      # Cache of AI capabilities
+│   ├── processed_jobs.json    # Tracks processed job IDs
+│   └── processed_capabilities.json # Tracks processed capability IDs
+├── requests/                  # JSONL files for batch processing
+│   └── [timestamp]_manifest.json  # Manifest files
+└── responses/                 # OpenAI API response files
+```
+
+### Weekly Processing Workflow
+
+For weekly maintenance and updates:
+
+1. Run `scrape-jobs` to collect new job descriptions
+2. Run `export-jobs` to prepare new jobs for processing
+3. Submit to OpenAI and download results
+4. Run `process-jobs` with the response file
+5. Run `export-capabilities` to prepare new AI capabilities
+6. Submit to OpenAI and download results
+7. Run `process-tools` with the response file
+
+The system automatically tracks processed items to ensure incremental processing, only handling new entries unless forced to reprocess all. 

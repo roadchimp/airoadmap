@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-05-22T20-51-07-029Z",
+  "status": "completed",
+  "totalCapabilities": 129,
+  "processedAt": "2025-05-22T21:06:46.822Z",
+  "summary": {
+    "total": 3,
+    "success": 3,
+    "error": 0,
+    "groupsIdentified": 16
+  }
+}

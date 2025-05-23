@@ -435,12 +435,12 @@ export class PgStorage implements IStorage {
     capabilityCategory: string, 
     description?: string,
     defaults?: {
-      defaultBusinessValue?: string | null;
-      defaultImplementationEffort?: string | null;
-      defaultEaseScore?: string | null;
-      defaultValueScore?: string | null;
-      defaultFeasibilityScore?: string | null;
-      defaultImpactScore?: string | null;
+      default_business_value?: string | null;
+      default_implementation_effort?: string | null;
+      default_ease_score?: string | null;
+      default_value_score?: string | null;
+      default_feasibility_score?: string | null;
+      default_impact_score?: string | null;
       tags?: string[];
     }
   ): Promise<BaseAICapability> {
@@ -467,12 +467,12 @@ export class PgStorage implements IStorage {
       name: capabilityName,
       category: capabilityCategory,
       description: description || null,
-      defaultBusinessValue: defaults?.defaultBusinessValue || null,
-      defaultImplementationEffort: defaults?.defaultImplementationEffort || null,
-      defaultEaseScore: defaults?.defaultEaseScore || null,
-      defaultValueScore: defaults?.defaultValueScore || null,
-      defaultFeasibilityScore: defaults?.defaultFeasibilityScore || null,
-      defaultImpactScore: defaults?.defaultImpactScore || null,
+      default_business_value: defaults?.default_business_value || null,
+      default_implementation_effort: defaults?.default_implementation_effort || null,
+      default_ease_score: defaults?.default_ease_score || null,
+      default_value_score: defaults?.default_value_score || null,
+      default_feasibility_score: defaults?.default_feasibility_score || null,
+      default_impact_score: defaults?.default_impact_score || null,
       tags: defaults?.tags || [],
     };
     
@@ -543,31 +543,18 @@ export class PgStorage implements IStorage {
     // Join aiCapabilitiesTable with assessmentAICapabilitiesTable to get both global and assessment-specific data
     const joinedCapabilities = await this.db
       .select({
-        // Global capability fields
-        id: aiCapabilitiesTable.id,
-        name: aiCapabilitiesTable.name,
-        category: aiCapabilitiesTable.category,
-        description: aiCapabilitiesTable.description,
-        defaultBusinessValue: aiCapabilitiesTable.defaultBusinessValue,
-        defaultImplementationEffort: aiCapabilitiesTable.defaultImplementationEffort,
-        defaultEaseScore: aiCapabilitiesTable.defaultEaseScore,
-        defaultValueScore: aiCapabilitiesTable.defaultValueScore,
-        defaultFeasibilityScore: aiCapabilitiesTable.defaultFeasibilityScore,
-        defaultImpactScore: aiCapabilitiesTable.defaultImpactScore,
-        tags: aiCapabilitiesTable.tags,
-        createdAt: aiCapabilitiesTable.createdAt,
-        updatedAt: aiCapabilitiesTable.updatedAt,
+        ...aiCapabilitiesTable, // Select ALL columns from aiCapabilitiesTable
         
-        // Assessment-specific fields
-        assessmentId: assessmentAICapabilitiesTable.assessmentId,
+        // Assessment-specific fields (these will overwrite if names clash, which is fine if intended)
+        assessmentId_specific: assessmentAICapabilitiesTable.assessmentId, // Alias to avoid clash with aiCapabilitiesTable.assessment_id if it exists
         valueScore: assessmentAICapabilitiesTable.valueScore,
         feasibilityScore: assessmentAICapabilitiesTable.feasibilityScore,
         impactScore: assessmentAICapabilitiesTable.impactScore,
         easeScore: assessmentAICapabilitiesTable.easeScore,
-        priority: assessmentAICapabilitiesTable.priority,
-        rank: assessmentAICapabilitiesTable.rank,
-        implementationEffort: assessmentAICapabilitiesTable.implementationEffort,
-        businessValue: assessmentAICapabilitiesTable.businessValue,
+        priority_specific: assessmentAICapabilitiesTable.priority, // Alias to avoid clash
+        rank_specific: assessmentAICapabilitiesTable.rank, // Alias to avoid clash
+        implementationEffort_specific: assessmentAICapabilitiesTable.implementationEffort, // Alias
+        businessValue_specific: assessmentAICapabilitiesTable.businessValue, // Alias
         assessmentNotes: assessmentAICapabilitiesTable.assessmentNotes
       })
       .from(aiCapabilitiesTable)
@@ -630,35 +617,56 @@ export class PgStorage implements IStorage {
     
     // Combine all data into FullAICapability objects
     const fullCapabilities: FullAICapability[] = joinedCapabilities.map((jc: any) => {
-      // Extract global capability fields
+      // Now jc contains all fields from aiCapabilitiesTable directly
+      // plus the aliased assessment-specific fields.
       const baseCapability: BaseAICapability = {
         id: jc.id,
         name: jc.name,
         category: jc.category,
         description: jc.description,
-        defaultBusinessValue: jc.defaultBusinessValue,
-        defaultImplementationEffort: jc.defaultImplementationEffort,
-        defaultEaseScore: jc.defaultEaseScore,
-        defaultValueScore: jc.defaultValueScore,
-        defaultFeasibilityScore: jc.defaultFeasibilityScore,
-        defaultImpactScore: jc.defaultImpactScore,
+        implementation_effort: jc.implementation_effort,
+        business_value: jc.business_value,
+        ease_score: jc.ease_score,
+        value_score: jc.value_score,
+        primary_category: jc.primary_category,
+        license_type: jc.license_type,
+        website_url: jc.website_url,
         tags: jc.tags,
+        default_implementation_effort: jc.default_implementation_effort,
+        default_business_value: jc.default_business_value,
+        default_ease_score: jc.default_ease_score,
+        default_value_score: jc.default_value_score,
+        default_feasibility_score: jc.default_feasibility_score,
+        default_impact_score: jc.default_impact_score,
+        feasibility_score: jc.feasibility_score, // This is from aiCapabilitiesTable global
+        impact_score: jc.impact_score, // This is from aiCapabilitiesTable global
+        priority: jc.priority, // This is from aiCapabilitiesTable global
+        rank: jc.rank, // This is from aiCapabilitiesTable global
+        implementation_factors: jc.implementation_factors,
+        quick_implementation: jc.quick_implementation,
+        has_dependencies: jc.has_dependencies,
+        recommended_tools: jc.recommended_tools,
+        applicable_roles: jc.applicable_roles,
+        role_impact: jc.role_impact,
+        assessment_id: jc.assessment_id, // This is from aiCapabilitiesTable global (FK to assessments)
+        is_duplicate: jc.is_duplicate, // Added missing field
+        merged_into_id: jc.merged_into_id, // Added missing field
         createdAt: jc.createdAt,
         updatedAt: jc.updatedAt
       };
       
-      // Add assessment-specific fields
+      // Add assessment-specific fields using the aliases
       return {
         ...baseCapability,
-        assessmentId: jc.assessmentId,
+        assessmentId: jc.assessmentId_specific, // Use the aliased assessmentId from assessmentAICapabilitiesTable
         valueScore: jc.valueScore,
         feasibilityScore: jc.feasibilityScore,
-        impactScore: jc.impactScore,
+        impactScore: jc.impactScore, // This is the assessment-specific one
         easeScore: jc.easeScore,
-        priority: jc.priority,
-        rank: jc.rank,
-        implementationEffort: jc.implementationEffort,
-        businessValue: jc.businessValue,
+        priority: jc.priority_specific, // Use the aliased assessment-specific priority
+        rank: jc.rank_specific, // Use the aliased assessment-specific rank
+        implementationEffort: jc.implementationEffort_specific, // Use aliased assessment-specific effort
+        businessValue: jc.businessValue_specific, // Use aliased assessment-specific value
         assessmentNotes: jc.assessmentNotes,
         applicableRoles: rolesByCapabilityId.get(jc.id) || [],
         recommendedTools: toolsByCapabilityId.get(jc.id) || [],
@@ -1276,16 +1284,29 @@ export class PgStorage implements IStorage {
   async createAITool(tool: InsertAiTool): Promise<AiTool> { 
     await this.ensureInitialized();
     
+    // First check if a tool with the same name already exists
+    const existingTools = await this.db
+      .select()
+      .from(aiToolsTable)
+      .where(eq(aiToolsTable.tool_name, tool.tool_name))
+      .limit(1);
+    
+    if (existingTools.length > 0) {
+      console.log(`Tool with name "${tool.tool_name}" already exists, returning existing tool`);
+      return existingTools[0];
+    }
+    
+    // If no existing tool found, create a new one
     const dbInsertData: InsertAiTool = {
-        ...tool, 
-        tool_name: tool.tool_name, 
+      ...tool, 
+      tool_name: tool.tool_name, 
     };
 
     const result = await this.db.insert(aiToolsTable).values(dbInsertData).returning();
     const newDbTool = result[0];
 
     if (!newDbTool) {
-        throw new Error("Failed to create AI tool, database did not return the created record.");
+      throw new Error("Failed to create AI tool, database did not return the created record.");
     }
 
     return newDbTool;
@@ -1538,10 +1559,28 @@ export class PgStorage implements IStorage {
     const [newMapping] = await this.db
       .insert(capabilityToolMapping)
       .values({ capability_id: capabilityId, tool_id: toolId })
+      .onConflictDoNothing({ target: [capabilityToolMapping.capability_id, capabilityToolMapping.tool_id] })
       .returning();
+    
     if (!newMapping) {
-      throw new Error("Failed to map capability to tool. Insert operation returned no result.");
+      // If no row was returned, it means the mapping already exists
+      // Get the existing mapping
+      const existingMapping = await this.db
+        .select()
+        .from(capabilityToolMapping)
+        .where(and(
+          eq(capabilityToolMapping.capability_id, capabilityId),
+          eq(capabilityToolMapping.tool_id, toolId)
+        ))
+        .limit(1);
+      
+      if (existingMapping.length === 0) {
+        throw new Error("Failed to map capability to tool and couldn't find existing mapping.");
+      }
+      
+      return existingMapping[0];
     }
+    
     return newMapping;
   }
 
@@ -1637,6 +1676,40 @@ export class PgStorage implements IStorage {
     } else {
       // Clear the auth context if no authId is provided
       await this.db.execute(sql`SELECT set_config('app.current_auth_id', '', true)`);
+    }
+  }
+
+  /**
+   * Get a list of capability IDs that have been identified as duplicates
+   * This is used by the batch processor to filter out duplicate capabilities
+   */
+  async getDuplicateCapabilityIds(): Promise<number[]> {
+    try {
+      await this.ensureInitialized();
+      
+      // Create a table to track duplicates if it doesn't exist yet
+      await this.db.execute(sql`
+        CREATE TABLE IF NOT EXISTS duplicate_capabilities (
+          duplicate_id INTEGER PRIMARY KEY REFERENCES ai_capabilities(id),
+          primary_id INTEGER NOT NULL REFERENCES ai_capabilities(id),
+          rationale TEXT,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+      `);
+
+      // Get all duplicate capability IDs
+      const result = await this.db.execute(sql`
+        SELECT duplicate_id FROM duplicate_capabilities
+      `);
+      
+      // Extract the IDs from the result
+      const duplicateIds = result.rows.map((row: { duplicate_id: string | number }) => parseInt(String(row.duplicate_id), 10));
+      
+      console.log(`Found ${duplicateIds.length} duplicate capability IDs`);
+      return duplicateIds;
+    } catch (error) {
+      console.error('Error getting duplicate capability IDs:', error);
+      return [];
     }
   }
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { processBatchResults } from '@/server/batch-processing/batchProcessor';
+import { processBatchResults } from '@/server/batch-processing/JDProcessor';
 
 // POST /api/job-descriptions/batch/process
 export async function POST(request: Request) {

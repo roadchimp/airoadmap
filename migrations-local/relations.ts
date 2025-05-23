@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { organizations, userProfiles, assessments, users, assessmentResponses, assessmentResults, departments, jobRoles, performanceMetrics, metricRules, organizationScoreWeights, reports, aiCapabilities, capabilityJobRoles, capabilityToolMapping, aiTools, jobRolePerformanceMetrics, capabilityRoleImpacts } from "./schema";
+import { organizations, userProfiles, assessments, assessmentAiCapabilities, aiCapabilities, assessmentCapabilityContext, users, assessmentResponses, assessmentResults, departments, jobRoles, performanceMetrics, metricRules, organizationScoreWeights, reports, capabilityJobRoles, capabilityToolMapping, aiTools, jobRolePerformanceMetrics, capabilityRoleImpacts } from "./schema";
 
 export const userProfilesRelations = relations(userProfiles, ({one}) => ({
 	organization: one(organizations, {
@@ -14,7 +14,20 @@ export const organizationsRelations = relations(organizations, ({many}) => ({
 	organizationScoreWeights: many(organizationScoreWeights),
 }));
 
+export const assessmentAiCapabilitiesRelations = relations(assessmentAiCapabilities, ({one}) => ({
+	assessment: one(assessments, {
+		fields: [assessmentAiCapabilities.assessmentId],
+		references: [assessments.id]
+	}),
+	aiCapability: one(aiCapabilities, {
+		fields: [assessmentAiCapabilities.aiCapabilityId],
+		references: [aiCapabilities.id]
+	}),
+}));
+
 export const assessmentsRelations = relations(assessments, ({one, many}) => ({
+	assessmentAiCapabilities: many(assessmentAiCapabilities),
+	assessmentCapabilityContexts: many(assessmentCapabilityContext),
 	organization: one(organizations, {
 		fields: [assessments.organizationId],
 		references: [organizations.id]
@@ -27,6 +40,29 @@ export const assessmentsRelations = relations(assessments, ({one, many}) => ({
 	assessmentResults: many(assessmentResults),
 	reports: many(reports),
 	aiCapabilities: many(aiCapabilities),
+}));
+
+export const aiCapabilitiesRelations = relations(aiCapabilities, ({one, many}) => ({
+	assessmentAiCapabilities: many(assessmentAiCapabilities),
+	assessmentCapabilityContexts: many(assessmentCapabilityContext),
+	assessment: one(assessments, {
+		fields: [aiCapabilities.assessmentId],
+		references: [assessments.id]
+	}),
+	capabilityJobRoles: many(capabilityJobRoles),
+	capabilityToolMappings: many(capabilityToolMapping),
+	capabilityRoleImpacts: many(capabilityRoleImpacts),
+}));
+
+export const assessmentCapabilityContextRelations = relations(assessmentCapabilityContext, ({one}) => ({
+	assessment: one(assessments, {
+		fields: [assessmentCapabilityContext.assessmentId],
+		references: [assessments.id]
+	}),
+	aiCapability: one(aiCapabilities, {
+		fields: [assessmentCapabilityContext.aiCapabilityId],
+		references: [aiCapabilities.id]
+	}),
 }));
 
 export const usersRelations = relations(users, ({many}) => ({
@@ -90,16 +126,6 @@ export const reportsRelations = relations(reports, ({one}) => ({
 		fields: [reports.assessmentId],
 		references: [assessments.id]
 	}),
-}));
-
-export const aiCapabilitiesRelations = relations(aiCapabilities, ({one, many}) => ({
-	assessment: one(assessments, {
-		fields: [aiCapabilities.assessmentId],
-		references: [assessments.id]
-	}),
-	capabilityJobRoles: many(capabilityJobRoles),
-	capabilityToolMappings: many(capabilityToolMapping),
-	capabilityRoleImpacts: many(capabilityRoleImpacts),
 }));
 
 export const capabilityJobRolesRelations = relations(capabilityJobRoles, ({one}) => ({

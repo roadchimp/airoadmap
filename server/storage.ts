@@ -255,6 +255,12 @@ export interface IStorage {
   
   // Authentication context
   setAuthContext(authId?: string): Promise<void>;
+
+  /**
+   * Get a list of capability IDs that have been identified as duplicates
+   * This is used by the batch processor to filter out duplicate capabilities
+   */
+  getDuplicateCapabilityIds(): Promise<number[]>;
 }
 
 // Simplified getStorage function

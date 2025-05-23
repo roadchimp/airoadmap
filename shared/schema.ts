@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, pgEnum, text, serial, integer, jsonb, timestamp, boolean, numeric, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, text, serial, integer, jsonb, timestamp, boolean, numeric, uniqueIndex, primaryKey, AnyPgColumn, foreignKey } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
@@ -109,23 +109,44 @@ export type ImplementationFactors = {
 
 // AI Capability model - UPDATED to be GLOBAL
 export const aiCapabilitiesTable = pgTable("ai_capabilities", {
-  id: serial("id").primaryKey(), // Auto-incrementing primary key for global capabilities
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   name: text("name").notNull(),
   category: text("category").notNull(),
   description: text("description"),
-  // Global/default values (optional, can be null if not applicable globally)
-  defaultImplementationEffort: text("default_implementation_effort"), 
-  defaultBusinessValue: text("default_business_value"),
-  defaultEaseScore: numeric("default_ease_score"), 
-  defaultValueScore: numeric("default_value_score"),
-  defaultFeasibilityScore: numeric("default_feasibility_score"),
-  defaultImpactScore: numeric("default_impact_score"),
-  tags: text("tags").array(), // Global tags for the capability
+  implementation_effort: text("implementation_effort"),
+  business_value: text("business_value"),
+  ease_score: numeric("ease_score"),
+  value_score: numeric("value_score"),
+  primary_category: text("primary_category"),
+  license_type: text("license_type"),
+  website_url: text("website_url"),
+  tags: text("tags").array(),
+  default_implementation_effort: text("default_implementation_effort"),
+  default_business_value: text("default_business_value"),
+  default_ease_score: numeric("default_ease_score"),
+  default_value_score: numeric("default_value_score"),
+  default_feasibility_score: numeric("default_feasibility_score"),
+  default_impact_score: numeric("default_impact_score"),
+  feasibility_score: numeric("feasibility_score"),
+  impact_score: numeric("impact_score"),
+  priority: capabilityPriorityEnum("priority").default('Medium'),
+  rank: integer("rank"),
+  implementation_factors: jsonb("implementation_factors"),
+  quick_implementation: boolean("quick_implementation").default(false),
+  has_dependencies: boolean("has_dependencies").default(false),
+  recommended_tools: jsonb("recommended_tools"),
+  applicable_roles: jsonb("applicable_roles"),
+  role_impact: jsonb("role_impact"),
+  assessment_id: integer("assessment_id").references(() => assessments.id, { onDelete: 'cascade' }),
 
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  // Fields for tracking duplicates - UNCOMMENTED
+  is_duplicate: boolean("is_duplicate").default(false).notNull(),
+  merged_into_id: integer("merged_into_id").references((): AnyPgColumn => aiCapabilitiesTable.id, { onDelete: 'set null' }),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
-  uniqueNameCategory: uniqueIndex("ai_capabilities_name_category_idx").on(table.name, table.category),
+  uniqueNameCategory: uniqueIndex("ai_capabilities_name_category_idx").on(table.name, table.category)
 }));
 
 export type AICapability = InferSelectModel<typeof aiCapabilitiesTable>;
@@ -196,18 +217,41 @@ export const assessmentCapabilityContext = pgTable("assessment_capability_contex
 }));
 
 export const insertAICapabilitySchema = createInsertSchema(aiCapabilitiesTable, {
-  id: z.number().int(), // Assuming ID is provided for global capabilities
   name: z.string().min(3, "Name must be at least 3 characters"),
   category: z.string().min(1, "Category is required"),
-  description: z.string().optional(),
-  defaultEaseScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
-  defaultValueScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
-  defaultFeasibilityScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
-  defaultImpactScore: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
-  tags: z.array(z.string()).optional().default([]),
-  defaultBusinessValue: z.enum(["Low", "Medium", "High", "Very High"]).optional().nullable(), 
-  defaultImplementationEffort: z.enum(["Low", "Medium", "High"]).optional().nullable(),
-  // Ensure all fields from aiCapabilitiesTable are represented here if needed for insertion
+  description: z.string().optional().nullable(),
+  implementation_effort: z.string().optional().nullable(),
+  business_value: z.string().optional().nullable(),
+  ease_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  value_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  primary_category: z.string().optional().nullable(),
+  license_type: z.string().optional().nullable(),
+  website_url: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional().nullable(),
+  default_implementation_effort: z.string().optional().nullable(),
+  default_business_value: z.string().optional().nullable(),
+  default_ease_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  default_value_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  default_feasibility_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  default_impact_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  feasibility_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  impact_score: z.number().or(z.string().transform(val => Number(val))).optional().nullable(),
+  priority: z.enum(capabilityPriorityEnum.enumValues).optional().nullable(),
+  rank: z.number().int().optional().nullable(),
+  implementation_factors: z.any().optional().nullable(),
+  quick_implementation: z.boolean().optional(),
+  has_dependencies: z.boolean().optional(),
+  recommended_tools: z.any().optional().nullable(),
+  applicable_roles: z.any().optional().nullable(),
+  role_impact: z.any().optional().nullable(),
+  assessment_id: z.number().int().optional().nullable(),
+  // Add new fields for insert schema as well
+  is_duplicate: z.boolean().optional(), // default is in DB
+  merged_into_id: z.number().int().optional().nullable(),
+}).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true,
 });
 
 export const insertAssessmentCapabilityContextSchema = createInsertSchema(assessmentCapabilityContext, {
@@ -621,7 +665,7 @@ export const assessmentResponses = pgTable("assessment_responses", {
 
 // New Table: AI Tools
 export const aiTools = pgTable("ai_tools", {
-  tool_id: integer("tool_id").primaryKey(), // Use integer PK based on existing script
+  tool_id: integer("tool_id").primaryKey().generatedByDefaultAsIdentity(), // Already an identity column in DB
   tool_name: text("tool_name").notNull(), //.unique(), // Making unique later if needed after cleanup
   primary_category: text("primary_category"), // Category of the tool itself
   license_type: text("license_type"),
@@ -679,6 +723,7 @@ export const assessmentResults = pgTable("assessment_results", {
 // Dummy table for testing
 export const dummy_table = pgTable('dummy_table', {
   id: serial('id').primaryKey(),
+  notes: text('notes'),
 });
 
 // Add infer types for new tables

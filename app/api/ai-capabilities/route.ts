@@ -24,6 +24,20 @@ export async function POST(request: Request) {
     // Convert any numeric scores to strings to match expected types
     const formattedData = {
       ...validatedData,
+      // Convert regular score properties to strings
+      ease_score: validatedData.ease_score !== undefined && validatedData.ease_score !== null 
+        ? String(validatedData.ease_score) 
+        : validatedData.ease_score,
+      value_score: validatedData.value_score !== undefined && validatedData.value_score !== null 
+        ? String(validatedData.value_score) 
+        : validatedData.value_score,
+      feasibility_score: validatedData.feasibility_score !== undefined && validatedData.feasibility_score !== null 
+        ? String(validatedData.feasibility_score) 
+        : validatedData.feasibility_score,
+      impact_score: validatedData.impact_score !== undefined && validatedData.impact_score !== null 
+        ? String(validatedData.impact_score) 
+        : validatedData.impact_score,
+      // Convert default score properties to strings
       default_ease_score: validatedData.default_ease_score !== undefined && validatedData.default_ease_score !== null 
         ? String(validatedData.default_ease_score) 
         : validatedData.default_ease_score,

@@ -35,5 +35,12 @@
     63
   ],
   "timestamp": "2025-05-23T16-52-19-118Z",
-  "status": "pending"
+  "status": "completed",
+  "processedAt": "2025-05-23T17:16:20.053Z",
+  "summary": {
+    "total": 33,
+    "success": 33,
+    "error": 0,
+    "newCapabilities": 26
+  }
 }

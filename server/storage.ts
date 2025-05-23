@@ -161,12 +161,12 @@ export interface IStorage {
     capabilityCategory: string, 
     description?: string,
     defaults?: {
-      defaultBusinessValue?: string | null;
-      defaultImplementationEffort?: string | null;
-      defaultEaseScore?: string | null;
-      defaultValueScore?: string | null;
-      defaultFeasibilityScore?: string | null;
-      defaultImpactScore?: string | null;
+      default_business_value?: string | null;
+      default_implementation_effort?: string | null;
+      default_ease_score?: string | null;
+      default_value_score?: string | null;
+      default_feasibility_score?: string | null;
+      default_impact_score?: string | null;
       tags?: string[];
     }
   ): Promise<BaseAICapability>;

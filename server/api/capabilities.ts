@@ -17,10 +17,10 @@ router.get('/', async (req, res) => {
       name: cap.name,
       description: cap.description || '',
       category: cap.category || 'Uncategorized',
-      defaultImplementationEffort: cap.default_implementation_effort || 'Medium',
-      defaultBusinessValue: cap.default_business_value || 'Medium',
-      defaultEaseScore: cap.default_ease_score || null,
-      defaultValueScore: cap.default_value_score || null
+      default_implementation_effort: cap.default_implementation_effort || 'Medium',
+      default_business_value: cap.default_business_value || 'Medium',
+      default_ease_score: cap.default_ease_score || null,
+      default_value_score: cap.default_value_score || null
     }));
 
     res.json(transformedCapabilities);
@@ -36,40 +36,38 @@ router.post('/', async (req, res) => {
     // Validate request body against schema
     const validatedData = insertAICapabilitySchema.parse(req.body);
 
-    // Create the capability using camelCase properties matching the schema
+    // Create the capability using underscore_case properties matching the schema
     const capability = await storage.createAICapability({
-      // Add missing validated fields from schema if needed (like id, tags etc if applicable for creation)
-      id: validatedData.id, // Assuming id might be passed for specific creation scenarios
       name: validatedData.name,
       category: validatedData.category,
       description: validatedData.description,
-      defaultImplementationEffort: validatedData.defaultImplementationEffort,
-      defaultBusinessValue: validatedData.defaultBusinessValue,
-      defaultEaseScore: validatedData.defaultEaseScore !== undefined && validatedData.defaultEaseScore !== null 
-        ? String(validatedData.defaultEaseScore) 
+      default_implementation_effort: validatedData.default_implementation_effort,
+      default_business_value: validatedData.default_business_value,
+      default_ease_score: validatedData.default_ease_score !== undefined && validatedData.default_ease_score !== null 
+        ? String(validatedData.default_ease_score) 
         : null,
-      defaultValueScore: validatedData.defaultValueScore !== undefined && validatedData.defaultValueScore !== null 
-        ? String(validatedData.defaultValueScore) 
+      default_value_score: validatedData.default_value_score !== undefined && validatedData.default_value_score !== null 
+        ? String(validatedData.default_value_score) 
         : null,
-      defaultFeasibilityScore: validatedData.defaultFeasibilityScore !== undefined && validatedData.defaultFeasibilityScore !== null 
-        ? String(validatedData.defaultFeasibilityScore) 
+      default_feasibility_score: validatedData.default_feasibility_score !== undefined && validatedData.default_feasibility_score !== null 
+        ? String(validatedData.default_feasibility_score) 
         : null,
-      defaultImpactScore: validatedData.defaultImpactScore !== undefined && validatedData.defaultImpactScore !== null 
-        ? String(validatedData.defaultImpactScore) 
+      default_impact_score: validatedData.default_impact_score !== undefined && validatedData.default_impact_score !== null 
+        ? String(validatedData.default_impact_score) 
         : null,
       tags: validatedData.tags || [],
     });
 
-    // Transform the response to match frontend schema, using camelCase from capability object
+    // Transform the response to match frontend schema, using underscore_case from capability object
     const transformedCapability = {
       id: capability.id,
       name: capability.name,
       description: capability.description || '',
       category: capability.category || 'Uncategorized',
-      defaultImplementationEffort: capability.defaultImplementationEffort || 'Medium',
-      defaultBusinessValue: capability.defaultBusinessValue || 'Medium',
-      defaultEaseScore: capability.defaultEaseScore || null,
-      defaultValueScore: capability.defaultValueScore || null
+      default_implementation_effort: capability.default_implementation_effort || 'Medium',
+      default_business_value: capability.default_business_value || 'Medium',
+      default_ease_score: capability.default_ease_score || null,
+      default_value_score: capability.default_value_score || null
     };
 
     res.status(201).json(transformedCapability);

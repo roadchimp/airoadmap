@@ -33,8 +33,8 @@ type AICapabilityFormValues = {
   name: string;
   category: string;
   description: string;
-  defaultImplementationEffort: "Low" | "Medium" | "High";
-  defaultBusinessValue: "Low" | "Medium" | "High" | "Very High";
+  default_implementation_effort: "Low" | "Medium" | "High";
+  default_business_value: "Low" | "Medium" | "High" | "Very High";
 };
 
 /**
@@ -130,8 +130,8 @@ const Library: React.FC = () => {
       name: "",
       category: "",
       description: "",
-      defaultImplementationEffort: "Medium",
-      defaultBusinessValue: "Medium"
+      default_implementation_effort: "Medium",
+      default_business_value: "Medium"
     }
   });
   
@@ -168,8 +168,8 @@ const Library: React.FC = () => {
         name: data.name,
         category: data.category,
         description: data.description,
-        default_implementation_effort: data.defaultImplementationEffort,
-        default_business_value: data.defaultBusinessValue
+        default_implementation_effort: data.default_implementation_effort,
+        default_business_value: data.default_business_value
       };
       const response = await apiRequest("POST", "/api/capabilities", apiData);
       if (!response.ok) throw new Error('Failed to create AI capability');
@@ -559,7 +559,7 @@ const Library: React.FC = () => {
               
               <FormField
                 control={aiCapabilityForm.control}
-                name="defaultImplementationEffort"
+                name="default_implementation_effort"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Implementation Effort</FormLabel>
@@ -585,7 +585,7 @@ const Library: React.FC = () => {
               
               <FormField
                 control={aiCapabilityForm.control}
-                name="defaultBusinessValue"
+                name="default_business_value"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Business Value</FormLabel>

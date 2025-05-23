@@ -64,12 +64,12 @@ interface AIRecommendationResponse {
   capabilityDescription?: string;
   tags?: string[];
   // Default/Global Scores
-  defaultBusinessValue?: string | null;
-  defaultImplementationEffort?: string | null;
-  defaultEaseScore?: string | null;
-  defaultValueScore?: string | null;
-  defaultFeasibilityScore?: string | null;
-  defaultImpactScore?: string | null;
+  default_business_value?: string | null;
+  default_implementation_effort?: string | null;
+  default_ease_score?: string | null;
+  default_value_score?: string | null;
+  default_feasibility_score?: string | null;
+  default_impact_score?: string | null;
   // Assessment-Specific Scores & Details
   valueScore?: string | null; // Represent numeric as string for schema
   feasibilityScore?: string | null;
@@ -162,12 +162,12 @@ export async function generateAICapabilityRecommendations(
   capabilityName: string; 
   capabilityCategory: string; 
   capabilityDescription?: string; 
-  defaultBusinessValue?: string | null;
-  defaultImplementationEffort?: string | null;
-  defaultEaseScore?: string | null;
-  defaultValueScore?: string | null;
-  defaultFeasibilityScore?: string | null;
-  defaultImpactScore?: string | null;
+  default_business_value?: string | null;
+  default_implementation_effort?: string | null;
+  default_ease_score?: string | null;
+  default_value_score?: string | null;
+  default_feasibility_score?: string | null;
+  default_impact_score?: string | null;
   tags?: string[] | null;
 }>>> {
   try {
@@ -193,12 +193,12 @@ For each AI capability, provide the following information in a JSON array format
 3.  "capabilityDescription": (Optional) A brief general description of what this AI capability does.
 4.  "tags": (Optional) An array of 2-3 relevant global tags for this capability (e.g., ["data_processing", "efficiency", "nlp"]).
 
-5.  "defaultBusinessValue": (Optional) The general, typical business value this capability offers (e.g., "Low", "Medium", "High", "Very High").
-6.  "defaultImplementationEffort": (Optional) The general, typical effort to implement this capability (e.g., "Low", "Medium", "High").
-7.  "defaultEaseScore": (Optional) A general score (0-100) indicating how easy this capability is to implement typically.
-8.  "defaultValueScore": (Optional) A general score (0-100) indicating the typical value this capability provides.
-9.  "defaultFeasibilityScore": (Optional) A general score (0-100) indicating the typical technical feasibility.
-10. "defaultImpactScore": (Optional) A general score (0-100) indicating the typical impact this capability can have.
+5.  "default_business_value": (Optional) The general, typical business value this capability offers (e.g., "Low", "Medium", "High", "Very High").
+6.  "default_implementation_effort": (Optional) The general, typical effort to implement this capability (e.g., "Low", "Medium", "High").
+7.  "default_ease_score": (Optional) A general score (0-100) indicating how easy this capability is to implement typically.
+8.  "default_value_score": (Optional) A general score (0-100) indicating the typical value this capability provides.
+9.  "default_feasibility_score": (Optional) A general score (0-100) indicating the typical technical feasibility.
+10. "default_impact_score": (Optional) A general score (0-100) indicating the typical impact this capability can have.
 
 Now, for the *specific context of the Role (${role.title}) and Department (${department.name})*:
 11. "valueScore": A score (0-100) for the potential value this capability offers *to this specific role/department*.
@@ -217,12 +217,12 @@ Return ONLY a valid JSON array of these objects. Example of one object:
   "capabilityCategory": "Productivity Automation",
   "capabilityDescription": "Automatically categorizes and prioritizes incoming emails for faster response.",
   "tags": ["email", "automation", "nlp"],
-  "defaultBusinessValue": "Medium",
-  "defaultImplementationEffort": "Medium",
-  "defaultEaseScore": "70",
-  "defaultValueScore": "75",
-  "defaultFeasibilityScore": "80",
-  "defaultImpactScore": "60",
+  "default_business_value": "Medium",
+  "default_implementation_effort": "Medium",
+  "default_ease_score": "70",
+  "default_value_score": "75",
+  "default_feasibility_score": "80",
+  "default_impact_score": "60",
   "valueScore": "85",
   "feasibilityScore": "75",
   "impactScore": "80",
@@ -273,12 +273,12 @@ Return ONLY a valid JSON array of these objects. Example of one object:
         capabilityCategory: rec.capabilityCategory,
         capabilityDescription: rec.capabilityDescription,
         tags: rec.tags,
-        defaultBusinessValue: rec.defaultBusinessValue,
-        defaultImplementationEffort: rec.defaultImplementationEffort,
-        defaultEaseScore: rec.defaultEaseScore ? String(rec.defaultEaseScore) : null,
-        defaultValueScore: rec.defaultValueScore ? String(rec.defaultValueScore) : null,
-        defaultFeasibilityScore: rec.defaultFeasibilityScore ? String(rec.defaultFeasibilityScore) : null,
-        defaultImpactScore: rec.defaultImpactScore ? String(rec.defaultImpactScore) : null,
+        default_business_value: rec.default_business_value,
+        default_implementation_effort: rec.default_implementation_effort,
+        default_ease_score: rec.default_ease_score ? String(rec.default_ease_score) : null,
+        default_value_score: rec.default_value_score ? String(rec.default_value_score) : null,
+        default_feasibility_score: rec.default_feasibility_score ? String(rec.default_feasibility_score) : null,
+        default_impact_score: rec.default_impact_score ? String(rec.default_impact_score) : null,
         // AssessmentAICapability fields
         valueScore: rec.valueScore ? String(rec.valueScore) : null,
         feasibilityScore: rec.feasibilityScore ? String(rec.feasibilityScore) : null,
@@ -384,12 +384,12 @@ function fallbackAICapabilities(role: JobRole, department: Department): Array<Pa
   capabilityName: string; 
   capabilityCategory: string; 
   capabilityDescription?: string; 
-  defaultBusinessValue?: string | null;
-  defaultImplementationEffort?: string | null;
-  defaultEaseScore?: string | null;
-  defaultValueScore?: string | null;
-  defaultFeasibilityScore?: string | null;
-  defaultImpactScore?: string | null;
+  default_business_value?: string | null;
+  default_implementation_effort?: string | null;
+  default_ease_score?: string | null;
+  default_value_score?: string | null;
+  default_feasibility_score?: string | null;
+  default_impact_score?: string | null;
   tags?: string[] | null;
 }>> {
   console.warn(`Using fallback AI capabilities for role: ${role.title} in ${department.name}`);
@@ -399,12 +399,12 @@ function fallbackAICapabilities(role: JobRole, department: Department): Array<Pa
       capabilityCategory: "Automation",
       capabilityDescription: `Automates repetitive tasks specific to the ${role.title} role. (Fallback Data)`,
       tags: ["automation", role.title.toLowerCase().replace(/\s+/g, '_')],
-      defaultBusinessValue: "Medium",
-      defaultImplementationEffort: "Medium",
-      defaultEaseScore: "60",
-      defaultValueScore: "65",
-      defaultFeasibilityScore: "70",
-      defaultImpactScore: "55",
+      default_business_value: "Medium",
+      default_implementation_effort: "Medium",
+      default_ease_score: "60",
+      default_value_score: "65",
+      default_feasibility_score: "70",
+      default_impact_score: "55",
       valueScore: "70", 
       feasibilityScore: "65",
       impactScore: "60",
@@ -420,12 +420,12 @@ function fallbackAICapabilities(role: JobRole, department: Department): Array<Pa
       capabilityCategory: "Analytics & Decision Support",
       capabilityDescription: `Provides data-driven insights to aid ${role.title} in making informed decisions. (Fallback Data)`,
       tags: ["analytics", "decision_support", department.name.toLowerCase().replace(/\s+/g, '_')],
-      defaultBusinessValue: "High",
-      defaultImplementationEffort: "High",
-      defaultEaseScore: "50",
-      defaultValueScore: "75",
-      defaultFeasibilityScore: "60",
-      defaultImpactScore: "70",
+      default_business_value: "High",
+      default_implementation_effort: "High",
+      default_ease_score: "50",
+      default_value_score: "75",
+      default_feasibility_score: "60",
+      default_impact_score: "70",
       valueScore: "80",
       feasibilityScore: "55",
       impactScore: "75",
@@ -441,10 +441,10 @@ function fallbackAICapabilities(role: JobRole, department: Department): Array<Pa
   return capabilities.map(cap => ({
     ...cap, // Spread all defined properties
     // Explicitly ensure all numeric scores that should be strings are strings
-    defaultEaseScore: cap.defaultEaseScore ? String(cap.defaultEaseScore) : null,
-    defaultValueScore: cap.defaultValueScore ? String(cap.defaultValueScore) : null,
-    defaultFeasibilityScore: cap.defaultFeasibilityScore ? String(cap.defaultFeasibilityScore) : null,
-    defaultImpactScore: cap.defaultImpactScore ? String(cap.defaultImpactScore) : null,
+    default_ease_score: cap.default_ease_score ? String(cap.default_ease_score) : null,
+    default_value_score: cap.default_value_score ? String(cap.default_value_score) : null,
+    default_feasibility_score: cap.default_feasibility_score ? String(cap.default_feasibility_score) : null,
+    default_impact_score: cap.default_impact_score ? String(cap.default_impact_score) : null,
     valueScore: cap.valueScore ? String(cap.valueScore) : null,
     feasibilityScore: cap.feasibilityScore ? String(cap.feasibilityScore) : null,
     impactScore: cap.impactScore ? String(cap.impactScore) : null,

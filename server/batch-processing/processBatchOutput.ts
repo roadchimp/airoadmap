@@ -108,12 +108,12 @@ async function main() {
                   'Suggested', // Default category for suggested capabilities
                   description,
                   {
-                    defaultBusinessValue: 'Medium',
-                    defaultImplementationEffort: 'Medium',
-                    defaultEaseScore: '3',
-                    defaultValueScore: '3',
-                    defaultFeasibilityScore: '3',
-                    defaultImpactScore: '3',
+                    default_business_value: 'Medium',
+                    default_implementation_effort: 'Medium',
+                    default_ease_score: '3',
+                    default_value_score: '3',
+                    default_feasibility_score: '3',
+                    default_impact_score: '3',
                     tags: []
                   }
                 );

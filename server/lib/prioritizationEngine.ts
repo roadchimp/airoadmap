@@ -200,12 +200,12 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
     capabilityName: string; 
     capabilityCategory: string; 
     capabilityDescription?: string; 
-    defaultBusinessValue?: string | null;
-    defaultImplementationEffort?: string | null;
-    defaultEaseScore?: string | null;
-    defaultValueScore?: string | null;
-    defaultFeasibilityScore?: string | null;
-    defaultImpactScore?: string | null;
+    default_business_value?: string | null;
+    default_implementation_effort?: string | null;
+    default_ease_score?: string | null;
+    default_value_score?: string | null;
+    default_feasibility_score?: string | null;
+    default_impact_score?: string | null;
     tags?: string[] | null;
   }>>>;
 
@@ -230,12 +230,12 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
             rec.capabilityDescription, // Optional
             {
               // Optional defaults for the global capability
-              defaultBusinessValue: rec.defaultBusinessValue,
-              defaultImplementationEffort: rec.defaultImplementationEffort,
-              defaultEaseScore: rec.defaultEaseScore,
-              defaultValueScore: rec.defaultValueScore,
-              defaultFeasibilityScore: rec.defaultFeasibilityScore,
-              defaultImpactScore: rec.defaultImpactScore,
+              default_business_value: rec.default_business_value,
+              default_implementation_effort: rec.default_implementation_effort,
+              default_ease_score: rec.default_ease_score,
+              default_value_score: rec.default_value_score,
+              default_feasibility_score: rec.default_feasibility_score,
+              default_impact_score: rec.default_impact_score,
               tags: rec.tags || []
             }
           );

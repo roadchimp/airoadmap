@@ -13,7 +13,8 @@
     "node_modules",
     "build",
     "dist",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "temp/**/*"
   ],
   "compilerOptions": {
     "incremental": true,

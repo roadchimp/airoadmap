@@ -36,6 +36,13 @@
       "when": 1747220527425,
       "tag": "0004_chief_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1748021981616,
+      "tag": "0005_strong_aaron_stack",
+      "breakpoints": true
     }
   ]
 }

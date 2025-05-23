@@ -1010,6 +1010,218 @@ async function updateToolMappings(fromCapabilityId: number, toCapabilityId: numb
 }
 
 /**
+ * Exports AI capabilities for job role matching batch processing
+ */
+export async function exportCapabilitiesForJobRoleMatching(forceIncludeAll: boolean = false): Promise<string> {
+  // Get all capabilities from the database
+  const capabilities = await storage.listAICapabilities();
+  
+  if (capabilities.length === 0) {
+    throw new Error('No AI capabilities found in the database');
+  }
+
+  // Get all job roles for reference
+  const jobRoles = await storage.listJobRoles();
+  
+  if (jobRoles.length === 0) {
+    throw new Error('No job roles found in the database');
+  }
+
+  console.log(`Found ${capabilities.length} AI capabilities and ${jobRoles.length} job roles for matching`);
+  
+  // Create a timestamp-based filename
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `capability_job_roles_${timestamp}.jsonl`;
+  const filepath = path.join(REQUESTS_DIR, filename);
+  
+  // Format capabilities for batch processing
+  const jsonlContent = capabilities
+    .map(capability => formatCapabilityForJobRoleMatching(capability, jobRoles))
+    .join('\n');
+  
+  // Write to file
+  fs.writeFileSync(filepath, jsonlContent, 'utf8');
+  
+  // Create a manifest file with capability IDs for later processing
+  const manifestPath = filepath.replace('.jsonl', '_manifest.json');
+  fs.writeFileSync(
+    manifestPath,
+    JSON.stringify({
+      capabilityIds: capabilities.map(cap => cap.id),
+      timestamp,
+      status: 'pending',
+      type: 'job_role_matching'
+    }, null, 2)
+  );
+  
+  return filepath;
+}
+
+/**
+ * Formats a capability for job role matching batch processing
+ */
+function formatCapabilityForJobRoleMatching(capability: AICapability, jobRoles: any[]): string {
+  const prompt = `Analyze the following AI capability and determine which job roles would benefit from or use this capability. 
+
+AI Capability:
+- Name: ${capability.name}
+- Category: ${capability.category}
+- Description: ${capability.description || 'No description provided'}
+
+Available Job Roles:
+${jobRoles.map(role => `ID: ${role.id} - Title: ${role.title} - Department: ${role.departmentName || 'Unknown'}`).join('\n')}
+
+Your task:
+1. Identify which job roles would directly benefit from or use this AI capability
+2. For each matching job role, provide an impact score from 1-100 (how much this capability would benefit that role)
+3. Only include roles where the impact score would be 30 or higher
+
+Return your analysis in this JSON format:
+{
+  "capability_id": ${capability.id},
+  "job_role_matches": [
+    {
+      "job_role_id": 123,
+      "impact_score": 85,
+      "rationale": "Brief explanation of why this role would benefit from this capability"
+    }
+  ]
+}
+
+If no job roles have significant impact (30+), return an empty array for job_role_matches.`;
+
+  // Format for OpenAI batch processing
+  return JSON.stringify({
+    custom_id: `cap_role_${capability.id.toString().padStart(5, '0')}`,
+    method: 'POST',
+    url: '/v1/chat/completions',
+    body: {
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert at analyzing AI capabilities and matching them to job roles. You provide accurate assessments of how different roles would benefit from specific AI capabilities. You only respond with valid JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      model: 'gpt-4-turbo',
+      response_format: { type: 'json_object' },
+      temperature: 0.2
+    }
+  });
+}
+
+/**
+ * Process the results from an OpenAI batch job for capability-job role matching
+ */
+export async function processCapabilityJobRoleResults(responsePath: string): Promise<void> {
+  // Verify the response file exists
+  if (!fs.existsSync(responsePath)) {
+    throw new Error(`Response file not found: ${responsePath}`);
+  }
+  
+  // Find corresponding manifest file
+  const manifestPath = path.join(
+    REQUESTS_DIR,
+    path.basename(responsePath).replace('.jsonl', '_manifest.json')
+  );
+  
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`Manifest file not found: ${manifestPath}`);
+  }
+  
+  // Read manifest and responses
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const responses = fs.readFileSync(responsePath, 'utf8')
+    .split('\n')
+    .filter(line => line.trim())
+    .map(line => JSON.parse(line));
+  
+  // Process each response
+  let successCount = 0;
+  let errorCount = 0;
+  let mappingsCount = 0;
+  
+  // Create a map of custom_id to capability ID for easy lookup
+  const customIdToCapabilityId = new Map();
+  manifest.capabilityIds.forEach((capabilityId: number) => {
+    const customId = `cap_role_${capabilityId.toString().padStart(5, '0')}`;
+    customIdToCapabilityId.set(customId, capabilityId);
+  });
+  
+  for (const response of responses) {
+    try {
+      // Check if the response was successful
+      if (response.error === null && response.response?.status_code === 200) {
+        // Extract the custom_id to determine which capability this response belongs to
+        const { custom_id } = response;
+        const capabilityId = customIdToCapabilityId.get(custom_id);
+        
+        if (!capabilityId) {
+          console.error(`Could not determine capability ID for custom_id: ${custom_id}`);
+          errorCount++;
+          continue;
+        }
+        
+        // Parse the response content
+        const content = JSON.parse(response.response.body.choices[0].message.content);
+        
+        // Verify capability ID in the response matches expected ID
+        if (content.capability_id !== capabilityId) {
+          console.warn(`Capability ID mismatch: expected ${capabilityId}, got ${content.capability_id}`);
+        }
+        
+        // Process job role matches for this capability
+        if (content.job_role_matches && Array.isArray(content.job_role_matches)) {
+          for (const match of content.job_role_matches) {
+            try {
+              // Create capability-job role mapping
+              await storage.mapCapabilityToJobRole(capabilityId, match.job_role_id);
+              
+              // Store the impact score in capability_role_impacts table
+              // Note: You'll need to implement this method in storage
+              // await storage.setCapabilityRoleImpact(capabilityId, match.job_role_id, match.impact_score);
+              
+              console.log(`Mapped capability ${capabilityId} to job role ${match.job_role_id} with impact score ${match.impact_score}`);
+              mappingsCount++;
+            } catch (mappingError) {
+              console.error(`Error mapping capability ${capabilityId} to job role ${match.job_role_id}:`, mappingError);
+            }
+          }
+        }
+        
+        successCount++;
+      } else {
+        console.error(`Error in response: ${response.error || 'Unknown error'}`);
+        errorCount++;
+      }
+    } catch (error) {
+      console.error(`Error processing response:`, error);
+      errorCount++;
+    }
+  }
+  
+  // Update manifest status
+  manifest.status = 'completed';
+  manifest.processedAt = new Date().toISOString();
+  manifest.summary = {
+    total: responses.length,
+    success: successCount,
+    error: errorCount,
+    mappings: mappingsCount
+  };
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  
+  // Move response file to responses directory
+  const newResponsePath = path.join(RESPONSES_DIR, path.basename(responsePath));
+  fs.renameSync(responsePath, newResponsePath);
+  
+  console.log(`Capability-job role matching complete. Successfully processed: ${successCount}, Errors: ${errorCount}, Mappings: ${mappingsCount}`);
+}
+
+/**
  * Command-line interface
  */
 async function main() {
@@ -1023,6 +1235,8 @@ async function main() {
     console.log('  npx tsx server/batch-processing/batchProcessor.ts process-jobs <response_file_path>');
     console.log('  npx tsx server/batch-processing/batchProcessor.ts export-capabilities');
     console.log('  npx tsx server/batch-processing/batchProcessor.ts process-tools <response_file_path>');
+    console.log('  npx tsx server/batch-processing/batchProcessor.ts export-job-roles');
+    console.log('  npx tsx server/batch-processing/batchProcessor.ts process-job-roles <response_file_path>');
     console.log('  npx tsx server/batch-processing/batchProcessor.ts update-cache');
     console.log('  npx tsx server/batch-processing/batchProcessor.ts list');
     console.log('  npx tsx server/batch-processing/batchProcessor.ts reset-tracking');
@@ -1157,6 +1371,29 @@ async function main() {
         console.log('Processed rationalization results successfully');
         break;
         
+      case 'export-job-roles':
+        const forceIncludeAllJobRoles = args.includes('--force');
+        const jobRolesFilePath = await exportCapabilitiesForJobRoleMatching(forceIncludeAllJobRoles);
+        console.log('Exported job roles for capabilities to:', jobRolesFilePath);
+        console.log('Manifest file created at:', jobRolesFilePath.replace('.jsonl', '_manifest.json'));
+        console.log('\nNext steps:');
+        console.log('1. Submit this JSONL file to OpenAI for batch processing');
+        console.log('2. Save the response file');
+        console.log('3. Run: npx tsx server/batch-processing/batchProcessor.ts process-job-roles <response_file_path>');
+        break;
+        
+      case 'process-job-roles':
+        if (args.length < 2) {
+          console.error('Error: Missing response file path');
+          console.log('Usage: npx tsx server/batch-processing/batchProcessor.ts process-job-roles <response_file_path>');
+          process.exit(1);
+        }
+        
+        const jobRolesResponsePath = args[1];
+        await processCapabilityJobRoleResults(jobRolesResponsePath);
+        console.log('Processed job role matches successfully');
+        break;
+        
       default:
         console.error(`Unknown command: ${command}`);
         console.log('Usage:');
@@ -1165,6 +1402,8 @@ async function main() {
         console.log('  npx tsx server/batch-processing/batchProcessor.ts process-jobs <response_file_path>');
         console.log('  npx tsx server/batch-processing/batchProcessor.ts export-capabilities');
         console.log('  npx tsx server/batch-processing/batchProcessor.ts process-tools <response_file_path>');
+        console.log('  npx tsx server/batch-processing/batchProcessor.ts export-job-roles');
+        console.log('  npx tsx server/batch-processing/batchProcessor.ts process-job-roles <response_file_path>');
         console.log('  npx tsx server/batch-processing/batchProcessor.ts update-cache');
         console.log('  npx tsx server/batch-processing/batchProcessor.ts list');
         console.log('  npx tsx server/batch-processing/batchProcessor.ts reset-tracking');
@@ -1179,8 +1418,7 @@ async function main() {
 }
 
 // Run the CLI if this file is executed directly
-if (import.meta.url === import.meta.resolve('./batchProcessor.ts') || 
-    import.meta.url.endsWith('batchProcessor.ts')) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(error => {
     console.error('Fatal error:', error);
     process.exit(1);

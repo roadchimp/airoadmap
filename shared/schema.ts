@@ -534,6 +534,9 @@ export type PrioritizedItem = {
   valueLevel: ValueLevel;
   effortLevel: EffortLevel;
   aiAdoptionScore?: number; // Optional AI Adoption Score
+  role?: string;
+  painPoint?: string;
+  goal?: string;
   metrics?: Array<{  // Optional metrics for detailed view
     name: string;
     value: string;
@@ -550,6 +553,9 @@ export type HeatmapData = {
           id: number;
           title: string;
           department: string;
+          role?: string;
+          painPoint?: string;
+          goal?: string;
         }>;
       };
     };
@@ -562,6 +568,13 @@ export type AISuggestion = {
   capabilities: Array<{
     name: string;
     description: string;
+    recommendedTools?: Array<{
+      id: number;
+      name: string;
+      description?: string;
+      websiteUrl?: string;
+      category?: string;
+    }>;
   }>;
 };
 

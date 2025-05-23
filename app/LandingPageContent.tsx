@@ -67,12 +67,7 @@ export default function LandingPageContent() {
               <Link href="/roadmaps" className="text-white hover:text-gray-300">Roadmaps</Link>
               <div className="relative group">
                 <button className="text-white hover:text-gray-300">Resources</button>
-              </div>
-              <Link href="/signup">
-                <Button className="bg-red-600 text-white border-transparent hover:bg-red-700">
-                  Get Started
-                </Button>
-              </Link>             
+              </div>          
               <Link href="/login">
                 <Button className="bg-red-600 text-white border-transparent hover:bg-red-700">
                   Sign In

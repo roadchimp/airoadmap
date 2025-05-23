@@ -353,7 +353,8 @@ export async function calculateAiAdoptionScore(
   
   // Scale to a 0-100 range and apply maturity adjustment
   const rawScore = numerator / denominatorIB;
-  const scaledScore = Math.min(100, Math.max(0, rawScore * 20)); // Scale to 0-100
+  // Fix scaling: weights sum to ~1.0, so rawScore is already 0-1. Just multiply by 100 for percentage
+  const scaledScore = Math.min(100, Math.max(0, rawScore * 100));
   const finalScore = scaledScore * industryMaturityFactor;
   
   // 5. Calculate ROI details (if inputs support it)

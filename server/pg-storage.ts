@@ -966,10 +966,10 @@ export class PgStorage implements IStorage {
     // Ensure stepData is treated as WizardStepData type
     const stepData = assessment.stepData as WizardStepData | null;
 
-    // 2. Extract selected JobRole IDs from stepData (assuming they are stored in stepData.roles as an array of objects with id)
+    // 2. Extract selected JobRole IDs from stepData (assuming they are stored in stepData.roles.selectedRoles as an array of objects with id)
     // Safely access roles and map to IDs, defaulting to an empty array if roles is null, undefined, or not an array
-    const selectedJobRoleIds: number[] = Array.isArray(stepData?.roles) 
-      ? stepData.roles.map((role: { id?: number }) => role.id).filter((id): id is number => id !== undefined) 
+    const selectedJobRoleIds: number[] = Array.isArray(stepData?.roles?.selectedRoles) 
+      ? stepData.roles.selectedRoles.map((role: { id?: number }) => role.id).filter((id): id is number => id !== undefined) 
       : [];
 
     let selectedRoles: BaseJobRole[] = [];
@@ -1607,6 +1607,48 @@ export class PgStorage implements IStorage {
     }
     const toolIds = mappings.map((m: { toolId: number }) => m.toolId);
     return this.db.select().from(aiToolsTable).where(inArray(aiToolsTable.tool_id, toolIds));
+  }
+
+  // New methods for capability-job role mapping
+  async mapCapabilityToJobRole(capabilityId: number, jobRoleId: number): Promise<void> {
+    await this.ensureInitialized();
+    
+    // Insert or update capability-job role mapping
+    await this.db
+      .insert(capabilityJobRoles)
+      .values({ 
+        capabilityId: capabilityId, 
+        jobRoleId: jobRoleId 
+      })
+      .onConflictDoNothing({ target: [capabilityJobRoles.capabilityId, capabilityJobRoles.jobRoleId] });
+  }
+
+  async unmapCapabilityFromJobRole(capabilityId: number, jobRoleId: number): Promise<void> {
+    await this.ensureInitialized();
+    const result = await this.db
+      .delete(capabilityJobRoles)
+      .where(and(
+        eq(capabilityJobRoles.capabilityId, capabilityId), 
+        eq(capabilityJobRoles.jobRoleId, jobRoleId)
+      ))
+      .returning(); 
+    if (result.length === 0) {
+      console.warn(`Attempted to unmap capability ${capabilityId} from job role ${jobRoleId}, but no such mapping was found.`);
+    }
+  }
+
+  async getJobRolesForCapability(capabilityId: number): Promise<BaseJobRole[]> {
+    await this.ensureInitialized();
+    const mappings = await this.db
+      .select({ jobRoleId: capabilityJobRoles.jobRoleId })
+      .from(capabilityJobRoles)
+      .where(eq(capabilityJobRoles.capabilityId, capabilityId));
+
+    if (mappings.length === 0) {
+      return [];
+    }
+    const jobRoleIds = mappings.map((m: { jobRoleId: number }) => m.jobRoleId);
+    return this.db.select().from(jobRoles).where(inArray(jobRoles.id, jobRoleIds));
   }
 
   async getCapabilitiesForTool(toolId: number): Promise<Pick<BaseAICapability, 'id' | 'name' | 'category' | 'description'>[]> {

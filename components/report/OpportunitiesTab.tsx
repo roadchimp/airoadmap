@@ -30,6 +30,9 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [selectedValueRanges, setSelectedValueRanges] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedPainPoints, setSelectedPainPoints] = useState<string[]>([]);
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   
   // State for detailed view
   const [selectedItem, setSelectedItem] = useState<PrioritizedItem | null>(null);
@@ -50,6 +53,25 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
     const uniquePriorities = new Set<string>();
     prioritizedItems.forEach(item => uniquePriorities.add(item.priority));
     return Array.from(uniquePriorities);
+  }, [prioritizedItems]);
+
+  // Extract roles, pain points, and goals
+  const { roles, painPoints, goals } = useMemo(() => {
+    const rolesSet = new Set<string>();
+    const painPointsSet = new Set<string>();
+    const goalsSet = new Set<string>();
+    
+    prioritizedItems.forEach(item => {
+      if (item.role) rolesSet.add(item.role);
+      if (item.painPoint) painPointsSet.add(item.painPoint);
+      if (item.goal) goalsSet.add(item.goal);
+    });
+    
+    return {
+      roles: Array.from(rolesSet).sort(),
+      painPoints: Array.from(painPointsSet).sort(),
+      goals: Array.from(goalsSet).sort()
+    };
   }, [prioritizedItems]);
 
   // Define value score ranges
@@ -77,9 +99,24 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
         });
       }
       
+      // Apply role filter
+      if (selectedRoles.length > 0 && (!item.role || !selectedRoles.includes(item.role))) {
+        return false;
+      }
+      
+      // Apply pain point filter
+      if (selectedPainPoints.length > 0 && (!item.painPoint || !selectedPainPoints.includes(item.painPoint))) {
+        return false;
+      }
+      
+      // Apply goal filter
+      if (selectedGoals.length > 0 && (!item.goal || !selectedGoals.includes(item.goal))) {
+        return false;
+      }
+      
       return true;
     });
-  }, [prioritizedItems, selectedDepartments, selectedPriorities, selectedValueRanges]);
+  }, [prioritizedItems, selectedDepartments, selectedPriorities, selectedValueRanges, selectedRoles, selectedPainPoints, selectedGoals]);
 
   // Define priority badge styling
   const priorityBadges = {
@@ -278,7 +315,10 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                All Priorities <ChevronDown className="ml-2 h-4 w-4" />
+                {selectedPriorities.length === 0 
+                  ? "All Priorities" 
+                  : `Priorities (${selectedPriorities.length})`}
+                <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -304,7 +344,10 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                All Values <ChevronDown className="ml-2 h-4 w-4" />
+                {selectedValueRanges.length === 0 
+                  ? "All Values" 
+                  : `Values (${selectedValueRanges.length})`}
+                <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -325,11 +368,104 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          {/* Role Filter */}
+          {roles.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {selectedRoles.length === 0 
+                    ? "All Roles" 
+                    : `Roles (${selectedRoles.length})`}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {roles.map(role => (
+                  <DropdownMenuCheckboxItem
+                    key={role}
+                    checked={selectedRoles.includes(role)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedRoles(prev => [...prev, role]);
+                      } else {
+                        setSelectedRoles(prev => prev.filter(r => r !== role));
+                      }
+                    }}
+                  >
+                    {role}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Pain Point Filter */}
+          {painPoints.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {selectedPainPoints.length === 0 
+                    ? "All Pain Points" 
+                    : `Pain Points (${selectedPainPoints.length})`}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {painPoints.map(painPoint => (
+                  <DropdownMenuCheckboxItem
+                    key={painPoint}
+                    checked={selectedPainPoints.includes(painPoint)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedPainPoints(prev => [...prev, painPoint]);
+                      } else {
+                        setSelectedPainPoints(prev => prev.filter(p => p !== painPoint));
+                      }
+                    }}
+                  >
+                    {painPoint}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Goals Filter */}
+          {goals.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  {selectedGoals.length === 0 
+                    ? "All Goals" 
+                    : `Goals (${selectedGoals.length})`}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {goals.map(goal => (
+                  <DropdownMenuCheckboxItem
+                    key={goal}
+                    checked={selectedGoals.includes(goal)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedGoals(prev => [...prev, goal]);
+                      } else {
+                        setSelectedGoals(prev => prev.filter(g => g !== goal));
+                      }
+                    }}
+                  >
+                    {goal}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         <div className="overflow-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-gray-200">
               <TableRow>
                 <TableHead className="w-[60px]">Rank</TableHead>
                 <TableHead>Role/Function</TableHead>

@@ -8,7 +8,11 @@ interface SummaryCardProps {
 
 const SummaryCard: React.FC<SummaryCardProps> = ({ title, content }) => {
   // Split the content by paragraphs for better formatting
-  const paragraphs = content.split('\n').filter(p => p.trim().length > 0);
+  // Consider both newlines and double spaces as paragraph breaks
+  const paragraphs = content
+    .split(/\n{2,}|\n\s*\n|\.\s{2,}|\.\s+(?=[A-Z])/)
+    .map(p => p.trim())
+    .filter(p => p.length > 0);
   
   return (
     <Card className="mb-6">
@@ -18,7 +22,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ title, content }) => {
       <CardContent>
         <div className="prose prose-sm max-w-none text-neutral-700">
           {paragraphs.map((paragraph, index) => (
-            <p key={index}>{paragraph}</p>
+            <p key={index} className="mb-4">{paragraph.endsWith('.') ? paragraph : `${paragraph}.`}</p>
           ))}
         </div>
       </CardContent>

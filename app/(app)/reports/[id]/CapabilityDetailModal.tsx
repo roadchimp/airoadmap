@@ -3,7 +3,7 @@
 import React from 'react';
 import type { FullAICapability } from '@/server/storage'; // FullAICapability from storage context
 import type { JobRole, AiTool } from '@shared/schema'; // Import AiTool and JobRole from shared schema
-import { XIcon } from 'lucide-react'; // Assuming lucide-react for icons as per project context
+import { XIcon, ExternalLinkIcon } from 'lucide-react'; // Assuming lucide-react for icons as per project context
 import { getRoleColor, getRoleName } from '@/lib/color-utils';
 import { RecommendedToolsTable } from './RecommendedToolsTable'; // Import the new table
 
@@ -141,7 +141,36 @@ export function CapabilityDetailModal({
           </div>
 
           {capability.recommendedTools && capability.recommendedTools.length > 0 && (
-            <RecommendedToolsTable tools={capability.recommendedTools} />
+            <div>
+              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Recommended AI Tools</h4>
+              <div className="space-y-3">
+                {capability.recommendedTools.map((tool) => (
+                  <div key={tool.tool_id} className="bg-white border border-gray-200 rounded-md p-3 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-medium text-gray-800">{tool.tool_name}</h5>
+                      {tool.website_url && (
+                        <a 
+                          href={tool.website_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+                        >
+                          Visit <ExternalLinkIcon className="ml-1 h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                    {tool.primary_category && (
+                      <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mt-1">
+                        {tool.primary_category}
+                      </span>
+                    )}
+                    {tool.description && (
+                      <p className="text-sm text-gray-600 mt-1">{tool.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 

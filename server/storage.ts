@@ -109,6 +109,11 @@ export type FullAICapability = BaseAICapability & {
   implementationEffort?: string | null;
   businessValue?: string | null;
   assessmentNotes?: string | null;
+  
+  // Additional fields for filtering
+  role?: string | null;
+  painPoint?: string | null;
+  goal?: string | null;
 };
 
 // Define Tool with its mapped capabilities
@@ -252,6 +257,11 @@ export interface IStorage {
   mapCapabilityToTool(capabilityId: number, toolId: number): Promise<CapabilityToolMappingType>;
   unmapCapabilityFromTool(capabilityId: number, toolId: number): Promise<void>;
   getToolsForCapability(capabilityId: number): Promise<BaseAiTool[]>;
+  
+  // New methods for capability-job role mapping
+  mapCapabilityToJobRole(capabilityId: number, jobRoleId: number): Promise<void>;
+  unmapCapabilityFromJobRole(capabilityId: number, jobRoleId: number): Promise<void>;
+  getJobRolesForCapability(capabilityId: number): Promise<BaseJobRole[]>;
   
   // Authentication context
   setAuthContext(authId?: string): Promise<void>;

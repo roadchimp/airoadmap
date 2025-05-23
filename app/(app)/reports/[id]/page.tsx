@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Download, Printer, Share2, FileSpreadsheet, FileText, Pencil, Check, X, Settings2Icon as SettingsIconLucide, Edit3Icon } from "lucide-react"
+import { Download, Printer, Share2, FileSpreadsheet, FileText, Pencil, Check, X, Settings2Icon as SettingsIconLucide, Edit3Icon, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,6 +13,8 @@ import { AIAdoptionScoreTab, type AIAdoptionScoreProps } from "./ai-adoption-sco
 import { PerformanceMetricsTable } from "./performance-metrics"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { addPrintStyles } from "../../../../utils/print-styles"
 import { toast } from "@/hooks/use-toast"
 import type { FullAICapability, ToolWithMappedCapabilities, ReportWithMetricsAndRules } from "@/server/storage"
@@ -21,7 +23,9 @@ import { CapabilityDetailModal } from "./CapabilityDetailModal"
 import { ReportHeader } from "./report-header"
 import { ReportSettingsModal } from "./report-settings-modal"
 import { RecommendedToolsTable } from "./RecommendedToolsTable"
+import { AIToolsTable } from "./ai-tools-table"
 import { MatrixDebugger } from "./matrix-debugger"
+import { RoleSelector } from "./role-selector"
 import { getReportData } from '@/app/actions/reportActions'
 import { AiTool, AICapability } from '@shared/schema.ts'
 
@@ -46,9 +50,9 @@ export default function ReportPage({ params }: ReportPageProps) {
   const router = useRouter()
   const reportId = parseInt(params.id, 10)
   
+  // All hooks must be called at the top, before any conditional logic
   const [activeTab, setActiveTab] = useState("executive-summary")
-  // const [matrixVisible, setMatrixVisible] = useState(false)
-
+  
   // State for report data
   const [reportDetails, setReportDetails] = useState<ReportWithMetricsAndRules | null>(null)
   const [allCapabilities, setAllCapabilities] = useState<FullAICapability[]>([])
@@ -66,12 +70,25 @@ export default function ReportPage({ params }: ReportPageProps) {
   // State for CategoryFilter
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   
+  // State for Role, PainPoint, and Goal filters
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [selectedPainPoints, setSelectedPainPoints] = useState<string[]>([])
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([])
+  
+  // State for available assessment roles
+  const [availableRoles, setAvailableRoles] = useState<{id: number, title: string}[]>([])
+  
   // Modal State
   const [selectedCapability, setSelectedCapability] = useState<FullAICapability | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
   // State for Report Settings
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+
+  // State for Share modal
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [shareEmail, setShareEmail] = useState("")
+  const [isSharing, setIsSharing] = useState(false)
 
   // Pagination state
   const [currentPageCapabilities, setCurrentPageCapabilities] = useState(1)
@@ -102,6 +119,43 @@ export default function ReportPage({ params }: ReportPageProps) {
           setAllTools(data.tools || [])
           setCommentary(data.report?.consultantCommentary || "")
           setTempCommentary(data.report?.consultantCommentary || "")
+          
+          // Use the assessment's selected roles instead of extracting from capabilities
+          if (data.report?.selectedRoles && Array.isArray(data.report.selectedRoles)) {
+            setAvailableRoles(data.report.selectedRoles.map(role => ({
+              id: role.id,
+              title: role.title
+            })))
+          } else {
+            // Fallback: if no selectedRoles, try to get from assessment stepData
+            if (data.report?.assessment?.stepData && 
+                typeof data.report.assessment.stepData === 'object' && 
+                data.report.assessment.stepData !== null &&
+                'roles' in data.report.assessment.stepData &&
+                data.report.assessment.stepData.roles &&
+                typeof data.report.assessment.stepData.roles === 'object' &&
+                'selectedRoles' in data.report.assessment.stepData.roles &&
+                Array.isArray(data.report.assessment.stepData.roles.selectedRoles)) {
+              // This would need the role details to be fetched separately
+              console.log('Assessment selectedRoles found:', data.report.assessment.stepData.roles.selectedRoles);
+              // For now, set empty array since we don't have the full role objects
+              setAvailableRoles([])
+            } else {
+              setAvailableRoles([])
+            }
+          }
+          
+          // Debug log to check if capabilities have role, painPoint, and goal values
+          console.log("Capabilities data sample:", 
+            data.capabilities?.slice(0, 3).map(cap => ({
+              id: cap.id,
+              name: cap.name,
+              role: cap.role,
+              painPoint: cap.painPoint,
+              goal: cap.goal,
+              applicableRoles: cap.applicableRoles
+            }))
+          );
         })
         .catch(e => {
           console.error("Failed to fetch report page data in useEffect:", e)
@@ -118,17 +172,39 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   // Filter capabilities based on selected categories
   useEffect(() => {
-    if (selectedCategories.length === 0) {
-      setFilteredCapabilities(allCapabilities);
-    } else {
-      setFilteredCapabilities(
-        allCapabilities.filter(capability => 
-          capability.category && selectedCategories.includes(capability.category)
-        )
+    let filtered = [...allCapabilities];
+    
+    // Apply category filter
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter(capability => 
+        capability.category && selectedCategories.includes(capability.category)
       );
     }
+    
+    // Apply role filter
+    if (selectedRoles.length > 0) {
+      filtered = filtered.filter(capability => 
+        capability.role && selectedRoles.includes(capability.role)
+      );
+    }
+    
+    // Apply pain point filter
+    if (selectedPainPoints.length > 0) {
+      filtered = filtered.filter(capability => 
+        capability.painPoint && selectedPainPoints.includes(capability.painPoint)
+      );
+    }
+    
+    // Apply goal filter
+    if (selectedGoals.length > 0) {
+      filtered = filtered.filter(capability => 
+        capability.goal && selectedGoals.includes(capability.goal)
+      );
+    }
+    
+    setFilteredCapabilities(filtered);
     setCurrentPageCapabilities(1); // Reset to first page on filter change
-  }, [allCapabilities, selectedCategories]);
+  }, [allCapabilities, selectedCategories, selectedRoles, selectedPainPoints, selectedGoals]);
 
   // Effect to track when matrix tab becomes visible
   useEffect(() => {
@@ -137,6 +213,15 @@ export default function ReportPage({ params }: ReportPageProps) {
 
   const handleCategoryChange = (categories: string[]) => {
     setSelectedCategories(categories)
+    setCurrentPageCapabilities(1) // Reset to first page on filter change
+  }
+
+  const handleRoleToggle = (roleTitle: string) => {
+    setSelectedRoles(prev => 
+      prev.includes(roleTitle) 
+        ? prev.filter(role => role !== roleTitle)
+        : [...prev, roleTitle]
+    )
     setCurrentPageCapabilities(1) // Reset to first page on filter change
   }
 
@@ -155,6 +240,76 @@ export default function ReportPage({ params }: ReportPageProps) {
     allCapabilities.forEach(cap => { if (cap.category) categoriesSet.add(cap.category) })
     return Array.from(categoriesSet).sort()
   }, [allCapabilities])
+  
+  // Extract unique roles from capabilities
+  const roles = useMemo(() => {
+    const roleSet = new Set<string>()
+    allCapabilities.forEach(cap => {
+      if (cap.role) roleSet.add(cap.role)
+    })
+    return Array.from(roleSet).sort()
+  }, [allCapabilities])
+  
+  // Extract unique pain points from capabilities
+  const painPoints = useMemo(() => {
+    const painPointSet = new Set<string>()
+    allCapabilities.forEach(cap => {
+      if (cap.painPoint) painPointSet.add(cap.painPoint)
+    })
+    return Array.from(painPointSet).sort()
+  }, [allCapabilities])
+  
+  // Extract unique goals from capabilities
+  const goals = useMemo(() => {
+    const goalSet = new Set<string>()
+    allCapabilities.forEach(cap => {
+      if (cap.goal) goalSet.add(cap.goal)
+    })
+    return Array.from(goalSet).sort()
+  }, [allCapabilities])
+
+  // Filter tools based on filtered capabilities
+  const filteredTools = useMemo(() => {
+    // Check if any filters are currently active
+    const hasActiveFilters = selectedCategories.length > 0 || 
+                            selectedRoles.length > 0 || 
+                            selectedPainPoints.length > 0 || 
+                            selectedGoals.length > 0;
+    
+    // If no capabilities are filtered AND no filters are active, show all tools
+    if (filteredCapabilities.length === 0 && !hasActiveFilters) {
+      return allTools;
+    }
+    
+    // If no capabilities pass filters, show no tools (respect the filters)
+    if (filteredCapabilities.length === 0 && hasActiveFilters) {
+      return [];
+    }
+    
+    // Create a Set of filtered capability IDs for fast lookup
+    const filteredCapabilityIds = new Set(filteredCapabilities.map(cap => cap.id));
+    
+    // Filter tools that have at least one mapped capability in the filtered capabilities
+    const toolsWithMatchingCapabilities = allTools.filter(tool => {
+      if (!tool.mappedCapabilities || tool.mappedCapabilities.length === 0) {
+        return false;
+      }
+      
+      // Check if any of the tool's mapped capabilities are in the filtered capabilities
+      return tool.mappedCapabilities.some(mappedCap => 
+        filteredCapabilityIds.has(mappedCap.id)
+      );
+    });
+    
+    // Only use fallback logic when no filters are active
+    // If filters are active and no tools match, show empty results (respect the filters)
+    if (toolsWithMatchingCapabilities.length === 0 && !hasActiveFilters && allTools.length > 0) {
+      console.log('No tools found with matching capabilities and no filters active. Showing all tools as fallback.');
+      return allTools;
+    }
+    
+    return toolsWithMatchingCapabilities;
+  }, [allTools, filteredCapabilities, selectedCategories, selectedRoles, selectedPainPoints, selectedGoals])
 
   const handleExportPDF = () => window.print()
 
@@ -169,9 +324,9 @@ export default function ReportPage({ params }: ReportPageProps) {
       cap.name,
       cap.category,
       cap.description || '',
-      cap.valueScore || cap.defaultValueScore || 'N/A',
-      cap.feasibilityScore || cap.defaultFeasibilityScore || 'N/A',
-      cap.impactScore || cap.defaultImpactScore || 'N/A',
+      cap.valueScore || cap.default_value_score || 'N/A',
+      cap.feasibilityScore || cap.default_feasibility_score || 'N/A',
+      cap.impactScore || cap.default_impact_score || 'N/A',
       cap.priority || 'Medium'
     ].map(String).join(',')) // Ensure all are strings for CSV
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...csvRows].join('\n')
@@ -215,6 +370,53 @@ export default function ReportPage({ params }: ReportPageProps) {
     } else {
       toast({ title: "Error", description: "Failed to update report title.", variant: "destructive" })
       // Potentially revert optimistic UI update if ReportHeader did one, but it updates its own state now.
+    }
+  }
+
+  const handleShare = async () => {
+    if (!shareEmail.trim()) {
+      toast({ title: "Error", description: "Please enter an email address.", variant: "destructive" })
+      return
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(shareEmail)) {
+      toast({ title: "Error", description: "Please enter a valid email address.", variant: "destructive" })
+      return
+    }
+
+    setIsSharing(true)
+    try {
+      const currentUrl = window.location.href
+      const response = await fetch(`/api/reports/${reportId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email: shareEmail,
+          reportUrl: currentUrl,
+          reportTitle: reportTitle 
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      toast({ 
+        title: "Success", 
+        description: `Report link has been shared with ${shareEmail}` 
+      })
+      setIsShareModalOpen(false)
+      setShareEmail("")
+    } catch (error) {
+      toast({ 
+        title: "Error sharing report", 
+        description: error instanceof Error ? error.message : "Failed to share report", 
+        variant: "destructive" 
+      })
+    } finally {
+      setIsSharing(false)
     }
   }
 
@@ -263,33 +465,34 @@ export default function ReportPage({ params }: ReportPageProps) {
               </p>
             </div>
             <div className="flex space-x-3 print:hidden">
-              <Button variant="outline" size="sm" onClick={handleExportPDF}><Printer className="mr-2 h-4 w-4" /> Print/PDF</Button>
+              {/* Export Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm"><Download className="mr-2 h-4 w-4" /> Export</Button>
+                  <Button variant="outline" size="sm">
+                    <Download className="mr-2 h-4 w-4" /> Export
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  <DropdownMenuItem onClick={handleExportCSV}><FileSpreadsheet className="mr-2 h-4 w-4" /> Export Capabilities (CSV)</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportPDF}>
+                    <Printer className="mr-2 h-4 w-4" /> Print/PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" /> Export Capabilities (CSV)
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Share Button */}
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => setIsShareModalOpen(true)}
+                className="bg-[#e84c2b] hover:bg-[#d63916] text-white"
+              >
+                <Share2 className="mr-2 h-4 w-4" /> Share
+              </Button>
             </div>
           </div>
-
-          {/* Assessment Details Section */}
-          <Card className="mt-6 bg-slate-50 print:border print:shadow-none">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-lg font-medium text-slate-800">Assessment Context</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 py-3 text-sm text-slate-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
-              <div><span className="font-semibold text-slate-600">Assessment Title: </span>{reportDetails.assessment?.title || 'N/A'}</div>
-              <div><span className="font-semibold text-slate-600">Organization: </span>{reportDetails.organizationName || 'N/A'}</div>
-              <div><span className="font-semibold text-slate-600">Industry: </span>{reportDetails.assessment?.industry || 'N/A'}</div>
-              <div><span className="font-semibold text-slate-600">Industry Maturity: </span>{reportDetails.assessment?.industryMaturity || 'N/A'}</div>
-              <div><span className="font-semibold text-slate-600">Company Stage: </span>{reportDetails.assessment?.companyStage || 'N/A'}</div>
-              <div><span className="font-semibold text-slate-600">Strategic Focus: </span>{Array.isArray(reportDetails.assessment?.strategicFocus) ? reportDetails.assessment.strategicFocus.join(', ') : 'N/A'}</div>
-            </CardContent>
-          </Card>
-
         </div>
       </header>
 
@@ -302,13 +505,13 @@ export default function ReportPage({ params }: ReportPageProps) {
                 value="executive-summary"
                 className="text-gray-700 data-[state=active]:bg-[#e84c2b] data-[state=active]:text-white"
               >
-                Executive Summary
+                Overview
               </TabsTrigger>
               <TabsTrigger
                 value="prioritization-matrix"
                 className="text-gray-700 data-[state=active]:bg-[#e84c2b] data-[state=active]:text-white"
               >
-                Prioritization Matrix
+                Priority Matrix
               </TabsTrigger>
               <TabsTrigger
                 value="ai-capabilities"
@@ -328,6 +531,12 @@ export default function ReportPage({ params }: ReportPageProps) {
               >
                 Performance Metrics
               </TabsTrigger>
+              <TabsTrigger
+                value="ai-tools"
+                className="text-gray-700 data-[state=active]:bg-[#e84c2b] data-[state=active]:text-white"
+              >
+                AI Tool Recommendations
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -337,39 +546,26 @@ export default function ReportPage({ params }: ReportPageProps) {
               <div className="md:col-span-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Executive Summary</CardTitle>
+                    <CardTitle>Overview</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-700 leading-relaxed">
-                      {reportDetails.executiveSummary || "No executive summary available."}
-                    </p>
+                    <div className="text-gray-700 leading-relaxed">
+                      {reportDetails.executiveSummary ? 
+                        reportDetails.executiveSummary
+                          .split(/\n{2,}|\.(?=\s+[A-Z])|\.\s{2,}/)
+                          .map((paragraph, index) => (
+                            <p key={index} className="mb-4">{paragraph.trim()}</p>
+                          ))
+                        : "No executive summary available."
+                      }
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
               <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Share2 className="h-5 w-5 text-[#e84c2b]" />
-                      Expected Performance Impact
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="mb-2">
-                      <h3 className="text-lg font-bold text-gray-900">
-                        ${(reportDetails.performanceImpact as PerformanceImpact)?.estimatedRoi || 0}
-                      </h3>
-                      <p className="text-sm text-gray-500">Estimated Annual ROI</p>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Based on time savings and increased throughput
-                    </p>
-                  </CardContent>
-                </Card>
-
-                {/* AI Adoption Score Card */}
-                <Card className="mt-6 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("ai-adoption-score")}>
+                 {/* AI Adoption Score Card */}
+                 <Card className="mt-6 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("ai-adoption-score")}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <span className="text-[#e84c2b]">📈</span>
@@ -408,6 +604,64 @@ export default function ReportPage({ params }: ReportPageProps) {
                     <p className="text-sm text-center mt-2 text-muted-foreground">
                       Click to view details
                     </p>
+                  </CardContent>
+                </Card>
+ 
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Share2 className="h-5 w-5 text-[#e84c2b]" />
+                      Expected Performance Impact
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-2">
+                    <p className="text-sm text-gray-500">Estimated Annual ROI</p>
+                      <h3 className="text-lg font-bold text-gray-900">
+                        ${(reportDetails.performanceImpact as PerformanceImpact)?.estimatedRoi || 0}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Based on time savings and increased throughput
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Company Information Card */}
+                <Card className="mt-6 bg-slate-50 print:border print:shadow-none">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-lg font-medium text-slate-800">Company Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 py-3 text-sm text-slate-700 space-y-4">
+                    <div>
+                      <span className="font-semibold text-slate-600 block mb-1">Industry</span>
+                      <span className="text-slate-900 font-medium">
+                        {reportDetails.assessment?.industry ? 
+                          `${reportDetails.assessment.industry}${reportDetails.assessment?.industryMaturity ? ` (${reportDetails.assessment.industryMaturity})` : ''}` 
+                          : 'N/A'
+                        }
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-600 block mb-1">Stage of Growth</span>
+                      <span className="text-slate-900 font-medium">{reportDetails.assessment?.companyStage || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-600 block mb-2">Strategic Focus</span>
+                      <div className="flex flex-wrap gap-2">
+                        {Array.isArray(reportDetails.assessment?.strategicFocus) ? 
+                          reportDetails.assessment.strategicFocus.map((focus, index) => (
+                            <span 
+                              key={index}
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-800"
+                            >
+                              {focus}
+                            </span>
+                          )) : 
+                          <span className="text-slate-500">N/A</span>
+                        }
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -453,6 +707,8 @@ export default function ReportPage({ params }: ReportPageProps) {
 
           {/* Priority Matrix Tab */}
           <TabsContent value="prioritization-matrix" className="h-full">
+            <h2 className="text-2xl font-bold mb-4">AI Capability Prioritization Matrix</h2>
+            
             <div className="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
               <CategoryFilter
                 allCategories={allUniqueCategories}
@@ -468,7 +724,29 @@ export default function ReportPage({ params }: ReportPageProps) {
               </div>
             </div>
 
-            <h2 className="text-2xl font-bold mb-4">AI Capability Prioritization Matrix</h2>
+            {/* Role Filter Section */}
+            <div className="mb-6">
+              {availableRoles.length > 0 ? (
+                <>
+                  <h3 className="text-sm font-medium mb-3 text-gray-700">Select Roles:</h3>
+                  <RoleSelector
+                    roles={availableRoles}
+                    selectedRoles={selectedRoles}
+                    onRoleToggle={handleRoleToggle}
+                  />
+                  {selectedRoles.length > 0 && (
+                    <button 
+                      className="mt-2 text-xs text-[#e84c2b] hover:underline"
+                      onClick={() => setSelectedRoles([])}
+                    >
+                      Clear all roles
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="text-sm text-gray-500">No assessment roles available for filtering.</div>
+              )}
+            </div>
             
             <PriorityMatrix 
               capabilities={filteredCapabilities} 
@@ -488,13 +766,137 @@ export default function ReportPage({ params }: ReportPageProps) {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="w-full">
-                  <CategoryFilter 
-                    allCategories={allUniqueCategories}
-                    selectedCategories={selectedCategories}
-                    onChange={handleCategoryChange}
-                  />
+                <div className="w-full flex flex-wrap gap-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <CategoryFilter 
+                      allCategories={allUniqueCategories}
+                      selectedCategories={selectedCategories}
+                      onChange={handleCategoryChange}
+                    />
+                  </div>
+                  
+                  {/* Add filters for Role, PainPoint, and Goal - similar to priority-matrix.tsx */}
+                  {/* Role Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Role:</label>
+                    <select 
+                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                      multiple
+                      value={selectedRoles}
+                      onChange={(e) => {
+                        const options = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedRoles(options);
+                      }}
+                    >
+                      {roles.map(role => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </select>
+                    {selectedRoles.length > 0 && (
+                      <button 
+                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                        onClick={() => setSelectedRoles([])}
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Pain Point Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Pain Point:</label>
+                    <select 
+                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                      multiple
+                      value={selectedPainPoints}
+                      onChange={(e) => {
+                        const options = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedPainPoints(options);
+                      }}
+                    >
+                      {painPoints.map(painPoint => (
+                        <option key={painPoint} value={painPoint}>{painPoint}</option>
+                      ))}
+                    </select>
+                    {selectedPainPoints.length > 0 && (
+                      <button 
+                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                        onClick={() => setSelectedPainPoints([])}
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Goals Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Goal:</label>
+                    <select 
+                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                      multiple
+                      value={selectedGoals}
+                      onChange={(e) => {
+                        const options = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedGoals(options);
+                      }}
+                    >
+                      {goals.map(goal => (
+                        <option key={goal} value={goal}>{goal}</option>
+                      ))}
+                    </select>
+                    {selectedGoals.length > 0 && (
+                      <button 
+                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                        onClick={() => setSelectedGoals([])}
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
                 </div>
+                
+                {/* Debug button to populate filters if no values are found */}
+                {(roles.length === 0 || painPoints.length === 0 || goals.length === 0) && (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`/api/reports/${reportId}/populate-filters`, {
+                            method: 'POST',
+                          });
+                          
+                          if (!response.ok) {
+                            throw new Error(`Failed to populate filters: ${response.statusText}`);
+                          }
+                          
+                          const result = await response.json();
+                          toast({ 
+                            title: "Filter Population Results", 
+                            description: result.message || "Process completed", 
+                            variant: "default" 
+                          });
+                          
+                          // Refresh the data
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1500);
+                        } catch (error) {
+                          console.error('Error populating filters:', error);
+                          toast({ 
+                            title: "Error", 
+                            description: `Failed to populate filters: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+                            variant: "destructive" 
+                          });
+                        }
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <span>Populate Filter Values</span>
+                    </Button>
+                  </div>
+                )}
                 <div>
                   <CapabilitiesTable 
                     capabilities={filteredCapabilities}
@@ -529,18 +931,6 @@ export default function ReportPage({ params }: ReportPageProps) {
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Recommended AI Tools</CardTitle>
-                 <p className="text-sm text-muted-foreground pt-1">
-                  AI tools that support the capabilities relevant to your organization.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <RecommendedToolsTable tools={allTools} />
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Performance Metrics Tab */}
@@ -569,6 +959,156 @@ export default function ReportPage({ params }: ReportPageProps) {
               }}
             />
           </TabsContent>
+
+          {/* AI Tools Tab */}
+          <TabsContent value="ai-tools" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>AI Tool Recommendations</CardTitle>
+                <CardDescription>
+                  AI tools that can implement the capabilities relevant to your organization, with their mapped AI capabilities.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="w-full flex flex-wrap gap-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <CategoryFilter 
+                      allCategories={allUniqueCategories}
+                      selectedCategories={selectedCategories}
+                      onChange={handleCategoryChange}
+                    />
+                  </div>
+                  
+                  {/* Add filters for Role, PainPoint, and Goal - similar to priority-matrix.tsx */}
+                  {/* Role Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Role:</label>
+                    <select 
+                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                      multiple
+                      value={selectedRoles}
+                      onChange={(e) => {
+                        const options = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedRoles(options);
+                      }}
+                    >
+                      {roles.map(role => (
+                        <option key={role} value={role}>{role}</option>
+                      ))}
+                    </select>
+                    {selectedRoles.length > 0 && (
+                      <button 
+                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                        onClick={() => setSelectedRoles([])}
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Pain Point Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Pain Point:</label>
+                    <select 
+                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                      multiple
+                      value={selectedPainPoints}
+                      onChange={(e) => {
+                        const options = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedPainPoints(options);
+                      }}
+                    >
+                      {painPoints.map(painPoint => (
+                        <option key={painPoint} value={painPoint}>{painPoint}</option>
+                      ))}
+                    </select>
+                    {selectedPainPoints.length > 0 && (
+                      <button 
+                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                        onClick={() => setSelectedPainPoints([])}
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Goals Filter */}
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Goal:</label>
+                    <select 
+                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                      multiple
+                      value={selectedGoals}
+                      onChange={(e) => {
+                        const options = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedGoals(options);
+                      }}
+                    >
+                      {goals.map(goal => (
+                        <option key={goal} value={goal}>{goal}</option>
+                      ))}
+                    </select>
+                    {selectedGoals.length > 0 && (
+                      <button 
+                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                        onClick={() => setSelectedGoals([])}
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Debug button to populate filters if no values are found */}
+                {(roles.length === 0 || painPoints.length === 0 || goals.length === 0) && (
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`/api/reports/${reportId}/populate-filters`, {
+                            method: 'POST',
+                          });
+                          
+                          if (!response.ok) {
+                            throw new Error(`Failed to populate filters: ${response.statusText}`);
+                          }
+                          
+                          const result = await response.json();
+                          toast({ 
+                            title: "Filter Population Results", 
+                            description: result.message || "Process completed", 
+                            variant: "default" 
+                          });
+                          
+                          // Refresh the data
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1500);
+                        } catch (error) {
+                          console.error('Error populating filters:', error);
+                          toast({ 
+                            title: "Error", 
+                            description: `Failed to populate filters: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+                            variant: "destructive" 
+                          });
+                        }
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <span>Populate Filter Values</span>
+                    </Button>
+                  </div>
+                )}
+                <div>
+                  <AIToolsTable 
+                    tools={filteredTools}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -585,6 +1125,72 @@ export default function ReportPage({ params }: ReportPageProps) {
         onClose={() => setIsSettingsModalOpen(false)}
         reportId={params.id ? Number(params.id) : undefined}
       />
+
+      {/* Share Modal */}
+      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5 text-[#e84c2b]" />
+              Share Report
+            </DialogTitle>
+            <DialogDescription>
+              Send a link to this report to someone via email. They'll be able to view the report using the same link.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="share-email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address
+              </label>
+              <Input
+                id="share-email"
+                type="email"
+                placeholder="Enter email address..."
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isSharing) {
+                    handleShare()
+                  }
+                }}
+              />
+            </div>
+            <div className="text-sm text-gray-500">
+              <strong>Report:</strong> {reportTitle}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsShareModalOpen(false)
+                setShareEmail("")
+              }}
+              disabled={isSharing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleShare}
+              disabled={isSharing || !shareEmail.trim()}
+              className="bg-[#e84c2b] hover:bg-[#d63916] text-white"
+            >
+              {isSharing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Send Link
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

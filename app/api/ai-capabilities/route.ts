@@ -24,18 +24,18 @@ export async function POST(request: Request) {
     // Convert any numeric scores to strings to match expected types
     const formattedData = {
       ...validatedData,
-      defaultEaseScore: validatedData.defaultEaseScore !== undefined && validatedData.defaultEaseScore !== null 
-        ? String(validatedData.defaultEaseScore) 
-        : validatedData.defaultEaseScore,
-      defaultValueScore: validatedData.defaultValueScore !== undefined && validatedData.defaultValueScore !== null 
-        ? String(validatedData.defaultValueScore) 
-        : validatedData.defaultValueScore,
-      defaultFeasibilityScore: validatedData.defaultFeasibilityScore !== undefined && validatedData.defaultFeasibilityScore !== null 
-        ? String(validatedData.defaultFeasibilityScore) 
-        : validatedData.defaultFeasibilityScore,
-      defaultImpactScore: validatedData.defaultImpactScore !== undefined && validatedData.defaultImpactScore !== null 
-        ? String(validatedData.defaultImpactScore) 
-        : validatedData.defaultImpactScore,
+      default_ease_score: validatedData.default_ease_score !== undefined && validatedData.default_ease_score !== null 
+        ? String(validatedData.default_ease_score) 
+        : validatedData.default_ease_score,
+      default_value_score: validatedData.default_value_score !== undefined && validatedData.default_value_score !== null 
+        ? String(validatedData.default_value_score) 
+        : validatedData.default_value_score,
+      default_feasibility_score: validatedData.default_feasibility_score !== undefined && validatedData.default_feasibility_score !== null 
+        ? String(validatedData.default_feasibility_score) 
+        : validatedData.default_feasibility_score,
+      default_impact_score: validatedData.default_impact_score !== undefined && validatedData.default_impact_score !== null 
+        ? String(validatedData.default_impact_score) 
+        : validatedData.default_impact_score,
     };
     
     const capability = await storage.createAICapability(formattedData);

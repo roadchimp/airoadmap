@@ -9,16 +9,26 @@ const RESPONSES_DIR = path.join(BATCH_DIR, 'responses');
 const LOGS_DIR = path.join(BATCH_DIR, 'logs');
 const TRACKING_FILE = path.join(LOGS_DIR, 'processed_jobs.json');
 
-// Ensure directories exist
-[BATCH_DIR, REQUESTS_DIR, RESPONSES_DIR].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
+/**
+ * Ensure directories exist and initialize tracking files
+ * Only called when actually needed to avoid build-time errors
+ */
+function ensureBatchDirectoriesExist(): void {
+  try {
+    // Ensure directories exist
+    [BATCH_DIR, REQUESTS_DIR, RESPONSES_DIR, LOGS_DIR].forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
 
-// Initialize tracking file if it doesn't exist
-if (!fs.existsSync(TRACKING_FILE)) {
-  fs.writeFileSync(TRACKING_FILE, JSON.stringify({ processedJobIds: [] }), 'utf8');
+    // Initialize tracking file if it doesn't exist
+    if (!fs.existsSync(TRACKING_FILE)) {
+      fs.writeFileSync(TRACKING_FILE, JSON.stringify({ processedJobIds: [] }), 'utf8');
+    }
+  } catch (error) {
+    console.warn('Could not initialize batch processing directories:', error);
+  }
 }
 
 /**
@@ -84,6 +94,8 @@ Return ONLY the JSON object, no additional text.`;
  * @param forceIncludeAll If true, include all 'raw' jobs even if previously processed
  */
 export async function exportJobsForBatch(forceIncludeAll: boolean = false): Promise<string> {
+  ensureBatchDirectoriesExist();
+  
   // Get all unprocessed job descriptions
   const jobDescriptions = await storage.listJobDescriptionsByStatus('raw');
   
@@ -142,6 +154,8 @@ export async function exportJobsForBatch(forceIncludeAll: boolean = false): Prom
  * Process the results from an OpenAI batch job
  */
 export async function processBatchResults(responsePath: string): Promise<void> {
+  ensureBatchDirectoriesExist();
+  
   // Verify the response file exists
   if (!fs.existsSync(responsePath)) {
     throw new Error(`Response file not found: ${responsePath}`);

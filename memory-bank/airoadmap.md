@@ -84,6 +84,33 @@ headers: {
 
 ## Recent Changes / Milestones
 
+*   **Critical AI Adoption Score Bug Fix (December 2024):**
+    *   Identified and resolved critical scaling bug in `server/lib/aiAdoptionScoreEngine.ts`
+    *   **Problem:** AI Adoption Scores were showing dramatically lower values (e.g., 17) when component scores were high (80%, 70%, 100%, 100%)
+    *   **Root Cause:** Incorrect scaling factor - was using `rawScore * 20` assuming weights sum to ~5, but weights actually sum to ~1.0
+    *   **Solution:** Changed scaling to `rawScore * 100` for proper 0-100 percentage conversion
+    *   **Validation:** Added debug testing that confirms calculations now work correctly (example: 72.3 score for high component values)
+    *   **User Impact:** Users need to regenerate existing reports to see corrected AI Adoption Scores
+    *   **Files Modified:** `server/lib/aiAdoptionScoreEngine.ts` (lines ~346-347)
+
+*   **Comprehensive Report System Improvements (November 2024):**
+    *   Implemented 8 major UI improvements including header consolidation and role-based filtering
+    *   Added email sharing functionality via new API endpoint `/api/reports/[id]/share/route.ts`
+    *   Fixed React hooks ordering errors that were causing application crashes
+    *   Enhanced role filtering to use assessment's `selectedRoles` instead of capability extraction
+    *   Added "AI Tool Recommendations" subtab with intelligent filtering
+    *   Fixed ranking calculations to be dynamic instead of using stored rank values
+    *   Renamed "Assessment Context Card" to "Company Information" with improved styling
+    *   Resolved issues with role data extraction from `stepData.roles.selectedRoles` path
+
+*   **Batch Processing System Enhancement:**
+    *   Extended `batchProcessor.ts` with job role matching capabilities for AI capabilities
+    *   Added new storage methods: `mapCapabilityToJobRole()`, `unmapCapabilityFromJobRole()`, `getJobRolesForCapability()`
+    *   Created single-use migration script `populate-existing-capabilities.ts` for existing data
+    *   Fixed database column naming inconsistencies (capability_id vs capabilityId)
+    *   Added comprehensive documentation in `README-job-role-matching.md`
+    *   Enhanced CLI with new commands: `export-job-roles`, `process-job-roles`
+
 *   **UI Client-Server Refactoring (August 2024):**
     *   Refactored key pages to properly separate Server Components from Client Components
     *   Fixed "Refs cannot be used in Server Components" errors across the application

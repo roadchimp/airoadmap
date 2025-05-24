@@ -296,18 +296,30 @@ Return ONLY a valid JSON array of these objects. Example of one object:
     console.log(`[AI Service] Received AI capabilities response (${content.length} characters)`);
 
     try {
-      // Assuming the response is an object with a key (e.g., "recommendations") that holds the array
+      // The OpenAI response might be a single object instead of an array, or an array
       const parsedResponse = JSON.parse(content);
       let recommendationsArray: AIRecommendationResponse[];
 
-      // Check if the parsed response is directly an array or an object containing the array
+      // Check if the parsed response is directly an array
       if (Array.isArray(parsedResponse)) {
         recommendationsArray = parsedResponse;
-      } else if (parsedResponse && typeof parsedResponse === 'object' && Array.isArray(Object.values(parsedResponse)[0])) {
-        // Common case: { "recommendations": [...] } or similar
-        recommendationsArray = Object.values(parsedResponse)[0] as AIRecommendationResponse[];
+      } 
+      // Check if it's a single object (convert to array)
+      else if (parsedResponse && typeof parsedResponse === 'object' && parsedResponse.capabilityName) {
+        console.log('[AI Service] Single capability object received, converting to array');
+        recommendationsArray = [parsedResponse];
+      }
+      // Check if it's an object containing an array
+      else if (parsedResponse && typeof parsedResponse === 'object') {
+        const arrayValue = Object.values(parsedResponse).find(val => Array.isArray(val));
+        if (arrayValue) {
+          recommendationsArray = arrayValue as AIRecommendationResponse[];
+        } else {
+          console.error("[AI Service] Parsed OpenAI response is not in the expected format:", parsedResponse);
+          return fallbackAICapabilities(role, department);
+        }
       } else {
-        console.error("[AI Service] Parsed OpenAI response is not in the expected array format:", parsedResponse);
+        console.error("[AI Service] Parsed OpenAI response is not in the expected format:", parsedResponse);
         return fallbackAICapabilities(role, department);
       }
       
@@ -361,47 +373,90 @@ export async function generatePerformanceImpact(
   role: JobRole,
   department: Department
 ): Promise<any> {
+  console.log('[AI Service] generatePerformanceImpact called');
+  console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
+  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
   try {
     if (!openai) {
+      console.log('[AI Service] No OpenAI client - using fallback for performance impact');
       return fallbackPerformanceImpact(role);
     }
 
-    const prompt = `Based on industry benchmarks and known AI implementation outcomes, predict the performance improvements for this role:
-    
-    Role: ${role.title}
-    Department: ${department.name}
-    Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(", ") : "Not provided"}`;
+    const prompt = `Based on industry benchmarks and known AI implementation outcomes, predict the performance improvements for this role. Return your response as a valid JSON object with the following structure:
 
-    const model = "gpt-4";
+{
+  "metrics": [
+    {"name": "metric name", "improvement": percentage_number},
+    {"name": "another metric", "improvement": percentage_number}
+  ],
+  "estimatedAnnualRoi": dollar_amount_number
+}
+
+Role: ${role.title}
+Department: ${department.name}
+Key Responsibilities: ${role.keyResponsibilities ? role.keyResponsibilities.join(", ") : "Not provided"}
+
+Return ONLY the JSON object, no additional text.`;
+
+    const model = "gpt-4-turbo-preview";
     
     // Check if we have a cached response
     const cachedResponse = getCachedResponse(prompt, model);
     if (cachedResponse) {
+      console.log('[AI Service] Using cached response for performance impact');
       return cachedResponse;
     }
+
+    console.log('[AI Service] Making OpenAI API call for performance impact...');
 
     const response = await openai.chat.completions.create({
       model,
       messages: [
-        { role: "system", content: "You are an AI transformation analyst providing realistic performance predictions." },
+        { role: "system", content: "You are an AI transformation analyst providing realistic performance predictions. Return only valid JSON objects." },
         { role: "user", content: prompt }
-      ]
+      ],
+      response_format: { type: "json_object" }
     });
 
+    console.log('[AI Service] OpenAI API call successful for performance impact');
+
     const content = response.choices[0].message.content;
+    if (!content) {
+      console.error("[AI Service] OpenAI returned empty content for performance impact.");
+      return fallbackPerformanceImpact(role);
+    }
+
+    console.log(`[AI Service] Received performance impact response (${content.length} characters)`);
+    
     try {
-      const parsedContent = JSON.parse(content || '{"metrics":[], "estimatedAnnualRoi": 0}');
+      const parsedContent = JSON.parse(content);
+      
+      // Validate the structure
+      if (!parsedContent.metrics || !Array.isArray(parsedContent.metrics) || typeof parsedContent.estimatedAnnualRoi !== 'number') {
+        console.error("[AI Service] Invalid performance impact structure:", parsedContent);
+        return fallbackPerformanceImpact(role);
+      }
       
       // Cache the response
       cacheResponse(prompt, model, parsedContent);
       
+      console.log('[AI Service] Performance impact generated successfully');
       return parsedContent;
     } catch (error) {
-      console.error("Error parsing JSON response:", error);
+      console.error("[AI Service] Error parsing performance impact JSON:", error);
+      console.error("[AI Service] Problematic content:", content);
+      console.log('[AI Service] Falling back to default performance impact');
       return fallbackPerformanceImpact(role);
     }
   } catch (error) {
-    console.error("Error generating performance impact predictions with OpenAI:", error);
+    console.error("[AI Service] ERROR generating performance impact predictions with OpenAI:", error);
+    console.error('[AI Service] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    console.log('[AI Service] Falling back to default performance impact');
     return fallbackPerformanceImpact(role);
   }
 }

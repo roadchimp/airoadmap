@@ -2,7 +2,8 @@
 import { test, expect } from '@playwright/test';
 
 // const APP_URL = 'https://v0-ai-sherpas-demo.vercel.app';
-const APP_URL = 'http://localhost:3000';
+// const APP_URL = 'http://localhost:3000';
+const APP_URL = 'https://airoadmap-rf5gpnxyv-roadchimps-projects.vercel.app';
 
 test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
   // Test data based on Enterprise SaaS Inc. (ESI) case study
@@ -100,7 +101,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
     }
   };
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, context }) => {
     // Add console observer to catch any errors during test
     page.on('console', msg => {
       if (msg.type() === 'error') {
@@ -141,36 +142,105 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
     // Navigate to the app
     await page.goto(APP_URL);
     
-    // Go directly to the login page instead of looking for a link
-    await page.goto(`${APP_URL}/login`);
-    
-    // Wait for login page to load
-    await expect(page).toHaveURL(`${APP_URL}/login`);
-    console.log("On login page, filling credentials...");
-    
-    // Fill in login credentials
-    await page.getByLabel(/Email/i).fill('samsena@gmail.com');
-    await page.getByLabel(/Password/i).fill('Password@123');
-    
-    // Click login button
-    console.log("Submitting login form...");
-    await page.getByRole('button', { name: /Sign In|Login/i }).click();
-    
-    // Wait for successful login and redirection to dashboard with a longer timeout
-    console.log("Waiting for dashboard URL...");
-    await expect(page).toHaveURL(`${APP_URL}/dashboard`, { timeout: 15000 });
-    console.log("Successfully redirected to dashboard URL.");
-    
-    // Add an additional wait for a known dashboard element to be fully visible and stable
-    // This helps ensure any client-side rendering or session checks are complete.
-    console.log("Waiting for dashboard heading to be visible...");
-    await expect(page.getByRole('heading', { name: /Assessment Dashboard/i, exact: false })).toBeVisible({ timeout: 10000 });
-    console.log("Dashboard heading is visible.");
+    // Wait for either the app's login page or Vercel's login page to load
+    await page.waitForLoadState('networkidle');
 
-    // Add a small explicit timeout to allow any final async operations to settle
-    console.log("Waiting for 2 seconds for session to fully settle...");
-    await page.waitForTimeout(2000);
-    console.log("Initial setup and login complete.");
+    // Check if we're on Vercel's login page or the app's login page
+    const isVercelLogin = page.url().includes('vercel.com/login');
+    const isAppLogin = page.url().includes(`${APP_URL}/login`);
+
+    if (!isVercelLogin && !isAppLogin) {
+      throw new Error(`Unexpected login page: ${page.url()}`);
+    }
+
+    console.log(`On ${isVercelLogin ? 'Vercel' : 'app'} login page, looking for GitHub login button...`);
+
+    // Ensure GitHub button is available before proceeding
+    await expect(page.getByRole('button', { name: /Continue with GitHub/i })).toBeVisible({ timeout: 10000 });
+    
+    // Handle GitHub OAuth login flow
+    try {
+      // Set up popup handler before clicking the GitHub button
+      const popupPromise = context.waitForEvent('page');
+      
+      // Click the GitHub login button
+      console.log("Clicking GitHub login button...");
+      await page.getByRole('button', { name: /Continue with GitHub/i }).click();
+      
+      // Wait for the popup to appear
+      const popup = await popupPromise;
+      console.log("GitHub OAuth popup opened");
+      
+      // Wait for the popup to load
+      await popup.waitForLoadState('networkidle');
+      
+      // Fill in GitHub credentials in the popup
+      console.log("Filling GitHub credentials...");
+      await popup.getByLabel(/Username or email address/i).fill('roadchimp');
+      await popup.getByLabel(/Password/i).fill('%9PwWsWfT3EtobaZ38Na^!');
+      
+      // Click sign in button in popup
+      await popup.getByRole('button', { name: 'Sign in', exact: true }).click();
+      
+      // Wait for popup to close (indicating successful authentication)
+      console.log("Waiting for GitHub popup to close...");
+      await popup.waitForEvent('close', { timeout: 10000 });
+      console.log("GitHub popup closed");
+      
+      // Wait for the original page to redirect after OAuth completion
+      console.log("Waiting for redirect to landing page...");
+      
+      // Wait 3-5 seconds for load time as specified
+      await page.waitForTimeout(4000);
+      
+      // Check if we're redirected to dashboard or still on landing page
+      const currentUrl = page.url();
+      console.log(`Current URL after OAuth: ${currentUrl}`);
+      
+      // If we're on the landing page, navigate to dashboard
+      if (currentUrl === APP_URL || currentUrl === `${APP_URL}/`) {
+        console.log("On landing page, navigating to dashboard...");
+        await page.goto(`${APP_URL}/dashboard`);
+      }
+      
+      // Wait for successful login and redirection to dashboard
+      console.log("Waiting for dashboard URL...");
+      await expect(page).toHaveURL(`${APP_URL}/dashboard`, { timeout: 15000 });
+      console.log("Successfully redirected to dashboard URL.");
+      
+      // Add an additional wait for a known dashboard element to be fully visible and stable
+      console.log("Waiting for dashboard heading to be visible...");
+      await expect(page.getByRole('heading', { name: /Assessment Dashboard/i, exact: false })).toBeVisible({ timeout: 10000 });
+      console.log("Dashboard heading is visible.");
+
+      // Add a small explicit timeout to allow any final async operations to settle
+      console.log("Waiting for 2 seconds for session to fully settle...");
+      await page.waitForTimeout(2000);
+      console.log("Initial setup and login complete.");
+      
+    } catch (error) {
+      console.error("Error during GitHub OAuth login:", error);
+      
+      // Fallback: try direct email/password login if GitHub OAuth fails
+      console.log("GitHub OAuth failed, attempting fallback direct login...");
+      
+      // Check if there are email/password fields available
+      const emailField = page.getByLabel(/Email/i);
+      const passwordField = page.getByLabel(/Password/i);
+      
+      if (await emailField.isVisible() && await passwordField.isVisible()) {
+        await emailField.fill('samsena@gmail.com');
+        await passwordField.fill('Password@123');
+        await page.getByRole('button', { name: /Sign In|Login/i }).click();
+        
+        await expect(page).toHaveURL(`${APP_URL}/dashboard`, { timeout: 15000 });
+        await expect(page.getByRole('heading', { name: /Assessment Dashboard/i, exact: false })).toBeVisible({ timeout: 10000 });
+        await page.waitForTimeout(2000);
+        console.log("Fallback login successful.");
+      } else {
+        throw new Error("Both GitHub OAuth and fallback login failed");
+      }
+    }
   });
 
   test('Complete ESI assessment flow and verify AI transformation report', async ({ page }) => {

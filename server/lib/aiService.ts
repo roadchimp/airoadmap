@@ -8,19 +8,32 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
+// Enhanced environment variable checking with detailed logging
+console.log(`[AI Service] Environment: ${process.env.NODE_ENV}`);
+console.log(`[AI Service] OpenAI API Key present: ${!!process.env.OPENAI_API_KEY}`);
+console.log(`[AI Service] OpenAI API Key length: ${process.env.OPENAI_API_KEY?.length || 0}`);
+
 // Check for required environment variables
 const requiredEnvVars = ['OPENAI_API_KEY'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {
-  console.warn(`Warning: Missing environment variables: ${missingEnvVars.join(', ')}`);
-  console.warn('AI features will be disabled. Please set these variables in your .env file or Replit Secrets.');
+  console.error(`[AI Service] CRITICAL: Missing environment variables: ${missingEnvVars.join(', ')}`);
+  console.error('[AI Service] AI features will be disabled. Please set these variables in Vercel environment settings.');
+} else {
+  console.log('[AI Service] All required environment variables are present');
 }
 
 // Initialize OpenAI client if API key is available
 const openai = process.env.OPENAI_API_KEY 
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
+
+if (openai) {
+  console.log('[AI Service] OpenAI client initialized successfully');
+} else {
+  console.error('[AI Service] CRITICAL: OpenAI client failed to initialize - API key missing or invalid');
+}
 
 // Cache implementation for OpenAI responses
 const responseCache = new Map<string, any>();
@@ -89,8 +102,12 @@ export async function generateEnhancedExecutiveSummary(
   stepData: WizardStepData, 
   prioritizedRoles: any[]
 ): Promise<string> {
+  console.log('[AI Service] generateEnhancedExecutiveSummary called');
+  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
   try {
     if (!openai) {
+      console.log('[AI Service] No OpenAI client - using fallback for executive summary');
       return fallbackExecutiveSummary(stepData, prioritizedRoles);
     }
 
@@ -98,6 +115,8 @@ export async function generateEnhancedExecutiveSummary(
     const companyName = stepData.basics?.companyName || "your company";
     const industry = stepData.basics?.industry || "your industry";
     const goals = stepData.basics?.goals || "improve efficiency and competitiveness";
+    
+    console.log(`[AI Service] Generating executive summary for: ${companyName} in ${industry}`);
     
     // Get top prioritized roles
     const topRoles = prioritizedRoles.slice(0, 3).map(role => ({
@@ -127,9 +146,12 @@ export async function generateEnhancedExecutiveSummary(
     // Check if we have a cached response
     const cachedResponse = getCachedResponse(prompt, model);
     if (cachedResponse) {
+      console.log('[AI Service] Using cached response for executive summary');
       return cachedResponse;
     }
 
+    console.log('[AI Service] Making OpenAI API call for executive summary...');
+    
     // Make the API call
     const response = await openai.chat.completions.create({
       model,
@@ -139,14 +161,23 @@ export async function generateEnhancedExecutiveSummary(
       ]
     });
 
+    console.log('[AI Service] OpenAI API call successful for executive summary');
+    
     const content = response.choices[0].message.content || fallbackExecutiveSummary(stepData, prioritizedRoles);
     
     // Cache the response
     cacheResponse(prompt, model, content);
     
+    console.log(`[AI Service] Executive summary generated successfully (${content.length} characters)`);
     return content;
   } catch (error) {
-    console.error('Error generating executive summary with OpenAI:', error);
+    console.error('[AI Service] ERROR generating executive summary with OpenAI:', error);
+    console.error('[AI Service] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    console.log('[AI Service] Falling back to default executive summary');
     return fallbackExecutiveSummary(stepData, prioritizedRoles);
   }
 }
@@ -170,14 +201,21 @@ export async function generateAICapabilityRecommendations(
   default_impact_score?: string | null;
   tags?: string[] | null;
 }>>> {
+  console.log('[AI Service] generateAICapabilityRecommendations called');
+  console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
+  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
   try {
     if (!openai) {
+      console.log('[AI Service] No OpenAI client - using fallback for AI capabilities');
       return fallbackAICapabilities(role, department);
     }
 
     const painPointDescription = painPoints
       ? `Pain points include: Severity: ${painPoints.severity}/5, Frequency: ${painPoints.frequency}/5, Impact: ${painPoints.impact}/5. Description: ${painPoints.description || "Not provided"}`
       : "No specific pain points provided for this role.";
+
+    console.log(`[AI Service] Pain points for ${role.title}: ${painPointDescription}`);
 
     const prompt = `
 Context:
@@ -235,6 +273,8 @@ Return ONLY a valid JSON array of these objects. Example of one object:
 }
 `;
 
+    console.log('[AI Service] Making OpenAI API call for AI capability recommendations...');
+
     const response = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview", // Or your preferred model
       messages: [
@@ -245,11 +285,15 @@ Return ONLY a valid JSON array of these objects. Example of one object:
       temperature: 0.3,
     });
 
+    console.log('[AI Service] OpenAI API call successful for AI capability recommendations');
+
     const content = response.choices[0].message.content;
     if (!content) {
-      console.error("OpenAI returned empty content.");
+      console.error("[AI Service] OpenAI returned empty content for AI capabilities.");
       return fallbackAICapabilities(role, department);
     }
+
+    console.log(`[AI Service] Received AI capabilities response (${content.length} characters)`);
 
     try {
       // Assuming the response is an object with a key (e.g., "recommendations") that holds the array
@@ -263,10 +307,12 @@ Return ONLY a valid JSON array of these objects. Example of one object:
         // Common case: { "recommendations": [...] } or similar
         recommendationsArray = Object.values(parsedResponse)[0] as AIRecommendationResponse[];
       } else {
-        console.error("Parsed OpenAI response is not in the expected array format:", parsedResponse);
+        console.error("[AI Service] Parsed OpenAI response is not in the expected array format:", parsedResponse);
         return fallbackAICapabilities(role, department);
       }
-      console.log("Recommendations array:", recommendationsArray);
+      
+      console.log(`[AI Service] Successfully parsed ${recommendationsArray.length} AI capability recommendations`);
+      
       return recommendationsArray.map(rec => ({
         // Global capability fields
         capabilityName: rec.capabilityName,
@@ -291,13 +337,19 @@ Return ONLY a valid JSON array of these objects. Example of one object:
         assessmentNotes: rec.assessmentNotes,
       }));
     } catch (e) {
-      console.error("Error parsing OpenAI response JSON:", e);
-      console.error("Problematic AI response content:", content);
+      console.error("[AI Service] Error parsing OpenAI response JSON:", e);
+      console.error("[AI Service] Problematic AI response content:", content);
       return fallbackAICapabilities(role, department);
     }
 
   } catch (error) {
-    console.error("Error generating AI capability recommendations:", error);
+    console.error("[AI Service] ERROR generating AI capability recommendations:", error);
+    console.error('[AI Service] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    console.log('[AI Service] Falling back to default AI capabilities');
     return fallbackAICapabilities(role, department);
   }
 }

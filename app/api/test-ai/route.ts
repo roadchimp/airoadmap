@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from '@/server/lib/aiService';
-import { WizardStepData, JobRole, Department } from '@shared/schema';
+import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from '../../../server/lib/aiService';
+import { WizardStepData, JobRole, Department } from '../../../shared/schema';
 
 export async function GET() {
   try {

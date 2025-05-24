@@ -10,7 +10,11 @@ export async function GET() {
     const testStepData: WizardStepData = {
       basics: {
         companyName: "Test Company",
+        reportName: "AI Diagnostics Test Report",
         industry: "Software & Technology",
+        size: "Medium",
+        industryMaturity: "Mature",
+        companyStage: "Scaling",
         goals: "Improve efficiency"
       }
     };

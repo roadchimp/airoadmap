@@ -29,6 +29,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useAuth } from "@/hooks/UseAuth";
+import { useQueryClient } from "@tanstack/react-query";
 
 // --- Interfaces --- (Should ideally be in a types file)
 interface WizardStep {
@@ -88,10 +90,19 @@ const CACHE_KEY_PREFIX = 'ai_assessment_wizard_';
 const saveToLocalCache = (assessmentId: number | undefined, stepData: Partial<WizardStepData>) => {
   if (!assessmentId) return; // Only cache if we have an ID
   try {
-    localStorage.setItem(`${CACHE_KEY_PREFIX}${assessmentId}`, JSON.stringify(stepData));
-    console.log('Saved assessment data to local cache');
+    const cacheKey = `${CACHE_KEY_PREFIX}${assessmentId}`;
+    const existingCache = getFromLocalCache(assessmentId) || {};
+    
+    // Merge with existing cached data to preserve all steps
+    const mergedData = {
+      ...existingCache,
+      ...stepData,
+    };
+    
+    localStorage.setItem(cacheKey, JSON.stringify(mergedData));
+    console.log(`[Cache] Saved assessment data to local cache: ${cacheKey}`, mergedData);
   } catch (e) {
-    console.error('Failed to save assessment data to cache:', e);
+    console.error('[Cache] Failed to save assessment data to cache:', e);
   }
 };
 
@@ -100,11 +111,14 @@ const getFromLocalCache = (assessmentId: number | undefined): Partial<WizardStep
   try {
     const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${assessmentId}`);
     if (cached) {
-      console.log('Retrieved assessment data from local cache');
-      return JSON.parse(cached);
+      const parsedData = JSON.parse(cached);
+      console.log(`[Cache] Retrieved assessment data from local cache:`, parsedData);
+      return parsedData;
     }
   } catch (e) {
-    console.error('Failed to retrieve assessment data from cache:', e);
+    console.error('[Cache] Failed to retrieve assessment data from cache:', e);
+    // Clean up corrupted cache
+    localStorage.removeItem(`${CACHE_KEY_PREFIX}${assessmentId}`);
   }
   return null;
 };
@@ -123,6 +137,40 @@ const mapAssessmentToWizardData = (assessment: Assessment & { organization?: { n
     },
     // ... other steps mapping
   };
+};
+
+// --- Debug Component ---
+const WizardStateDebugger = ({ assessment, form, currentStepIndex, isEnabled = false }: {
+  assessment: AssessmentState;
+  form: any;
+  currentStepIndex: number;
+  isEnabled?: boolean;
+}) => {
+  if (!isEnabled) return null;
+  
+  return (
+    <div className="fixed bottom-4 right-4 bg-gray-900 text-white p-4 rounded max-w-md max-h-96 overflow-auto text-xs z-50">
+      <div className="font-bold mb-2">Wizard State Debug</div>
+      <div className="mb-2">
+        <strong>Current Step:</strong> {currentStepIndex} ({wizardSteps[currentStepIndex]?.id})
+      </div>
+      <div className="mb-2">
+        <strong>Assessment ID:</strong> {assessment.id || 'No ID'}
+      </div>
+      <div className="mb-2">
+        <strong>Form Values Keys:</strong> {Object.keys(form.getValues()).join(', ')}
+      </div>
+      <div className="mb-2">
+        <strong>Assessment Step Data Keys:</strong> {Object.keys(assessment.stepData).join(', ')}
+      </div>
+      <details className="mt-2">
+        <summary className="cursor-pointer">Full State</summary>
+        <pre className="mt-2 whitespace-pre-wrap text-xs">
+          {JSON.stringify({ assessment: assessment.stepData, form: form.getValues() }, null, 2)}
+        </pre>
+      </details>
+    </div>
+  );
 };
 
 // --- Main Wizard Component --- 
@@ -499,18 +547,21 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   // Sync form values from assessment.stepData when navigating between steps
   useEffect(() => {
     const stepId = wizardSteps[currentStepIndex].id;
-    if (assessment.stepData) {
-      // Special handling for the review step to load all data
-      if (stepId === 'review') {
-        // For the review step, use the full assessment data
-        form.reset(assessment.stepData as any, {});
-      } else if (assessment.stepData[stepId as keyof typeof assessment.stepData]) {
-        // For other steps, only update that specific step's data
-        form.reset({
-          ...form.getValues(),
-          [stepId]: assessment.stepData[stepId as keyof typeof assessment.stepData],
-        }, {});
-      }
+    if (assessment.stepData && Object.keys(assessment.stepData).length > 0) {
+      // Always reset with ALL available step data to maintain state across steps
+      const currentFormValues = form.getValues();
+      const mergedData = {
+        ...currentFormValues,        // Start with current form state
+        ...assessment.stepData,      // Overlay all assessment step data
+      };
+      
+      console.log(`[Form Sync] Syncing form for step: ${stepId}`);
+      console.log(`[Form Sync] Current form values:`, currentFormValues);
+      console.log(`[Form Sync] Assessment step data:`, assessment.stepData);
+      console.log(`[Form Sync] Merged data:`, mergedData);
+      
+      // Reset form with merged data to preserve all steps
+      form.reset(mergedData, { keepDefaultValues: true });
     }
     // Clear validation errors when changing steps
     setValidationError(null);
@@ -527,33 +578,63 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   }, [form, validationError]);
 
   // --- Handlers --- 
-  // Refactored: Only update local state and localStorage on step navigation
+  // Enhanced saveCurrentStep with better data preservation
   const saveCurrentStep = useCallback(async (onSuccess?: () => void) => {
-    // Only update local state and localStorage, no API/database writes
-    const wizardFormData = form.getValues();
-    console.log('Saving form data for step:', wizardSteps[currentStepIndex].id, wizardFormData);
-    
-    setAssessment(prev => {
-      // Merge new form data with existing step data to ensure we keep all data
-      const updatedStepData = {
-        ...prev.stepData,
-        ...wizardFormData
-      };
-      console.log('Updated step data:', updatedStepData);
+    try {
+      // Get all current form data
+      const currentFormData = form.getValues();
+      const currentStepId = wizardSteps[currentStepIndex].id;
       
-      return {
-        ...prev,
-        stepData: updatedStepData,
-        updatedAt: new Date().toISOString(),
-        // Important: We're not including strategicFocus here as it's managed separately
-      };
-    });
-    
-    if (assessment.id) {
-      saveToLocalCache(assessment.id, wizardFormData);
+      console.log(`[Save Step] Saving data for step: ${currentStepId}`);
+      console.log(`[Save Step] Current form data:`, currentFormData);
+      console.log(`[Save Step] Previous assessment data:`, assessment.stepData);
+      
+      setAssessment(prev => {
+        // Create a deep merge of existing step data with new form data
+        const mergedStepData = {
+          ...prev.stepData,     // Preserve all existing step data
+          ...currentFormData,   // Overlay with current form values
+        };
+        
+        // Ensure we don't lose any individual step data
+        Object.keys(currentFormData).forEach(stepKey => {
+          if (currentFormData[stepKey as keyof typeof currentFormData]) {
+            mergedStepData[stepKey as keyof typeof mergedStepData] = {
+              ...prev.stepData[stepKey as keyof typeof prev.stepData],
+              ...currentFormData[stepKey as keyof typeof currentFormData],
+            } as any;
+          }
+        });
+        
+        console.log(`[Save Step] Merged step data:`, mergedStepData);
+        
+        const updatedAssessment = {
+          ...prev,
+          stepData: mergedStepData,
+          updatedAt: new Date().toISOString(),
+        };
+        
+        // Save to local cache immediately
+        if (prev.id) {
+          saveToLocalCache(prev.id, mergedStepData);
+        }
+        
+        return updatedAssessment;
+      });
+      
+      // Execute success callback
+      if (onSuccess) {
+        setTimeout(onSuccess, 0); // Ensure state update completes first
+      }
+    } catch (error) {
+      console.error('[Save Step] Error saving step data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save step data. Please try again.",
+        variant: "destructive",
+      });
     }
-    if (onSuccess) onSuccess();
-  }, [form, assessment.id, currentStepIndex, wizardSteps]);
+  }, [form, assessment.id, assessment.stepData, currentStepIndex, wizardSteps, toast]);
 
   // --- Enhance navigation handlers with transition state ---
   const handleNext = useCallback(async () => {
@@ -2024,46 +2105,56 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const isLastStep = currentStepIndex === wizardSteps.length - 1;
 
   return (
-    <WizardLayout
-      title={assessment.title || "Assessment"}
-      steps={wizardSteps}
-      currentStepIndex={currentStepIndex}
-      totalSteps={wizardSteps.length}
-      onPrevious={handlePrevious}
-      onNext={handleNext}
-      onSubmit={currentStepIndex === wizardSteps.length - 1 ? handleSubmit : undefined}
-      isSaving={isSaving || isTransitioning}
-      isSubmitting={isGeneratingReport}
-      assessmentId={0} // This is needed for progress indicator navigation, even if we're not using it
-      onSaveBeforeNavigate={saveCurrentStep}
-      maxReachedStepIndex={maxReachedStepIndex}
-      validationError={validationError}
-    >
-      <Form {...form}>
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">
-                  {wizardSteps[currentStepIndex].title}
-                </h1>
-                <p className="text-slate-600">
-                  {wizardSteps[currentStepIndex].description}
-                </p>
+    <>
+      <WizardLayout
+        title={assessment.title || "Assessment"}
+        steps={wizardSteps}
+        currentStepIndex={currentStepIndex}
+        totalSteps={wizardSteps.length}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        onSubmit={currentStepIndex === wizardSteps.length - 1 ? handleSubmit : undefined}
+        isSaving={isSaving || isTransitioning}
+        isSubmitting={isGeneratingReport}
+        assessmentId={0} // This is needed for progress indicator navigation, even if we're not using it
+        onSaveBeforeNavigate={saveCurrentStep}
+        maxReachedStepIndex={maxReachedStepIndex}
+        validationError={validationError}
+      >
+        <Form {...form}>
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    {wizardSteps[currentStepIndex].title}
+                  </h1>
+                  <p className="text-slate-600">
+                    {wizardSteps[currentStepIndex].description}
+                  </p>
+                </div>
+                
+                {isGeneratingReport && (
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    <span className="text-slate-600 font-medium">Generating report...</span>
+                  </div>
+                )}
               </div>
               
-              {isGeneratingReport && (
-                <div className="flex items-center space-x-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                  <span className="text-slate-600 font-medium">Generating report...</span>
-                </div>
-              )}
-            </div>
-            
-            {renderStepContent()}
-          </CardContent>
-        </Card>
-      </Form>
-    </WizardLayout>
+              {renderStepContent()}
+            </CardContent>
+          </Card>
+        </Form>
+      </WizardLayout>
+      
+      {/* Debug Component - Enable by pressing Ctrl+Shift+D */}
+      <WizardStateDebugger 
+        assessment={assessment}
+        form={form}
+        currentStepIndex={currentStepIndex}
+        isEnabled={false} // Set to false in production
+      />
+    </>
   );
 } 

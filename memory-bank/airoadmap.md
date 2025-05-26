@@ -84,6 +84,27 @@ headers: {
 
 ## Recent Changes / Milestones
 
+*   **Critical Production Bug Fixes (December 2024):**
+    *   **Issue 1: State not being saved during wizard navigation**
+        *   **Problem:** The assessment wizard only saved data to local state and localStorage, never persisting to backend during step navigation
+        *   **Impact:** Users lost progress when navigating away, refreshing, or switching between steps
+        *   **Root Cause:** `saveCurrentStep` function only updated local state, `updateAssessmentStepMutation` was defined but never used
+        *   **Solution:** Modified `saveCurrentStep` to actually persist data to backend using `updateAssessmentStepMutation` for existing assessments and create new assessments when completing basics step
+        *   **Files Modified:** `app/(app)/assessment/new/_components/assessment-wizard.tsx`
+    
+    *   **Issue 2: Company name not passed to final submission**
+        *   **Problem:** Company name stored in `stepData.basics.companyName` wasn't creating/updating organization records
+        *   **Impact:** Reports couldn't access company name, organization data was missing
+        *   **Root Cause:** Assessment creation didn't create corresponding organization records with company name
+        *   **Solution:** Added organization creation during assessment submission with proper company name, industry, and size data
+        *   **Files Modified:** `app/(app)/assessment/new/_components/assessment-wizard.tsx`
+    
+    *   **Production Environment Fixes:**
+        *   Removed `test_auth_bypass=true` parameter from production API calls
+        *   Added proper error handling for assessment and organization creation
+        *   Enhanced logging for debugging production issues
+        *   Improved user feedback with more specific toast messages
+
 *   **Critical AI Adoption Score Bug Fix (December 2024):**
     *   Identified and resolved critical scaling bug in `server/lib/aiAdoptionScoreEngine.ts`
     *   **Problem:** AI Adoption Scores were showing dramatically lower values (e.g., 17) when component scores were high (80%, 70%, 100%, 100%)

@@ -578,7 +578,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   }, [form, validationError]);
 
   // --- Handlers --- 
-  // Enhanced saveCurrentStep with better data preservation
+  // Enhanced saveCurrentStep with better data preservation AND backend persistence
   const saveCurrentStep = useCallback(async (onSuccess?: () => void) => {
     try {
       // Get all current form data
@@ -621,6 +621,87 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         
         return updatedAssessment;
       });
+
+      // CRITICAL FIX: Now actually persist to backend if we have an assessment ID
+      setIsSaving(true);
+      
+      if (assessment.id) {
+        try {
+          // Use the updateAssessmentStepMutation for existing assessments
+          await updateAssessmentStepMutation.mutateAsync({
+            id: assessment.id,
+            stepData: {
+              ...assessment.stepData,
+              ...currentFormData,
+            },
+            strategicFocus: strategicFocus,
+          });
+          console.log(`[Save Step] Successfully persisted step data to backend for assessment ${assessment.id}`);
+        } catch (error) {
+          console.error(`[Save Step] Failed to persist step data to backend:`, error);
+          toast({
+            title: "Save Warning", 
+            description: "Changes saved locally but may not be saved to server. Please try again.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // If no assessment ID, create new assessment on first step (basics)
+        if (currentStepId === 'basics' && currentFormData.basics?.companyName && currentFormData.basics?.reportName) {
+          try {
+            console.log(`[Save Step] Creating new assessment with basics data`);
+            
+            // CRITICAL FIX: Create organization first with company name
+            let organizationId = 1; // Default fallback
+            
+            if (currentFormData.basics.companyName) {
+              try {
+                // Create organization with the company name
+                const orgResponse = await apiRequest("POST", "/api/organizations", {
+                  name: currentFormData.basics.companyName,
+                  industry: currentFormData.basics.industry || "Unknown",
+                  size: currentFormData.basics.size || "Unknown",
+                  description: `Organization for ${currentFormData.basics.companyName}`,
+                });
+                
+                if (orgResponse.ok) {
+                  const newOrganization = await orgResponse.json();
+                  organizationId = newOrganization.id;
+                  console.log(`[Save Step] Created organization with ID: ${organizationId}`);
+                } else {
+                  console.warn(`[Save Step] Failed to create organization, using default ID`);
+                }
+              } catch (orgError) {
+                console.warn(`[Save Step] Organization creation failed, using default:`, orgError);
+              }
+            }
+            
+            const payload = {
+              basics: currentFormData.basics,
+              stepData: { ...assessment.stepData, ...currentFormData },
+              organizationId: organizationId,
+              userId: 1, // Will be resolved by API
+              strategicFocus: strategicFocus,
+              industry: currentFormData.basics?.industry,
+              industryMaturity: currentFormData.basics?.industryMaturity,
+              companyStage: currentFormData.basics?.companyStage,
+            };
+            
+            const createdAssessment = await createAssessmentMutation.mutateAsync(payload);
+            console.log(`[Save Step] Created new assessment with ID: ${createdAssessment.id}`);
+            
+          } catch (error) {
+            console.error(`[Save Step] Failed to create assessment:`, error);
+            toast({
+              title: "Save Error",
+              description: "Failed to create assessment. Please try again.",
+              variant: "destructive",
+            });
+          }
+        }
+      }
+      
+      setIsSaving(false);
       
       // Execute success callback
       if (onSuccess) {
@@ -628,13 +709,14 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       }
     } catch (error) {
       console.error('[Save Step] Error saving step data:', error);
+      setIsSaving(false);
       toast({
         title: "Error",
         description: "Failed to save step data. Please try again.",
         variant: "destructive",
       });
     }
-  }, [form, assessment.id, assessment.stepData, currentStepIndex, wizardSteps, toast]);
+  }, [form, assessment.id, assessment.stepData, currentStepIndex, wizardSteps, toast, strategicFocus, updateAssessmentStepMutation, createAssessmentMutation]);
 
   // --- Enhance navigation handlers with transition state ---
   const handleNext = useCallback(async () => {
@@ -798,12 +880,42 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         console.warn("No AI Adoption Score inputs provided. AI Adoption Score will not be calculated.");
       }
       
+      // CRITICAL FIX: Ensure organization is created/updated with company name
+      let resolvedOrganizationId = assessment.organizationId || 1; // Default fallback
+      
+      if (combinedStepData.basics?.companyName && !assessment.id) {
+        // Only create organization if this is a new assessment
+        try {
+          console.log("Creating organization with company name:", combinedStepData.basics.companyName);
+          const orgResponse = await apiRequest("POST", "/api/organizations", {
+            name: combinedStepData.basics.companyName,
+            industry: combinedStepData.basics.industry || "Unknown",
+            size: combinedStepData.basics.size || "Unknown",
+            description: `Organization for ${combinedStepData.basics.companyName}`,
+          });
+          
+          if (orgResponse.ok) {
+            const newOrganization = await orgResponse.json();
+            resolvedOrganizationId = newOrganization.id;
+            console.log("Created organization with ID:", resolvedOrganizationId);
+            toast({
+              title: "Organization Created",
+              description: `Created organization: ${combinedStepData.basics.companyName}`,
+            });
+          } else {
+            console.warn("Failed to create organization, using default ID");
+          }
+        } catch (orgError) {
+          console.warn("Organization creation failed, proceeding with default:", orgError);
+        }
+      }
+      
       // Prepare the payload with the combined data
       const payload = {
         basics: combinedStepData.basics,
         stepData: combinedStepData,
-        organizationId: 1, // Placeholder, adjust as needed
-        userId: 1, // Placeholder, adjust as needed
+        organizationId: resolvedOrganizationId,
+        userId: 1, // Will be resolved by API based on auth
         strategicFocus: strategicFocus, // Include the strategicFocus field
         industry: combinedStepData.basics?.industry,
         industryMaturity: combinedStepData.basics?.industryMaturity,
@@ -818,12 +930,17 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         description: "Sending assessment data to server..."
       });
       
-      // TEMPORARY DIAGNOSTIC STEP: Add test_auth_bypass=true for /api/assessments
-      const assessmentApiUrl = "/api/assessments?test_auth_bypass=true";
-      console.warn(`TEMPORARY DIAGNOSTIC: Using URL: ${assessmentApiUrl} for initial assessment creation.`);
+      // PRODUCTION FIX: Remove test_auth_bypass parameter for production
+      const assessmentApiUrl = "/api/assessments";
+      console.log(`Submitting to: ${assessmentApiUrl}`);
       const response = await apiRequest("POST", assessmentApiUrl, payload);
 
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Assessment creation failed:", errorText);
+        throw new Error(`Failed to create assessment: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
       const createdAssessment = await response.json();
       
       toast({
@@ -850,18 +967,20 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         createdAt: createdAssessment.createdAt,
         updatedAt: createdAssessment.updatedAt,
       }));
+      
       // Generate report after assessment is created
       generateReportMutation.mutate(createdAssessment.id);
+      
     } catch (error) {
       console.error("Submission Error:", error);
       toast({
         title: "Submission Error",
-        description: error instanceof Error ? error.message : "Unknown error.",
+        description: error instanceof Error ? error.message : "Unknown error occurred during submission.",
         variant: "destructive",
       });
       setIsGeneratingReport(false);
     }
-  }, [form, toast, generateReportMutation, strategicFocus]);
+  }, [form, toast, generateReportMutation, strategicFocus, assessment.stepData, assessment.organizationId, assessment.id]);
   
   // Generic input change handler - deep updates for nested stepData
   const handleInputChange = (path: string, value: any) => {

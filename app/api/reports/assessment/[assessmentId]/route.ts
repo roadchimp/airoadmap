@@ -49,6 +49,24 @@ export const POST = withAuthPost(async (request: Request, authId: string, { para
     if (isTestBypass) {
       console.log('E2E TEST BYPASS: Skipping authentication check for test');
     }
+
+    // Enhanced session debugging for production issues
+    console.log(`Report generation request details:`, {
+      url: request.url,
+      method: request.method,
+      authId: authId,
+      userAgent: request.headers.get('User-Agent'),
+      origin: request.headers.get('Origin'),
+      referer: request.headers.get('Referer')
+    });
+
+    // Runtime environment variable check
+    console.log(`[Report API] Runtime environment check:`);
+    console.log(`[Report API] - NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`[Report API] - VERCEL_ENV: ${process.env.VERCEL_ENV}`);
+    console.log(`[Report API] - OpenAI API Key available: ${!!process.env.OPENAI_API_KEY}`);
+    console.log(`[Report API] - OpenAI API Key length: ${process.env.OPENAI_API_KEY?.length || 0}`);
+    console.log(`[Report API] - OpenAI API Key first 10 chars: ${process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined'}`);
     
     const assessmentId = parseInt(params.assessmentId);
     if (isNaN(assessmentId)) {

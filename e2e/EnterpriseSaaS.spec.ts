@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 
 // const APP_URL = 'https://v0-ai-sherpas-demo.vercel.app';
 // const APP_URL = 'http://localhost:3000';
-const APP_URL = 'https://airoadmap-rf5gpnxyv-roadchimps-projects.vercel.app';
+const APP_URL = 'https://airoadmap-b0m2kmw0r-roadchimps-projects.vercel.app';
 
 test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
   // Test data based on Enterprise SaaS Inc. (ESI) case study
@@ -846,7 +846,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
         
         if (!reportGenerated && attempts < maxAttempts) {
           console.log(`Report generation attempt ${attempts} failed. Waiting before retry...`);
-          await page.waitForTimeout(5000); // Wait 5 seconds before retrying
+          await page.waitForTimeout(15000); // Wait 5 seconds before retrying
         }
       }
       

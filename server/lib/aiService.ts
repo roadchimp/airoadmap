@@ -10,29 +10,74 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Enhanced environment variable checking with detailed logging
 console.log(`[AI Service] Environment: ${process.env.NODE_ENV}`);
+console.log(`[AI Service] All environment variables check:`);
+console.log(`[AI Service] - NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`[AI Service] - VERCEL: ${process.env.VERCEL}`);
+console.log(`[AI Service] - VERCEL_ENV: ${process.env.VERCEL_ENV}`);
+console.log(`[AI Service] - Available env vars starting with 'OPENAI': ${Object.keys(process.env).filter(key => key.startsWith('OPENAI')).join(', ')}`);
+console.log(`[AI Service] - Raw OPENAI_API_KEY value type: ${typeof process.env.OPENAI_API_KEY}`);
+console.log(`[AI Service] - Raw OPENAI_API_KEY first 10 chars: ${process.env.OPENAI_API_KEY?.substring(0, 10) || 'undefined'}`);
 console.log(`[AI Service] OpenAI API Key present: ${!!process.env.OPENAI_API_KEY}`);
 console.log(`[AI Service] OpenAI API Key length: ${process.env.OPENAI_API_KEY?.length || 0}`);
 
-// Check for required environment variables
+// Check for required environment variables with multiple possible names/cases
+const possibleOpenAIKeys = [
+  'OPENAI_API_KEY',
+  'openai_api_key', 
+  'OPENAI_API_TOKEN',
+  'OPEN_AI_API_KEY',
+  'OPENAI_SECRET_KEY'
+];
+
+let openaiApiKey = null;
+let foundKeyName = null;
+
+for (const keyName of possibleOpenAIKeys) {
+  if (process.env[keyName]) {
+    openaiApiKey = process.env[keyName];
+    foundKeyName = keyName;
+    console.log(`[AI Service] Found OpenAI API key with name: ${keyName}`);
+    break;
+  }
+}
+
+if (!openaiApiKey) {
+  console.log(`[AI Service] No OpenAI API key found. Checked: ${possibleOpenAIKeys.join(', ')}`);
+}
+
 const requiredEnvVars = ['OPENAI_API_KEY'];
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+const missingEnvVars = requiredEnvVars.filter(varName => !openaiApiKey); // Use our found key instead
 
 if (missingEnvVars.length > 0) {
   console.error(`[AI Service] CRITICAL: Missing environment variables: ${missingEnvVars.join(', ')}`);
   console.error('[AI Service] AI features will be disabled. Please set these variables in Vercel environment settings.');
 } else {
   console.log('[AI Service] All required environment variables are present');
+  console.log(`[AI Service] Using OpenAI API key from: ${foundKeyName}`);
 }
 
 // Initialize OpenAI client if API key is available
-const openai = process.env.OPENAI_API_KEY 
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const openai = openaiApiKey 
+  ? new OpenAI({ apiKey: openaiApiKey })
   : null;
 
 if (openai) {
   console.log('[AI Service] OpenAI client initialized successfully');
 } else {
   console.error('[AI Service] CRITICAL: OpenAI client failed to initialize - API key missing or invalid');
+}
+
+// Alternative function to get OpenAI client at runtime (in case env vars aren't available at module load)
+function getRuntimeOpenAIClient(): OpenAI | null {
+  const runtimeKey = process.env.OPENAI_API_KEY || process.env.openai_api_key || process.env.OPENAI_API_TOKEN;
+  
+  if (runtimeKey) {
+    console.log('[AI Service] Found OpenAI API key at runtime, creating client');
+    return new OpenAI({ apiKey: runtimeKey });
+  }
+  
+  console.log('[AI Service] No OpenAI API key found at runtime');
+  return null;
 }
 
 // Cache implementation for OpenAI responses
@@ -103,11 +148,19 @@ export async function generateEnhancedExecutiveSummary(
   prioritizedRoles: any[]
 ): Promise<string> {
   console.log('[AI Service] generateEnhancedExecutiveSummary called');
-  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
+  // Try module-level client first, then runtime client
+  let workingOpenAI = openai;
+  if (!workingOpenAI) {
+    console.log('[AI Service] Module-level OpenAI client not available, trying runtime client...');
+    workingOpenAI = getRuntimeOpenAIClient();
+  }
+  
+  console.log(`[AI Service] OpenAI client available: ${!!workingOpenAI}`);
   
   try {
-    if (!openai) {
-      console.log('[AI Service] No OpenAI client - using fallback for executive summary');
+    if (!workingOpenAI) {
+      console.log('[AI Service] No OpenAI client available - using fallback for executive summary');
       return fallbackExecutiveSummary(stepData, prioritizedRoles);
     }
 
@@ -153,7 +206,7 @@ export async function generateEnhancedExecutiveSummary(
     console.log('[AI Service] Making OpenAI API call for executive summary...');
     
     // Make the API call
-    const response = await openai.chat.completions.create({
+    const response = await workingOpenAI.chat.completions.create({
       model,
       messages: [
         { role: "system", content: "You are an AI transformation consultant providing executive-level strategic insights." },
@@ -203,11 +256,19 @@ export async function generateAICapabilityRecommendations(
 }>>> {
   console.log('[AI Service] generateAICapabilityRecommendations called');
   console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
-  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
+  // Try module-level client first, then runtime client
+  let workingOpenAI = openai;
+  if (!workingOpenAI) {
+    console.log('[AI Service] Module-level OpenAI client not available, trying runtime client...');
+    workingOpenAI = getRuntimeOpenAIClient();
+  }
+  
+  console.log(`[AI Service] OpenAI client available: ${!!workingOpenAI}`);
   
   try {
-    if (!openai) {
-      console.log('[AI Service] No OpenAI client - using fallback for AI capabilities');
+    if (!workingOpenAI) {
+      console.log('[AI Service] No OpenAI client available - using fallback for AI capabilities');
       return fallbackAICapabilities(role, department);
     }
 
@@ -275,7 +336,7 @@ Return ONLY a valid JSON array of these objects. Example of one object:
 
     console.log('[AI Service] Making OpenAI API call for AI capability recommendations...');
 
-    const response = await openai.chat.completions.create({
+    const response = await workingOpenAI.chat.completions.create({
       model: "gpt-4-turbo-preview", // Or your preferred model
       messages: [
         { role: "system", content: "You are an expert AI strategy consultant. You provide detailed, structured AI capability recommendations in JSON format." },
@@ -375,11 +436,19 @@ export async function generatePerformanceImpact(
 ): Promise<any> {
   console.log('[AI Service] generatePerformanceImpact called');
   console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
-  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
+  // Try module-level client first, then runtime client
+  let workingOpenAI = openai;
+  if (!workingOpenAI) {
+    console.log('[AI Service] Module-level OpenAI client not available, trying runtime client...');
+    workingOpenAI = getRuntimeOpenAIClient();
+  }
+  
+  console.log(`[AI Service] OpenAI client available: ${!!workingOpenAI}`);
   
   try {
-    if (!openai) {
-      console.log('[AI Service] No OpenAI client - using fallback for performance impact');
+    if (!workingOpenAI) {
+      console.log('[AI Service] No OpenAI client available - using fallback for performance impact');
       return fallbackPerformanceImpact(role);
     }
 
@@ -410,7 +479,7 @@ Return ONLY the JSON object, no additional text.`;
 
     console.log('[AI Service] Making OpenAI API call for performance impact...');
 
-    const response = await openai.chat.completions.create({
+    const response = await workingOpenAI.chat.completions.create({
       model,
       messages: [
         { role: "system", content: "You are an AI transformation analyst providing realistic performance predictions. Return only valid JSON objects." },

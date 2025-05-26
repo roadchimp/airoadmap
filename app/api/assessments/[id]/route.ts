@@ -47,8 +47,14 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   }
   
   try {
-    const stepData = await request.json(); // Note: No explicit validation here, matches original
-    const assessment = await storage.updateAssessmentStep(assessmentId, stepData);
+    const body = await request.json(); // Note: No explicit validation here, matches original
+    
+    // Extract strategicFocus if present
+    const { strategicFocus, ...stepData } = body;
+    
+    // Pass strategicFocus as a separate parameter if it exists
+    const assessment = await storage.updateAssessmentStep(assessmentId, stepData, strategicFocus);
+    
     return NextResponse.json(assessment);
   } catch (error) {
     console.error('Error updating assessment step:', error);

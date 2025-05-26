@@ -92,12 +92,22 @@ headers: {
         *   **Solution:** Modified `saveCurrentStep` to actually persist data to backend using `updateAssessmentStepMutation` for existing assessments and create new assessments when completing basics step
         *   **Files Modified:** `app/(app)/assessment/new/_components/assessment-wizard.tsx`
     
-    *   **Issue 2: Company name not passed to final submission**
-        *   **Problem:** Company name stored in `stepData.basics.companyName` wasn't creating/updating organization records
-        *   **Impact:** Reports couldn't access company name, organization data was missing
-        *   **Root Cause:** Assessment creation didn't create corresponding organization records with company name
-        *   **Solution:** Added organization creation during assessment submission with proper company name, industry, and size data
+    *   **Issue 2: Company name not being passed to organization**
+        *   **Problem:** Company name from basics step wasn't being properly passed to organization creation
+        *   **Impact:** Organizations were created without proper company names in production
+        *   **Root Cause:** Organization creation logic was only executed in development mode with test_auth_bypass
+        *   **Solution:** Modified assessment submission to always create/update organization with company name regardless of environment
         *   **Files Modified:** `app/(app)/assessment/new/_components/assessment-wizard.tsx`
+    
+    *   **Issue 3: strategicFocus field causing ZodError in API**
+        *   **Problem:** `strategicFocus` field was being included in the updateAssessmentStep payload but wasn't defined in the schema
+        *   **Impact:** Step updates were failing with "Unrecognized key(s) in object: 'strategicFocus'" error
+        *   **Solution:** Modified the API endpoint to accept strategicFocus as a top-level field and updated the storage layer to handle it
+        *   **Files Modified:** 
+            *   `app/api/assessments/[id]/step/route.ts` - Created extended schema that includes strategicFocus
+            *   `server/storage.ts` - Updated interface to accept strategicFocus parameter
+            *   `server/pg-storage.ts` - Updated implementation to handle strategicFocus parameter
+            *   `app/(app)/assessment/new/_components/assessment-wizard.tsx` - Updated mutation to include strategicFocus in payload
     
     *   **Production Environment Fixes:**
         *   Removed `test_auth_bypass=true` parameter from production API calls

@@ -8,6 +8,12 @@ type Params = {
   id: string;
 };
 
+// Create an extended schema that includes strategicFocus
+const stepUpdateSchema = wizardStepDataSchema.partial().extend({
+  // Allow strategicFocus as a top-level field
+  strategicFocus: z.array(z.string()).optional(),
+});
+
 /**
  * PATCH /api/assessments/:id/step
  * Updates step data for a specific assessment
@@ -29,24 +35,37 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     
     // Handle special case for aiAdoptionScoreInputs if it exists
     if (body.aiAdoptionScoreInputs) {
-      const updatedAssessment = await storage.updateAssessmentStep(assessmentId, {
-        aiAdoptionScoreInputs: body.aiAdoptionScoreInputs
-      });
+      // Extract strategicFocus if present
+      const { strategicFocus, ...restBody } = body;
+      
+      const updatedAssessment = await storage.updateAssessmentStep(
+        assessmentId, 
+        {
+          aiAdoptionScoreInputs: body.aiAdoptionScoreInputs
+        },
+        strategicFocus
+      );
       
       return NextResponse.json(updatedAssessment);
     }
 
-    // The body here is Partial<WizardStepData>
-    // For example: { basics: { companyName: "New Name", ... } } or { roles: { ... } }
+    // The body here is Partial<WizardStepData> plus potentially strategicFocus
+    // For example: { basics: { companyName: "New Name", ... }, strategicFocus: ["focus1", "focus2"] }
     
-    // Validate the incoming partial step data against the corresponding part of the main schema.
-    // This is a bit more complex because we don't know which step it is beforehand without a stepId in path.
-    // However, wizardStepDataSchema.partial() can validate that the structure is a valid partial of WizardStepData.
-    const validatedPartialStepData = wizardStepDataSchema.partial().parse(body);
+    // Validate using our extended schema that allows strategicFocus
+    const validatedData = stepUpdateSchema.parse(body);
+
+    // Extract strategicFocus if present
+    const { strategicFocus, ...validatedPartialStepData } = validatedData;
 
     // The updated pg-storage.updateAssessmentStep method now handles extracting data for
     // dedicated columns if 'basics' is present in validatedPartialStepData.
-    const updatedAssessment = await storage.updateAssessmentStep(assessmentId, validatedPartialStepData);
+    // Pass strategicFocus as a separate parameter if it exists
+    const updatedAssessment = await storage.updateAssessmentStep(
+      assessmentId, 
+      validatedPartialStepData as Partial<WizardStepData>,
+      strategicFocus
+    );
 
     return NextResponse.json(updatedAssessment);
   } catch (error) {

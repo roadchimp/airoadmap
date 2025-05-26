@@ -359,11 +359,13 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   
   const updateAssessmentStepMutation = useMutation({
     mutationFn: async ({ id, stepData, strategicFocus }: { id: number, stepData: Partial<WizardStepData>, strategicFocus?: string[] }) => {
-      const response = await apiRequest("PATCH", `/api/assessments/${id}/step`, { 
+      // Include strategicFocus directly in the payload
+      const payload = {
         ...stepData,
-        strategicFocus
-      });
-       if (!response.ok) throw new Error(await response.text());
+        strategicFocus // Add strategicFocus at the top level
+      };
+      const response = await apiRequest("PATCH", `/api/assessments/${id}/step`, payload);
+      if (!response.ok) throw new Error(await response.text());
       return response.json() as Promise<Assessment>;
     },
     onSuccess: (data) => {
@@ -634,6 +636,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
               ...assessment.stepData,
               ...currentFormData,
             },
+            // Pass strategicFocus to the mutation
             strategicFocus: strategicFocus,
           });
           console.log(`[Save Step] Successfully persisted step data to backend for assessment ${assessment.id}`);

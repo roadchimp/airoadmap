@@ -799,7 +799,7 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
-  async updateAssessmentStep(id: number, partialStepData: Partial<WizardStepData>): Promise<Assessment> {
+  async updateAssessmentStep(id: number, partialStepData: Partial<WizardStepData>, strategicFocus?: string[]): Promise<Assessment> {
     await this.ensureInitialized();
     const current = await this.getAssessment(id);
     if (!current) {
@@ -810,6 +810,11 @@ export class PgStorage implements IStorage {
     const assessmentUpdatePayload: Partial<Omit<Assessment, 'id' | 'createdAt' | 'stepData'> & { updatedAt?: Date }> = {
         updatedAt: new Date(), // Always update the timestamp
     };
+
+    // Handle strategicFocus if provided directly as a parameter
+    if (strategicFocus !== undefined) {
+      assessmentUpdatePayload.strategicFocus = strategicFocus;
+    }
 
     // Deep clone existing step_data to merge with new partial data
     const newStepDataJson = current.stepData ? JSON.parse(JSON.stringify(current.stepData)) : {};
@@ -838,9 +843,10 @@ export class PgStorage implements IStorage {
                     if (basicsData.industry !== undefined) assessmentUpdatePayload.industry = basicsData.industry;
                     if (basicsData.industryMaturity !== undefined) assessmentUpdatePayload.industryMaturity = basicsData.industryMaturity;
                     if (basicsData.companyStage !== undefined) assessmentUpdatePayload.companyStage = basicsData.companyStage;
-                    // Assuming 'stakeholders' from wizard basics maps to 'strategicFocus' dedicated column
-                    // If 'strategicFocus' is a distinct field in `basicsData`, use that instead.
-                    if (basicsData.stakeholders !== undefined) assessmentUpdatePayload.strategicFocus = basicsData.stakeholders;
+                    // Only use stakeholders from basics if strategicFocus wasn't provided directly
+                    if (basicsData.stakeholders !== undefined && strategicFocus === undefined) {
+                        assessmentUpdatePayload.strategicFocus = basicsData.stakeholders;
+                    }
                     if (basicsData.reportName !== undefined) assessmentUpdatePayload.title = basicsData.reportName; // Update title if reportName changes
                     // Note: organizationId would likely be set at creation and not change here.
                     // status might be updated elsewhere or through a specific field in a step

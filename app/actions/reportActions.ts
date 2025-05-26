@@ -43,10 +43,14 @@ export async function updateAssessmentTitle(
       stakeholders: currentBasicsFromStep?.stakeholders || undefined,
     };
     
-    const updatedAssessment = await storage.updateAssessmentStep(assessmentId, {
-      ...currentStepData, // Spread other existing step data
-      basics: updatedBasicsPayload, // Provide the complete, updated basics object
-    });
+    const updatedAssessment = await storage.updateAssessmentStep(
+      assessmentId, 
+      {
+        ...currentStepData, // Spread other existing step data
+        basics: updatedBasicsPayload, // Provide the complete, updated basics object
+      },
+      currentAssessment.strategicFocus || undefined // Convert null to undefined
+    );
 
     if (!updatedAssessment) {
       throw new Error("Failed to update assessment title in storage.");

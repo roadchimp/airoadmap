@@ -180,7 +180,7 @@ export interface IStorage {
   listAssessments(): Promise<Assessment[]>;
   listAssessmentsByUser(userId: number): Promise<Assessment[]>;
   createAssessment(assessment: InsertAssessment): Promise<Assessment>;
-  updateAssessmentStep(id: number, stepData: Partial<WizardStepData>): Promise<Assessment>;
+  updateAssessmentStep(id: number, stepData: Partial<WizardStepData>, strategicFocus?: string[]): Promise<Assessment>;
   updateAssessmentStatus(id: number, status: string): Promise<Assessment>;
   updateAssessmentUserID(id: number, userId: number): Promise<Assessment>;
   deleteAssessment(id: number): Promise<void>;

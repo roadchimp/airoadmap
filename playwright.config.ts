@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'https://airoadmap-b0m2kmw0r-roadchimps-projects.vercel.app',
+    baseURL: 'https://airoadmap-njnndsghw-roadchimps-projects.vercel.app',
     /* baseURL: 'http://localhost:3000', */
     trace: 'on-first-retry',
   },

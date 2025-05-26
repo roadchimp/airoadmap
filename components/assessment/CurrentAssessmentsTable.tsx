@@ -226,7 +226,7 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => router.push(`/assessment/edit/${assessment.id}`)}
+                  onClick={() => router.push(`/assessment/${assessment.id}`)}
                   title="Edit Assessment"
                 >
                   <Pencil className="h-4 w-4 mr-1" />

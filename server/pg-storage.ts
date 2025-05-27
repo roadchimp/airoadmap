@@ -1564,7 +1564,6 @@ export class PgStorage implements IStorage {
     
     if (result.length === 0) {
       // Automatically create default weights if none exist
-      // Use default values defined in the schema
       const defaultWeights: InsertOrganizationScoreWeights = {
         organizationId,
         adoptionRateWeight: 0.2,
@@ -1586,17 +1585,26 @@ export class PgStorage implements IStorage {
 
   async upsertOrganizationScoreWeights(weights: InsertOrganizationScoreWeights): Promise<OrganizationScoreWeights> {
     await this.ensureInitialized();
-    const validWeights = dzInsertOrganizationScoreWeightsSchema.parse(weights);
-
-    const result = await this.db
-      .insert(organizationScoreWeightsTable)
-      .values(validWeights)
-      .onConflictDoUpdate({ 
-        target: organizationScoreWeightsTable.organizationId, 
-        set: { ...validWeights, updatedAt: new Date() } 
-      })
-      .returning();
-    return result[0];
+    
+    try {
+      // No need to stringify - the schema can now accept numeric values directly
+      const validWeights = dzInsertOrganizationScoreWeightsSchema.parse(weights);
+      
+      const result = await this.db
+        .insert(organizationScoreWeightsTable)
+        .values(validWeights)
+        .onConflictDoUpdate({ 
+          target: organizationScoreWeightsTable.organizationId, 
+          set: { ...validWeights, updatedAt: new Date() } 
+        })
+        .returning();
+        
+      return result[0];
+    } catch (error) {
+      console.error("Error updating organization score weights:", error);
+      console.error("Input weights:", weights);
+      throw error;
+    }
   }
 
   // New methods for capability-tool mapping

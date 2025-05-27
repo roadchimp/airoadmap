@@ -828,14 +828,15 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
           const nextIndex = currentStepIndex + 1;
           const nextStepId = wizardSteps[nextIndex].id;
           setMaxReachedStepIndex(prevMax => Math.max(prevMax, nextIndex));
-          // Always navigate to /assessment/new for a local-only wizard
-          router.push(`/assessment/new?step=${nextStepId}`);
+          // Navigate based on whether this is a new assessment draft (with id) or a brand-new assessment
+          const basePath = assessment.id ? `/assessment/${assessment.id}` : "/assessment/new";
+          router.push(`${basePath}?step=${nextStepId}`);
         }
       });
     } finally {
       setIsTransitioning(false);
     }
-  }, [form, currentStepIndex, wizardSteps, saveCurrentStep, router, isTransitioning, toast]);
+  }, [form, currentStepIndex, wizardSteps, saveCurrentStep, router, isTransitioning, toast, assessment.id]);
 
   const handlePrevious = useCallback(async () => {
     if (isTransitioning) return;
@@ -845,8 +846,9 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     await saveCurrentStep(() => {
       if (currentStepIndex > 0) {
         const prevStepId = wizardSteps[currentStepIndex - 1].id;
-        // Always navigate to /assessment/new for a local-only wizard
-        router.push(`/assessment/new?step=${prevStepId}`);
+        // Navigate based on whether this is a new assessment draft (with id) or a brand-new assessment
+        const basePath = assessment.id ? `/assessment/${assessment.id}` : "/assessment/new";
+        router.push(`${basePath}?step=${prevStepId}`);
         setTimeout(() => {
           setIsTransitioning(false);
         }, 300);
@@ -854,7 +856,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         setIsTransitioning(false);
       }
     });
-  }, [currentStepIndex, router, saveCurrentStep, isTransitioning, wizardSteps]);
+  }, [currentStepIndex, router, saveCurrentStep, isTransitioning, wizardSteps, assessment.id]);
 
   // Only send the full wizard data to the backend on final submit
   const handleSubmit = useCallback(async () => {
@@ -2291,7 +2293,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         onSubmit={currentStepIndex === wizardSteps.length - 1 ? handleSubmit : undefined}
         isSaving={isSaving || isTransitioning}
         isSubmitting={isGeneratingReport}
-        assessmentId={0} // This is needed for progress indicator navigation, even if we're not using it
+        assessmentId={assessment.id ?? 0} // Provide real id so progress indicator can build correct links
         onSaveBeforeNavigate={saveCurrentStep}
         maxReachedStepIndex={maxReachedStepIndex}
         validationError={validationError}

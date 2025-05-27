@@ -34,8 +34,9 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
     if (stepIndex !== currentStepIndex && stepIndex <= maxReachedStepIndex) {
       try {
         await onSaveBeforeNavigate?.();
-        // Use a fixed route for local wizard navigation
-        router.push(`/assessment/new?step=${stepId}`);
+        // Build base path depending on whether we're editing an existing assessment or creating a new one
+        const basePath = assessmentId ? `/assessment/${assessmentId}` : "/assessment/new";
+        router.push(`${basePath}?step=${stepId}`);
       } catch (error) {
         console.error("Error saving before navigating via progress indicator:", error);
         toast({ title: "Save Error", description: "Could not save progress before navigating.", variant: "destructive" });

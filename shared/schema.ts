@@ -878,12 +878,27 @@ export const organizationScoreWeights = pgTable("organization_score_weights", {
 });
 
 export const insertOrganizationScoreWeightsSchema = createInsertSchema(organizationScoreWeights, {
-  // All weights are numeric but represented as strings by default by drizzle-zod, convert to number
-  adoptionRateWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
-  timeSavedWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
-  costEfficiencyWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
-  performanceImprovementWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
-  toolSprawlReductionWeight: z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number),
+  // Accept both number and string, but always convert to number
+  adoptionRateWeight: z.union([
+    z.number(),
+    z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number)
+  ]),
+  timeSavedWeight: z.union([
+    z.number(),
+    z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number)
+  ]),
+  costEfficiencyWeight: z.union([
+    z.number(),
+    z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number)
+  ]),
+  performanceImprovementWeight: z.union([
+    z.number(),
+    z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number)
+  ]),
+  toolSprawlReductionWeight: z.union([
+    z.number(),
+    z.string().refine(val => !isNaN(parseFloat(val)), { message: "Must be a number" }).transform(Number)
+  ]),
 }).omit({ updatedAt: true }); // Allow DB to handle updatedAt on insert/update
 
 export const selectOrganizationScoreWeightsSchema = createSelectSchema(organizationScoreWeights, {

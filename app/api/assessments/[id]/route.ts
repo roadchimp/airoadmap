@@ -22,6 +22,10 @@ export async function GET(request: Request, { params }: { params: Params }) {
       return NextResponse.json({ message: 'Assessment not found' }, { status: 404 });
     }
     
+    // Add debug logging
+    console.log(`GET /api/assessments/${assessmentId} - Retrieved assessment:`, assessment);
+    console.log(`Organization data:`, (assessment as any).organization || 'No organization data');
+    
     return NextResponse.json(assessment, {
       headers: {
         'Cache-Control': 'no-store, max-age=0, must-revalidate'

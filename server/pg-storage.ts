@@ -679,7 +679,15 @@ export class PgStorage implements IStorage {
 
   // Assessment methods
   async getAssessment(id: number): Promise<Assessment | undefined> {
+    await this.ensureInitialized(); // Make sure this is called
+    console.log("DB connection state:", !!this.db); // Add this debug line
+    
     try {
+      if (!this.db) {
+        throw new Error("Database connection not established");
+      }
+      
+      // Join with organizations table to include organization data
       const result = await this.db.select({
         id: assessments.id,
         title: assessments.title,
@@ -693,27 +701,41 @@ export class PgStorage implements IStorage {
         industryMaturity: assessments.industryMaturity,
         companyStage: assessments.companyStage,
         strategicFocus: assessments.strategicFocus,
-        aiAdoptionScoreInputs: assessments.aiAdoptionScoreInputs
-      }).from(assessments).where(eq(assessments.id, id));
+        aiAdoptionScoreInputs: assessments.aiAdoptionScoreInputs,
+        // Include organization data
+        organization: {
+          id: organizations.id,
+          name: organizations.name,
+          industry: organizations.industry,
+          size: organizations.size,
+          description: organizations.description
+        }
+      })
+      .from(assessments)
+      .leftJoin(organizations, eq(assessments.organizationId, organizations.id))
+      .where(eq(assessments.id, id));
       
       if (result.length > 0 && result[0] !== undefined) {
-        const assessmentData = result[0] as Assessment;
+        const assessmentData = result[0] as Assessment & { organization?: { name?: string, size?: string, industry?: string, description?: string } };
         if (assessmentData.updatedAt === null || assessmentData.updatedAt === undefined) {
             assessmentData.updatedAt = assessmentData.createdAt || new Date();
         }
         return assessmentData;
       }
       return undefined;
-
     } catch (error) {
       console.error(`PgStorage.getAssessment(${id}) error:`, error);
       if (error instanceof Error && error.message.includes('updated_at') && !error.message.includes('industry')) {
         console.warn('Missing updated_at column in assessments table. Fetching with raw SQL workaround.');
         const rawResult = await this.db.execute(
-          sql`SELECT id, title, organization_id, user_id, status, created_at, updated_at as db_updated_at, step_data, 
-                     industry, industry_maturity, company_stage, strategic_focus, ai_adoption_score_inputs 
-              FROM assessments
-              WHERE id = ${id}`
+          sql`SELECT a.id, a.title, a.organization_id, a.user_id, a.status, a.created_at, 
+                     a.updated_at as db_updated_at, a.step_data, a.industry, a.industry_maturity, 
+                     a.company_stage, a.strategic_focus, a.ai_adoption_score_inputs,
+                     o.id as org_id, o.name as org_name, o.industry as org_industry, 
+                     o.size as org_size, o.description as org_description
+              FROM assessments a
+              LEFT JOIN organizations o ON a.organization_id = o.id
+              WHERE a.id = ${id}`
         );
         
         if (rawResult.rows.length === 0) return undefined;
@@ -732,8 +754,15 @@ export class PgStorage implements IStorage {
           industryMaturity: row.industry_maturity,
           companyStage: row.company_stage,
           strategicFocus: row.strategic_focus,
-          aiAdoptionScoreInputs: row.ai_adoption_score_inputs || {}
-        } as Assessment;
+          aiAdoptionScoreInputs: row.ai_adoption_score_inputs || {},
+          organization: row.org_id ? {
+            id: row.org_id,
+            name: row.org_name,
+            industry: row.org_industry,
+            size: row.org_size,
+            description: row.org_description
+          } : undefined
+        } as Assessment & { organization?: { name?: string, size?: string, industry?: string, description?: string } };
       }
       throw error;
     }

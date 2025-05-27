@@ -124,6 +124,9 @@ const getFromLocalCache = (assessmentId: number | undefined): Partial<WizardStep
 };
 
 const mapAssessmentToWizardData = (assessment: Assessment & { organization?: { name?: string, size?: string, industry?: string } }): Partial<WizardStepData> => {
+  console.log("Mapping assessment to wizard data:", assessment);
+  console.log("Organization data:", assessment.organization);
+  
   return {
     basics: {
       companyName: assessment.organization?.name || "",
@@ -683,7 +686,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
               basics: currentFormData.basics,
               stepData: { ...assessment.stepData, ...currentFormData },
               organizationId: organizationId,
-              userId: 1, // Will be resolved by API
+              userId: 2, // Use user_id 2 which we created in the database
               strategicFocus: strategicFocus,
               industry: currentFormData.basics?.industry,
               industryMaturity: currentFormData.basics?.industryMaturity,
@@ -918,7 +921,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         basics: combinedStepData.basics,
         stepData: combinedStepData,
         organizationId: resolvedOrganizationId,
-        userId: 1, // Will be resolved by API based on auth
+        userId: 2, // Use user_id 2 which we created in the database
         strategicFocus: strategicFocus, // Include the strategicFocus field
         industry: combinedStepData.basics?.industry,
         industryMaturity: combinedStepData.basics?.industryMaturity,

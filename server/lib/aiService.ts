@@ -8,8 +8,14 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
+// Determine if we're in build/deploy context
+const isVercelBuild = process.env.VERCEL_ENV === 'preview' || 
+                      process.env.VERCEL_ENV === 'production' && 
+                      !process.env.NEXT_RUNTIME;
+
 // Enhanced environment variable checking with detailed logging
 console.log(`[AI Service] Environment: ${process.env.NODE_ENV}`);
+console.log(`[AI Service] Is Vercel Build: ${isVercelBuild}`);
 console.log(`[AI Service] All environment variables check:`);
 console.log(`[AI Service] - NODE_ENV: ${process.env.NODE_ENV}`);
 console.log(`[AI Service] - VERCEL: ${process.env.VERCEL}`);
@@ -20,55 +26,69 @@ console.log(`[AI Service] - Raw OPENAI_API_KEY first 10 chars: ${process.env.OPE
 console.log(`[AI Service] OpenAI API Key present: ${!!process.env.OPENAI_API_KEY}`);
 console.log(`[AI Service] OpenAI API Key length: ${process.env.OPENAI_API_KEY?.length || 0}`);
 
-// Check for required environment variables with multiple possible names/cases
-const possibleOpenAIKeys = [
-  'OPENAI_API_KEY',
-  'openai_api_key', 
-  'OPENAI_API_TOKEN',
-  'OPEN_AI_API_KEY',
-  'OPENAI_SECRET_KEY'
-];
+// Declare openai at module level
+let openai: OpenAI | null = null;
 
-let openaiApiKey = null;
-let foundKeyName = null;
+// Skip initialization during build time
+if (isVercelBuild) {
+  console.log('[AI Service] Skipping OpenAI client initialization during build time');
+} else {
+  // Check for required environment variables with multiple possible names/cases
+  const possibleOpenAIKeys = [
+    'OPENAI_API_KEY',
+    'openai_api_key', 
+    'OPENAI_API_TOKEN',
+    'OPEN_AI_API_KEY',
+    'OPENAI_SECRET_KEY'
+  ];
 
-for (const keyName of possibleOpenAIKeys) {
-  if (process.env[keyName]) {
-    openaiApiKey = process.env[keyName];
-    foundKeyName = keyName;
-    console.log(`[AI Service] Found OpenAI API key with name: ${keyName}`);
-    break;
+  let openaiApiKey = null;
+  let foundKeyName = null;
+
+  for (const keyName of possibleOpenAIKeys) {
+    if (process.env[keyName]) {
+      openaiApiKey = process.env[keyName];
+      foundKeyName = keyName;
+      console.log(`[AI Service] Found OpenAI API key with name: ${keyName}`);
+      break;
+    }
   }
-}
 
-if (!openaiApiKey) {
-  console.log(`[AI Service] No OpenAI API key found. Checked: ${possibleOpenAIKeys.join(', ')}`);
-}
+  if (!openaiApiKey) {
+    console.log(`[AI Service] No OpenAI API key found. Checked: ${possibleOpenAIKeys.join(', ')}`);
+  }
 
-const requiredEnvVars = ['OPENAI_API_KEY'];
-const missingEnvVars = requiredEnvVars.filter(varName => !openaiApiKey); // Use our found key instead
+  const requiredEnvVars = ['OPENAI_API_KEY'];
+  const missingEnvVars = requiredEnvVars.filter(varName => !openaiApiKey); // Use our found key instead
 
-if (missingEnvVars.length > 0) {
-  console.error(`[AI Service] CRITICAL: Missing environment variables: ${missingEnvVars.join(', ')}`);
-  console.error('[AI Service] AI features will be disabled. Please set these variables in Vercel environment settings.');
-} else {
-  console.log('[AI Service] All required environment variables are present');
-  console.log(`[AI Service] Using OpenAI API key from: ${foundKeyName}`);
-}
+  if (missingEnvVars.length > 0) {
+    console.error(`[AI Service] CRITICAL: Missing environment variables: ${missingEnvVars.join(', ')}`);
+    console.error('[AI Service] AI features will be disabled. Please set these variables in Vercel environment settings.');
+  } else {
+    console.log('[AI Service] All required environment variables are present');
+    console.log(`[AI Service] Using OpenAI API key from: ${foundKeyName}`);
+  }
 
-// Initialize OpenAI client if API key is available
-const openai = openaiApiKey 
-  ? new OpenAI({ apiKey: openaiApiKey })
-  : null;
+  // Initialize OpenAI client if API key is available
+  openai = openaiApiKey 
+    ? new OpenAI({ apiKey: openaiApiKey })
+    : null;
 
-if (openai) {
-  console.log('[AI Service] OpenAI client initialized successfully');
-} else {
-  console.error('[AI Service] CRITICAL: OpenAI client failed to initialize - API key missing or invalid');
+  if (openai) {
+    console.log('[AI Service] OpenAI client initialized successfully');
+  } else {
+    console.error('[AI Service] CRITICAL: OpenAI client failed to initialize - API key missing or invalid');
+  }
 }
 
 // Alternative function to get OpenAI client at runtime (in case env vars aren't available at module load)
 function getRuntimeOpenAIClient(): OpenAI | null {
+  // Skip during build time
+  if (isVercelBuild) {
+    console.log('[AI Service] Skipping OpenAI client initialization during build time');
+    return null;
+  }
+  
   const runtimeKey = process.env.OPENAI_API_KEY || process.env.openai_api_key || process.env.OPENAI_API_TOKEN;
   
   if (runtimeKey) {
@@ -148,6 +168,12 @@ export async function generateEnhancedExecutiveSummary(
   prioritizedRoles: any[]
 ): Promise<string> {
   console.log('[AI Service] generateEnhancedExecutiveSummary called');
+  
+  // Skip OpenAI calls during build time
+  if (isVercelBuild) {
+    console.log('[AI Service] Skipping OpenAI call during build - using fallback for executive summary');
+    return fallbackExecutiveSummary(stepData, prioritizedRoles);
+  }
   
   // Try module-level client first, then runtime client
   let workingOpenAI = openai;
@@ -256,6 +282,13 @@ export async function generateAICapabilityRecommendations(
 }>>> {
   console.log('[AI Service] generateAICapabilityRecommendations called');
   console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
+  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
+  // Skip OpenAI calls during build time
+  if (isVercelBuild) {
+    console.log('[AI Service] Skipping OpenAI call during build - using fallback for AI capability recommendations');
+    return fallbackAICapabilities(role, department);
+  }
   
   // Try module-level client first, then runtime client
   let workingOpenAI = openai;
@@ -436,6 +469,13 @@ export async function generatePerformanceImpact(
 ): Promise<any> {
   console.log('[AI Service] generatePerformanceImpact called');
   console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
+  console.log(`[AI Service] OpenAI client available: ${!!openai}`);
+  
+  // Skip OpenAI calls during build time
+  if (isVercelBuild) {
+    console.log('[AI Service] Skipping OpenAI call during build - using fallback for performance impact');
+    return fallbackPerformanceImpact(role);
+  }
   
   // Try module-level client first, then runtime client
   let workingOpenAI = openai;
@@ -671,12 +711,28 @@ function fallbackPerformanceImpact(role: JobRole): any {
 }
 
 export async function generateAIResponse(prompt: string): Promise<string> {
-  if (!openai) {
+  console.log('[AI Service] generateAIResponse called');
+  
+  // Skip OpenAI calls during build time
+  if (isVercelBuild) {
+    console.log('[AI Service] Skipping OpenAI call during build - using fallback response');
+    return "This is a fallback response during build time. The AI service is not available during static site generation.";
+  }
+  
+  // Try module-level client first, then runtime client
+  let workingOpenAI = openai;
+  if (!workingOpenAI) {
+    console.log('[AI Service] Module-level OpenAI client not available, trying runtime client...');
+    workingOpenAI = getRuntimeOpenAIClient();
+  }
+  
+  if (!workingOpenAI) {
+    console.error('[AI Service] No OpenAI client available for generating AI response');
     return 'AI features are currently disabled. Please configure the required API keys.';
   }
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await workingOpenAI.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
       model: 'gpt-3.5-turbo',
     });

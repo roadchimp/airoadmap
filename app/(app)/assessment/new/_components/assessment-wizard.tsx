@@ -560,6 +560,56 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         ...assessment.stepData,      // Overlay all assessment step data
       };
       
+      // Special handling for basics step - ensure organization data is included
+      // This is critical for submitted assessments where basics might not be in stepData
+      if (stepId === 'basics' && assessment.organizationId && 
+          (!mergedData.basics || !mergedData.basics.companyName)) {
+        
+        // Use assessment data directly if available
+        const basicsData = {
+          ...(mergedData.basics || {}),
+          companyName: mergedData.basics?.companyName || "",
+          industry: assessment.industry || mergedData.basics?.industry || "",
+          size: mergedData.basics?.size || "",
+          reportName: assessment.title || mergedData.basics?.reportName || "",
+          // Use default values for required enum fields if undefined
+          industryMaturity: assessment.industryMaturity || mergedData.basics?.industryMaturity || "Immature",
+          companyStage: assessment.companyStage || mergedData.basics?.companyStage || "Startup",
+          goals: mergedData.basics?.goals || "",
+          stakeholders: assessment.strategicFocus || mergedData.basics?.stakeholders || [],
+        };
+        
+        mergedData.basics = basicsData;
+        
+        // If organization data is missing, fetch it
+        if (!basicsData.companyName && assessment.organizationId) {
+          console.log(`[Form Sync] Organization data missing, fetching for organization ID: ${assessment.organizationId}`);
+          
+          // Fetch organization data
+          apiRequest("GET", `/api/organizations/${assessment.organizationId}`)
+            .then(response => response.json())
+            .then(org => {
+              if (org && org.name) {
+                console.log(`[Form Sync] Fetched organization data:`, org);
+                
+                // Update the form with organization data
+                const updatedBasics = {
+                  ...basicsData,
+                  companyName: org.name,
+                  industry: assessment.industry || org.industry || basicsData.industry,
+                  size: org.size || basicsData.size,
+                };
+                
+                form.setValue("basics", updatedBasics);
+                console.log(`[Form Sync] Updated form with organization data`);
+              }
+            })
+            .catch(error => {
+              console.error(`[Form Sync] Error fetching organization:`, error);
+            });
+        }
+      }
+      
       console.log(`[Form Sync] Syncing form for step: ${stepId}`);
       console.log(`[Form Sync] Current form values:`, currentFormValues);
       console.log(`[Form Sync] Assessment step data:`, assessment.stepData);
@@ -570,7 +620,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     }
     // Clear validation errors when changing steps
     setValidationError(null);
-  }, [currentStepIndex, form, assessment.stepData]);
+  }, [currentStepIndex, form, assessment.stepData, assessment.organizationId, assessment.industry, assessment.title, assessment.industryMaturity, assessment.companyStage, assessment.strategicFocus]);
 
   // Effect to clear validation error when form fields are updated
   useEffect(() => {

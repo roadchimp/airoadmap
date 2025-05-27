@@ -91,11 +91,22 @@ export class PgStorage implements IStorage {
       let connectionString: string | undefined;
 
       // Use Neon connection string on Vercel
-      if (process.env.VERCEL_ENV === 'production' || process.env.VERCEL_ENV === 'preview') {
-        console.log('Initializing Neon HTTP database connection for Vercel');
+      if (process.env.VERCEL_ENV === 'production') {
+        console.log('Initializing Neon HTTP database connection for Vercel production');
         connectionString = process.env.DATABASE_POSTGRES_URL; 
         if (!connectionString) {
           throw new Error('DATABASE_POSTGRES_URL environment variable not set for Vercel environment');
+        }
+        const sql = neon(connectionString);
+        this.db = drizzleNeonHttp(sql);
+        this.isInitialized = true;
+        console.log('Neon HTTP database connection established');
+      }  else if (process.env.VERCEL_ENV === 'preview') {
+        // Use Neon HTTP connection for preview environment (Each branch has its own preview URL)
+        console.log('Initializing Neon HTTP database connection for Vercel preview');
+        connectionString = process.env.DATABASE_PREVIEW_URL; 
+        if (!connectionString) {
+          throw new Error('DATABASE_PREVIEW_URL environment variable not set for Vercel environment');
         }
         const sql = neon(connectionString);
         this.db = drizzleNeonHttp(sql);

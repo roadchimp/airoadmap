@@ -1,134 +1,90 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import { AssessmentResponseService } from '@/server/assessment-response-service';
-import { InsertAssessmentResponse } from '@shared/schema';
+import { withAuthAndSecurity } from '../../middleware';
+import { z } from 'zod';
 
-interface Params {
-  assessmentId: string;
-}
+// Input validation schema
+const assessmentResponseSchema = z.object({
+  questionIdentifier: z.string().min(1),
+  responseText: z.string().min(1),
+  responseNumeric: z.string().optional(),
+  responseBoolean: z.boolean().optional(),
+  responseJson: z.unknown().optional()
+});
 
-/**
- * GET /api/assessment-responses/:assessmentId
- * Fetches all responses for a specific assessment
- */
-export async function GET(request: Request, { params }: { params: Params }) {
-  const { assessmentId } = params;
-  
-  if (!assessmentId) {
-    return NextResponse.json({ message: 'Assessment ID is required' }, { status: 400 });
-  }
-  
+// GET /api/assessment-responses/[assessmentId]
+async function getAssessmentResponses(
+  request: Request,
+  { params }: { params: { assessmentId: string } }
+) {
   try {
-    const assessmentIdNumber = parseInt(assessmentId, 10);
-    
-    if (isNaN(assessmentIdNumber)) {
-      return NextResponse.json({ message: 'Assessment ID must be a number' }, { status: 400 });
+    const assessmentId = parseInt(params.assessmentId);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
     }
-    
-    const responses = await storage.getAssessmentResponsesByAssessment(assessmentIdNumber);
-    
-    return NextResponse.json({
-      success: true,
-      data: responses
-    });
+
+    const responses = await storage.getAssessmentResponsesByAssessment(assessmentId);
+    return NextResponse.json({ success: true, data: responses });
   } catch (error) {
     console.error('Error fetching assessment responses:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error fetching assessment responses';
-    return NextResponse.json({ 
-      success: false,
-      message: errorMessage 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch assessment responses' },
+      { status: 500 }
+    );
   }
 }
 
-/**
- * POST /api/assessment-responses/:assessmentId
- * Saves responses for a specific assessment step
- */
-export async function POST(request: Request, { params }: { params: Params }) {
-  const { assessmentId } = params;
-  
-  if (!assessmentId) {
-    return NextResponse.json({ message: 'Assessment ID is required' }, { status: 400 });
-  }
-  
+// POST /api/assessment-responses/[assessmentId]
+async function createAssessmentResponse(
+  request: Request,
+  { params }: { params: { assessmentId: string } }
+) {
   try {
-    const assessmentIdNumber = parseInt(assessmentId, 10);
-    
-    if (isNaN(assessmentIdNumber)) {
-      return NextResponse.json({ message: 'Assessment ID must be a number' }, { status: 400 });
+    const assessmentId = parseInt(params.assessmentId);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
     }
-    
-    const { userId, stepId, stepData } = await request.json();
-    
-    // Use default user ID if not provided or invalid
-    const userIdToUse = userId && userId > 0 ? userId : 1;
-    
-    // Validate required fields
-    if (!stepId) {
-      console.warn("Missing stepId in assessment response");
-      return NextResponse.json({ message: 'Step ID is required' }, { status: 400 });
+
+    const body = await request.json();
+    const validatedData = assessmentResponseSchema.parse(body);
+
+    // Get user from request (added by withAuth middleware)
+    const user = (request as any).user;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found in request context' },
+        { status: 500 }
+      );
     }
-    
-    if (!stepData || typeof stepData !== 'object' || Object.keys(stepData).length === 0) {
-      console.warn("Missing or invalid stepData in assessment response");
-      return NextResponse.json({ message: 'Valid step data is required' }, { status: 400 });
-    }
-    
-    // Create individual assessment responses for each question/answer in stepData
-    try {
-      const responses: Array<InsertAssessmentResponse> = [];
-      
-      // Process the step data and convert to individual responses
-      Object.entries(stepData).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          // Create a question identifier based on the step ID and key
-          const questionIdentifier = `${stepId}.${key}`;
-          
-          let response: InsertAssessmentResponse = {
-            assessmentId: assessmentIdNumber,
-            userId: userIdToUse,
-            questionIdentifier
-          };
-          
-          // Determine the type of response and set the appropriate field
-          if (typeof value === 'string') {
-            response.responseText = value;
-          } else if (typeof value === 'number') {
-            response.responseNumeric = value.toString();
-          } else if (typeof value === 'boolean') {
-            response.responseBoolean = value;
-          } else {
-            // For arrays, objects, etc.
-            response.responseJson = value;
-          }
-          
-          responses.push(response);
-        }
-      });
-      
-      // Save all responses in batch if there are any
-      if (responses.length > 0) {
-        await storage.batchCreateAssessmentResponses(responses);
-      }
-      
-      return NextResponse.json({
-        success: true,
-        message: `Created ${responses.length} assessment responses`
-      });
-    } catch (error) {
-      console.error('Error creating assessment responses:', error);
-      return NextResponse.json({ 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Unknown error' 
-      }, { status: 500 });
-    }
+
+    const response = await storage.createAssessmentResponse({
+      assessmentId,
+      userId: user.id,
+      ...validatedData
+    });
+
+    return NextResponse.json({ success: true, data: response });
   } catch (error) {
-    console.error('Error processing assessment responses request:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error saving assessment responses';
-    return NextResponse.json({ 
-      success: false,
-      message: errorMessage 
-    }, { status: 500 });
+    console.error('Error creating assessment response:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid response data', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to create assessment response' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getAssessmentResponses);
+export const POST = withAuthAndSecurity(createAssessmentResponse); 

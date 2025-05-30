@@ -1,65 +1,68 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import { insertAICapabilitySchema } from '@shared/schema';
-import { ZodError } from 'zod';
+import { withAuthAndSecurity } from '../middleware';
+import { z } from 'zod';
+
+// Input validation schema
+const aiCapabilitySchema = z.object({
+  name: z.string().min(1),
+  category: z.string().min(1),
+  description: z.string().min(1),
+  default_business_value: z.string().optional(),
+  default_implementation_effort: z.string().optional(),
+  default_ease_score: z.string().optional(),
+  default_value_score: z.string().optional(),
+  default_feasibility_score: z.string().optional(),
+  default_impact_score: z.string().optional(),
+  tags: z.array(z.string()).default([])
+});
 
 // GET /api/ai-capabilities
-export async function GET() {
+async function getAiCapabilities(request: Request) {
   try {
-    const capabilities = await storage.listAICapabilities();
-    return NextResponse.json(capabilities);
+    const { searchParams } = new URL(request.url);
+    const assessmentId = searchParams.get('assessmentId') || undefined;
+    const roleIds = searchParams.get('roleIds')?.split(',') || undefined;
+    const categoryFilter = searchParams.get('categoryFilter')?.split(',') || undefined;
+
+    const capabilities = await storage.listAICapabilities({
+      assessmentId,
+      roleIds,
+      categoryFilter
+    });
+    return NextResponse.json({ success: true, data: capabilities });
   } catch (error) {
     console.error('Error fetching AI capabilities:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch AI capabilities' },
+      { status: 500 }
+    );
   }
 }
 
 // POST /api/ai-capabilities
-export async function POST(request: Request) {
+async function createAiCapability(request: Request) {
   try {
     const body = await request.json();
-    const validatedData = insertAICapabilitySchema.parse(body);
+    const validatedData = aiCapabilitySchema.parse(body);
     
-    // Convert any numeric scores to strings to match expected types
-    const formattedData = {
-      ...validatedData,
-      // Convert regular score properties to strings
-      ease_score: validatedData.ease_score !== undefined && validatedData.ease_score !== null 
-        ? String(validatedData.ease_score) 
-        : validatedData.ease_score,
-      value_score: validatedData.value_score !== undefined && validatedData.value_score !== null 
-        ? String(validatedData.value_score) 
-        : validatedData.value_score,
-      feasibility_score: validatedData.feasibility_score !== undefined && validatedData.feasibility_score !== null 
-        ? String(validatedData.feasibility_score) 
-        : validatedData.feasibility_score,
-      impact_score: validatedData.impact_score !== undefined && validatedData.impact_score !== null 
-        ? String(validatedData.impact_score) 
-        : validatedData.impact_score,
-      // Convert default score properties to strings
-      default_ease_score: validatedData.default_ease_score !== undefined && validatedData.default_ease_score !== null 
-        ? String(validatedData.default_ease_score) 
-        : validatedData.default_ease_score,
-      default_value_score: validatedData.default_value_score !== undefined && validatedData.default_value_score !== null 
-        ? String(validatedData.default_value_score) 
-        : validatedData.default_value_score,
-      default_feasibility_score: validatedData.default_feasibility_score !== undefined && validatedData.default_feasibility_score !== null 
-        ? String(validatedData.default_feasibility_score) 
-        : validatedData.default_feasibility_score,
-      default_impact_score: validatedData.default_impact_score !== undefined && validatedData.default_impact_score !== null 
-        ? String(validatedData.default_impact_score) 
-        : validatedData.default_impact_score,
-    };
-    
-    const capability = await storage.createAICapability(formattedData);
-    return NextResponse.json(capability, { status: 201 });
+    const capability = await storage.createAICapability(validatedData);
+    return NextResponse.json({ success: true, data: capability });
   } catch (error) {
     console.error('Error creating AI capability:', error);
-    if (error instanceof ZodError) {
-      return NextResponse.json({ message: "Invalid AI capability data", errors: error.errors }, { status: 400 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid AI capability data', details: error.errors },
+        { status: 400 }
+      );
     }
-    const errorMessage = error instanceof Error ? error.message : 'Invalid AI capability data';
-    return NextResponse.json({ message: errorMessage }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Failed to create AI capability' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getAiCapabilities);
+export const POST = withAuthAndSecurity(createAiCapability); 

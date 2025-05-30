@@ -1,0 +1,153 @@
+[
+  {
+    "row": {
+      "id": 1,
+      "title": "Sales (e.g., Regional Sales Manager)",
+      "department_id": 1,
+      "description": "Responsible for driving revenue by acquiring new customers and closing deals.",
+      "key_responsibilities": [
+        "- Lead generation",
+        "- Customer engagement",
+        "- Deal closure",
+        "- Sales forecasting"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 2,
+      "title": "Marketing",
+      "department_id": 2,
+      "description": "Focuses on creating brand awareness, generating leads, and developing marketing strategies.",
+      "key_responsibilities": [
+        "- Campaign creation",
+        "- Brand management",
+        "- Content development",
+        "- Lead generation"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 3,
+      "title": "Sales Development Representative (SDR)",
+      "department_id": 1,
+      "description": "Specializes in the initial stages of the sales process, focusing on outreach and qualifying leads.",
+      "key_responsibilities": [
+        "- Initial outreach",
+        "- Lead qualification",
+        "- Meeting scheduling"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 4,
+      "title": "Customer Success Manager (CSM)",
+      "department_id": 3,
+      "description": "Manages customer relationships post-sale to ensure satisfaction, retention, and expansion. Collaborates with sales on opportunities.",
+      "key_responsibilities": [
+        "- Customer Onboarding",
+        "- Relationship management",
+        "- Retention strategies",
+        "- Upsell/cross-sell",
+        "- Sales collaboration"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 5,
+      "title": "Sales Engineer / Solutions Engineer (SE)",
+      "department_id": 1,
+      "description": "Provides technical expertise during the sales process, demonstrating product value, designing solutions, and supporting onboarding and engagement.",
+      "key_responsibilities": [
+        "- Technical support during sales",
+        "- Customer onboarding",
+        "- Customer engagement",
+        "- Product demos",
+        "- Solution design",
+        "- Data analysis",
+        "- Technical support/documentation"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 6,
+      "title": "Customer Support (CS)",
+      "department_id": 4,
+      "description": "Assists customers with resolving issues, answering questions, and providing documentation.",
+      "key_responsibilities": [
+        "- Issue resolution",
+        "- Support documentation creation",
+        "- Ticket management"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 7,
+      "title": "Operations (Ops) / Revenue Operations",
+      "department_id": 5,
+      "description": "Optimizes processes, manages data, administers tools, handles forecasting, and oversees resource allocation and training to support GTM functions.",
+      "key_responsibilities": [
+        "- Process optimization",
+        "- Data analysis",
+        "- Resource management",
+        "- Sales forecasting",
+        "- Customer success forecasting",
+        "- Systems/tools administration",
+        "- Sales training"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 8,
+      "title": "Seller Productivity / Enablement",
+      "department_id": 1,
+      "description": "Focuses on improving the efficiency and effectiveness of the sales team through training, content, process optimization, and data analysis.",
+      "key_responsibilities": [
+        "- Sales training",
+        "- Data analysis",
+        "- Process optimization",
+        "- Content creation",
+        "- Campaign creation",
+        "- Sales enablement tools management"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  },
+  {
+    "row": {
+      "id": 9,
+      "title": "Systems / IT / Infrastructure",
+      "department_id": 6,
+      "description": "Manages the company's technology infrastructure, software integrations, system monitoring, and provides related support and documentation.",
+      "key_responsibilities": [
+        "- Infrastructure management",
+        "- Software integration",
+        "- Monitoring & support",
+        "- Support documentation"
+      ],
+      "ai_potential": "Medium"
+    },
+    "error": "current transaction is aborted, commands ignored until end of transaction block"
+  }
+]

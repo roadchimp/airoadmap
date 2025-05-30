@@ -1,12 +1,20 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-// Correcting the import casing based on linter error
-import type { AiTool, InsertAiTool } from '@shared/schema';
-import { ZodError } from 'zod'; // Assuming zod might be used for future validation
-import { Description } from '@radix-ui/react-toast';
+import { withAuthAndSecurity } from '../middleware';
+import { z } from 'zod';
+
+// Input validation schema
+const aiToolSchema = z.object({
+  tool_name: z.string().min(1),
+  description: z.string().min(1),
+  primary_category: z.string().min(1),
+  website_url: z.string().url().optional(),
+  license_type: z.string().min(1),
+  tags: z.array(z.string()).default([])
+});
 
 // GET /api/ai-tools
-export async function GET(request: NextRequest) {
+async function getAiTools(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || undefined;
@@ -14,42 +22,39 @@ export async function GET(request: NextRequest) {
     const licenseType = searchParams.get('licenseType') || undefined;
 
     const tools = await storage.listAITools(search, category, licenseType);
-    return NextResponse.json(tools);
+    return NextResponse.json({ success: true, data: tools });
   } catch (error) {
     console.error('Error fetching AI tools:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch AI tools' },
+      { status: 500 }
+    );
   }
 }
 
 // POST /api/ai-tools
-export async function POST(request: Request) {
+async function createAiTool(request: Request) {
   try {
     const body = await request.json();
-    // Use the corrected InsertAiTool type which omits generated fields
-    const toolData: InsertAiTool = {
-      tool_name: body.tool_name,
-      primary_category: body.primary_category,
-      license_type: body.license_type,
-      description: body.description,
-      website_url: body.website_url,
-      tags: body.tags || [] // Default to empty array if tags are missing
-    };
-
-    // Add more robust validation here if needed before calling storage
-    if (!toolData.tool_name || !toolData.primary_category || !toolData.license_type) {
-        return NextResponse.json({ message: 'Missing required fields (tool_name, primary_category, license_type)' }, { status: 400 });
-    }
-
-    const tool = await storage.createAITool(toolData);
-    return NextResponse.json(tool, { status: 201 });
+    const validatedData = aiToolSchema.parse(body);
+    
+    const tool = await storage.createAITool(validatedData);
+    return NextResponse.json({ success: true, data: tool });
   } catch (error) {
     console.error('Error creating AI tool:', error);
-    // Add ZodError check if using Zod validation
-    // if (error instanceof ZodError) {
-    //   return NextResponse.json({ message: "Invalid AI tool data", errors: error.errors }, { status: 400 });
-    // }
-    const errorMessage = error instanceof Error ? error.message : 'Invalid AI tool data';
-    return NextResponse.json({ message: errorMessage }, { status: 400 }); // Original used 400
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid AI tool data', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to create AI tool' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getAiTools);
+export const POST = withAuthAndSecurity(createAiTool); 

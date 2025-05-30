@@ -1,33 +1,54 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import { insertJobRoleSchema } from '@shared/schema';
-import { ZodError } from 'zod';
+import { withAuthAndSecurity } from '../middleware';
+import { z } from 'zod';
+
+// Input validation schema
+const jobRoleSchema = z.object({
+  title: z.string().min(1),
+  departmentId: z.number().int().positive(),
+  description: z.string().min(1),
+  keyResponsibilities: z.array(z.string()).default([]),
+  aiPotential: z.enum(['Low', 'Medium', 'High']).optional()
+});
 
 // GET /api/job-roles
-export async function GET() {
+async function getJobRoles(request: Request) {
   try {
     const roles = await storage.listJobRoles();
-    return NextResponse.json(roles);
+    return NextResponse.json({ success: true, data: roles });
   } catch (error) {
     console.error('Error fetching job roles:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch job roles' },
+      { status: 500 }
+    );
   }
 }
 
 // POST /api/job-roles
-export async function POST(request: Request) {
+async function createJobRole(request: Request) {
   try {
     const body = await request.json();
-    const validatedData = insertJobRoleSchema.parse(body);
-    const jobRole = await storage.createJobRole(validatedData);
-    return NextResponse.json(jobRole, { status: 201 });
+    const validatedData = jobRoleSchema.parse(body);
+    
+    const role = await storage.createJobRole(validatedData);
+    return NextResponse.json({ success: true, data: role });
   } catch (error) {
     console.error('Error creating job role:', error);
-    if (error instanceof ZodError) {
-      return NextResponse.json({ message: "Invalid job role data", errors: error.errors }, { status: 400 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid job role data', details: error.errors },
+        { status: 400 }
+      );
     }
-    const errorMessage = error instanceof Error ? error.message : 'Invalid job role data';
-    return NextResponse.json({ message: errorMessage }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Failed to create job role' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getJobRoles);
+export const POST = withAuthAndSecurity(createJobRole); 

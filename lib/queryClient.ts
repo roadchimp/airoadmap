@@ -1,9 +1,32 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+function getCsrfToken() {
+  // Try to get CSRF token from cookie (universal) or meta tag (fallback for SSR)
+  if (typeof document !== 'undefined') {
+    // Try meta tag first
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta instanceof HTMLMetaElement) {
+      return meta.content;
+    }
+    // Fallback to cookie
+    const match = document.cookie.match(/(?:^|; )csrfToken=([^;]*)/);
+    if (match) return decodeURIComponent(match[1]);
+  }
+  return '';
+}
+
 async function throwIfResNotOk(res: Response) {
-  // Don't try to read the body, as it may have been read already in the apiRequest function
   if (!res.ok) {
-    throw new Error(`${res.status}: ${res.statusText}`);
+    // Try to parse error JSON for user-friendly messages
+    let errorMsg = `${res.status}: ${res.statusText}`;
+    try {
+      const data = await res.clone().json();
+      if (data && data.error) errorMsg = data.error;
+    } catch {}
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('You are not logged in or your session has expired. Please log in again.');
+    }
+    throw new Error(errorMsg);
   }
 }
 
@@ -12,52 +35,45 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Add retry logic with exponential backoff
   const maxRetries = 3;
   let retryCount = 0;
-  let delay = 1000; // Start with 1s delay
-  
-  console.log(`Making API request: ${method} ${url}`);
-  if (data) {
-    console.log("Request data:", JSON.stringify(data).slice(0, 200) + (JSON.stringify(data).length > 200 ? "..." : ""));
-  }
-  
+  let delay = 1000;
+
   while (retryCount < maxRetries) {
     try {
+      const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+      // Attach CSRF token for mutating requests
+      if (["POST", "PATCH", "PUT", "DELETE"].includes(method.toUpperCase())) {
+        headers["x-csrf-token"] = getCsrfToken();
+      }
       const res = await fetch(url, {
         method,
-        headers: data ? { "Content-Type": "application/json" } : {},
+        headers,
         body: data ? JSON.stringify(data) : undefined,
         credentials: "include",
-        // Add cache control to prevent stale responses
         cache: "no-cache",
       });
-      
-      console.log(`API response status: ${res.status} ${res.statusText}`);
-      
       if (!res.ok) {
         const errorText = await res.text();
         console.error(`API error: ${res.status}`, errorText || res.statusText);
       }
-      
       await throwIfResNotOk(res);
       return res;
-    } catch (error) {
-      console.error(`API request error (attempt ${retryCount + 1}/${maxRetries}):`, error);
+    } catch (error: any) {
+      // User-friendly error for auth/CSRF/network
+      if (error.message && (error.message.includes('login') || error.message.includes('CSRF'))) {
+        alert(error.message);
+      } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        alert('Network error. Please check your connection and try again.');
+      }
       retryCount++;
-      
-      // If we've reached max retries, throw the error
       if (retryCount >= maxRetries) {
         throw error;
       }
-      
-      // Wait with exponential backoff before retrying
       await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2; // Exponential backoff
+      delay *= 2;
     }
   }
-  
-  // This shouldn't be reached due to the throw in the loop
   throw new Error("Failed after multiple retries");
 }
 

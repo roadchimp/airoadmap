@@ -34,15 +34,33 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@/lib/*": ["lib/*"],
-      "@/components/*": ["components/*"],
-      "@/app/*": ["app/*"],
-      "@/hooks/*": ["hooks/*"],
-      "@shared/*": ["shared/*"],
-      "@/server/*": ["server/*"],
-      "@/*": ["client/src/*"],
-      "@components/*": ["components/*"],
-      "@utils/*": ["utils/*"],
+      "@/lib/*": [
+        "lib/*"
+      ],
+      "@/components/*": [
+        "components/*"
+      ],
+      "@/app/*": [
+        "app/*"
+      ],
+      "@/hooks/*": [
+        "hooks/*"
+      ],
+      "@shared/*": [
+        "shared/*"
+      ],
+      "@/server/*": [
+        "server/*"
+      ],
+      "@/*": [
+        "client/src/*"
+      ],
+      "@components/*": [
+        "components/*"
+      ],
+      "@utils/*": [
+        "utils/*"
+      ]
     },
     "allowJs": true,
     "resolveJsonModule": true,
@@ -51,6 +69,7 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "target": "ES2017"
   }
 }

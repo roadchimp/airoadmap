@@ -689,94 +689,25 @@ export class PgStorage implements IStorage {
   }
 
   // Assessment methods
-  async getAssessment(id: number): Promise<Assessment | undefined> {
-    await this.ensureInitialized(); // Make sure this is called
-    console.log("DB connection state:", !!this.db); // Add this debug line
+  async getAssessment(id: number, userId?: number): Promise<Assessment | undefined> {
+    await this.ensureInitialized();
     
-    try {
-      if (!this.db) {
-        throw new Error("Database connection not established");
-      }
-      
-      // Join with organizations table to include organization data
-      const result = await this.db.select({
-        id: assessments.id,
-        title: assessments.title,
-        organizationId: assessments.organizationId,
-        userId: assessments.userId,
-        status: assessments.status,
-        createdAt: assessments.createdAt,
-        updatedAt: assessments.updatedAt,
-        stepData: assessments.stepData,
-        industry: assessments.industry,
-        industryMaturity: assessments.industryMaturity,
-        companyStage: assessments.companyStage,
-        strategicFocus: assessments.strategicFocus,
-        aiAdoptionScoreInputs: assessments.aiAdoptionScoreInputs,
-        // Include organization data
-        organization: {
-          id: organizations.id,
-          name: organizations.name,
-          industry: organizations.industry,
-          size: organizations.size,
-          description: organizations.description
-        }
-      })
+    const result = await this.db.select()
       .from(assessments)
-      .leftJoin(organizations, eq(assessments.organizationId, organizations.id))
-      .where(eq(assessments.id, id));
+      .where(and(
+        eq(assessments.id, id),
+        userId ? eq(assessments.userId, userId) : undefined // Add user scoping only if userId is provided
+      ));
       
-      if (result.length > 0 && result[0] !== undefined) {
-        const assessmentData = result[0] as Assessment & { organization?: { name?: string, size?: string, industry?: string, description?: string } };
-        if (assessmentData.updatedAt === null || assessmentData.updatedAt === undefined) {
-            assessmentData.updatedAt = assessmentData.createdAt || new Date();
-        }
-        return assessmentData;
-      }
-      return undefined;
-    } catch (error) {
-      console.error(`PgStorage.getAssessment(${id}) error:`, error);
-      if (error instanceof Error && error.message.includes('updated_at') && !error.message.includes('industry')) {
-        console.warn('Missing updated_at column in assessments table. Fetching with raw SQL workaround.');
-        const rawResult = await this.db.execute(
-          sql`SELECT a.id, a.title, a.organization_id, a.user_id, a.status, a.created_at, 
-                     a.updated_at as db_updated_at, a.step_data, a.industry, a.industry_maturity, 
-                     a.company_stage, a.strategic_focus, a.ai_adoption_score_inputs,
-                     o.id as org_id, o.name as org_name, o.industry as org_industry, 
-                     o.size as org_size, o.description as org_description
-              FROM assessments a
-              LEFT JOIN organizations o ON a.organization_id = o.id
-              WHERE a.id = ${id}`
-        );
-        
-        if (rawResult.rows.length === 0) return undefined;
-        
-        const row: any = rawResult.rows[0];
-        return {
-          id: row.id,
-          title: row.title,
-          organizationId: row.organization_id,
-          userId: row.user_id,
-          status: row.status,
-          createdAt: row.created_at ? new Date(row.created_at) : new Date(),
-          updatedAt: row.db_updated_at ? new Date(row.db_updated_at) : (row.created_at ? new Date(row.created_at) : new Date()),
-          stepData: row.step_data || {},
-          industry: row.industry,
-          industryMaturity: row.industry_maturity,
-          companyStage: row.company_stage,
-          strategicFocus: row.strategic_focus,
-          aiAdoptionScoreInputs: row.ai_adoption_score_inputs || {},
-          organization: row.org_id ? {
-            id: row.org_id,
-            name: row.org_name,
-            industry: row.org_industry,
-            size: row.org_size,
-            description: row.org_description
-          } : undefined
-        } as Assessment & { organization?: { name?: string, size?: string, industry?: string, description?: string } };
-      }
-      throw error;
-    }
+    return result[0];
+  }
+
+  async getAssessmentRaw(id: number, userId: number): Promise<Assessment | undefined> {
+    const result = await this.db.execute(
+      sql`SELECT * FROM assessments 
+          WHERE id = ${id} AND user_id = ${userId}`
+    );
+    return result.rows[0];
   }
 
   async listAssessments(): Promise<Assessment[]> {
@@ -841,7 +772,7 @@ export class PgStorage implements IStorage {
 
   async updateAssessmentStep(id: number, partialStepData: Partial<WizardStepData>, strategicFocus?: string[]): Promise<Assessment> {
     await this.ensureInitialized();
-    const current = await this.getAssessment(id);
+    const current = await this.getAssessment(id, 0);
     if (!current) {
       throw new Error(`Assessment with ID ${id} not found`);
     }

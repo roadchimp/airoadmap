@@ -1,0 +1,2934 @@
+[
+  {
+    "capability_id": 1,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 1,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 1,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 1,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 1,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 2,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 2,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 2,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 2,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 2,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 3,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 3,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 3,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 4,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 4,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 4,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 4,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 4,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 4,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 5,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 5,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 5,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 5,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 6,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 6,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 6,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 6,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 6,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 6,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 7,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 7,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 7,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 7,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 7,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 8,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 8,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 8,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 8,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 8,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 9,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 9,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 9,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 9,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 9,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 9,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 10,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 10,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 10,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 10,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 11,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 11,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 11,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 11,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 12,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 12,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 12,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 12,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 12,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 13,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 13,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 13,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 13,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 13,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 14,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 14,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 14,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 14,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 15,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 15,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 15,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 15,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 15,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 16,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 16,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 16,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 16,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 17,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 17,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 17,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 17,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 18,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 18,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 18,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 18,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 19,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 19,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 19,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 19,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 20,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 20,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 20,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 20,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 21,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 21,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 21,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 21,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 21,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 22,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 22,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 22,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 22,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 22,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 23,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 23,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 23,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 23,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 24,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 24,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 24,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 24,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 25,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 25,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 25,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 25,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 26,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 26,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 26,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 26,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 27,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 27,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 27,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 27,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 28,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 28,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 28,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 28,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 28,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 28,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 29,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 29,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 29,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 29,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 30,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 30,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 30,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 30,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 31,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 31,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 31,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 31,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 32,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 32,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 32,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 32,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 33,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 33,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 33,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 33,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 33,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 34,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 34,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 34,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 34,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 35,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 35,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 35,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 35,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 35,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 35,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 36,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 36,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 36,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 36,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 36,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 36,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 37,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 37,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 37,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 37,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 38,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 38,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 38,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 38,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 39,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 39,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 39,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 39,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 40,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 40,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 40,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 40,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 41,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 41,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 41,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 41,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 41,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 41,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 42,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 42,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 42,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 42,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 42,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 43,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 43,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 43,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 43,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 43,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 43,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 44,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 44,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 44,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 44,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 45,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 45,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 45,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 45,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 45,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 45,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 46,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 46,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 46,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 46,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 46,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 47,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 47,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 47,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 47,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 48,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 48,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 48,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 48,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 49,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 49,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 49,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 49,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 49,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 50,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 50,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 50,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 50,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 51,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 51,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 51,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 51,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 52,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 52,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 52,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 52,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 52,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 53,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 53,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 53,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 53,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 53,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 53,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 54,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 54,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 54,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 54,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 54,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 54,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 55,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 55,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 55,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 55,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 56,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 56,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 56,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 56,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 56,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 57,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 57,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 57,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 57,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 57,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 57,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 58,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 59,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 59,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 59,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 59,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 59,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 59,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 60,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 60,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 60,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 61,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 61,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 61,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 62,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 62,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 62,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 62,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 63,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 63,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 63,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 63,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 64,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 64,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 64,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 64,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 65,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 65,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 65,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 65,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 66,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 66,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 66,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 66,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 66,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 66,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 67,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 67,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 67,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 67,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 68,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 68,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 68,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 68,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 68,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 69,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 69,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 69,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 69,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 70,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 70,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 70,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 70,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 71,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 71,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 71,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 71,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 72,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 72,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 72,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 72,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 72,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 73,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 73,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 73,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 73,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 74,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 74,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 74,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 74,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 75,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 75,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 75,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 75,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 76,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 76,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 76,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 76,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 77,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 77,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 77,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 77,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 78,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 78,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 78,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 78,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 79,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 79,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 79,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 79,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 80,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 80,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 80,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 80,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 81,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 81,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 81,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 81,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 82,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 82,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 82,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 82,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 83,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 83,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 83,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 83,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 84,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 85,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 85,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 85,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 86,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 86,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 86,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 86,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 87,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 87,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 87,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 87,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 88,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 88,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 88,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 88,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 88,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 88,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 89,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 89,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 89,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 89,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 90,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 90,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 90,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 90,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 90,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 90,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 91,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 91,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 91,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 91,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 92,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 92,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 92,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 92,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 92,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 93,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 93,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 93,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 93,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 93,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 94,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 94,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 94,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 94,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 94,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 94,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 95,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 95,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 95,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 95,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 96,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 96,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 96,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 96,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 97,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 97,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 97,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 97,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 98,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 98,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 98,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 98,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 99,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 99,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 99,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 99,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 100,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 100,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 100,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 100,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 101,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 101,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 101,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 102,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 102,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 102,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 102,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 102,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 103,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 103,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 103,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 104,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 104,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 104,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 104,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 105,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 105,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 105,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 105,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 106,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 106,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 106,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 106,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 106,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 106,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 106,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 107,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 107,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 107,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 107,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 108,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 108,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 108,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 108,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 109,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 109,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 109,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 109,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 110,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 110,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 110,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 110,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 111,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 111,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 111,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 111,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 111,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 112,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 112,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 112,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 113,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 113,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 113,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 114,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 114,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 114,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 115,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 115,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 115,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 115,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 116,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 116,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 116,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 116,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 117,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 117,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 117,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 117,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 118,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 118,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 118,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 118,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 118,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 118,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 119,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 119,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 119,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 119,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 120,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 120,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 120,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 120,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 121,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 121,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 121,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 121,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 122,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 122,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 122,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 122,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 122,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 123,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 123,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 123,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 123,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 124,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 124,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 124,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 124,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 125,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 125,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 125,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 126,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 126,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 126,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 126,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 127,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 127,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 127,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 127,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 127,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 128,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 128,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 128,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 128,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 128,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 128,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 128,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 129,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 129,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 129,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 129,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 129,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 129,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 130,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 130,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 130,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 131,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 131,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 131,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 132,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 132,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 133,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 133,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 134,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 134,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 135,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 135,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 135,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 135,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 136,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 137,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 137,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 137,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 137,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 138,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 138,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 138,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 139,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 140,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 141,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 141,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 142,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 142,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 143,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 143,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 144,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 144,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 144,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 144,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 145,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 145,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 145,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 146,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 146,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 147,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 147,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 148,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 148,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 148,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 149,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 150,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 150,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 150,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 150,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 150,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 151,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 151,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 151,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 151,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 151,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 153,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 153,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 156,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 156,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 156,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 156,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 157,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 157,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 157,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 157,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 157,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 157,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 157,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 158,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 158,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 158,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 159,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 159,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 160,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 160,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 161,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 161,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 161,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 161,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 161,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 162,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 162,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 162,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 162,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 163,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 163,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 163,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 164,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 164,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 164,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 164,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 164,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 165,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 165,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 165,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 165,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 166,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 166,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 167,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 167,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 167,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 168,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 168,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 168,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 168,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 169,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 169,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 169,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 169,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 170,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 170,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 170,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 171,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 172,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 172,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 173,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 173,
+    "job_role_id": 6
+  },
+  {
+    "capability_id": 173,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 174,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 175,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 175,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 176,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 176,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 176,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 177,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 177,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 177,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 178,
+    "job_role_id": 4
+  },
+  {
+    "capability_id": 178,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 178,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 178,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 179,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 179,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 179,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 179,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 180,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 180,
+    "job_role_id": 3
+  },
+  {
+    "capability_id": 180,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 180,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 181,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 182,
+    "job_role_id": 2
+  },
+  {
+    "capability_id": 182,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 182,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 182,
+    "job_role_id": 7
+  },
+  {
+    "capability_id": 183,
+    "job_role_id": 5
+  },
+  {
+    "capability_id": 183,
+    "job_role_id": 1
+  },
+  {
+    "capability_id": 183,
+    "job_role_id": 8
+  },
+  {
+    "capability_id": 184,
+    "job_role_id": 9
+  },
+  {
+    "capability_id": 185,
+    "job_role_id": 9
+  }
+]

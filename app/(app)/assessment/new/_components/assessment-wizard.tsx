@@ -1381,6 +1381,16 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         const selectedDepartments = stepData.roles?.selectedDepartments || [];
         const selectedRoleIds = (stepData.roles?.selectedRoles || []).map(r => r.id).filter(id => id !== undefined) as number[]; // Filter out roles without IDs and ensure type
 
+        // Guard: jobRoles must be an array
+        if (!Array.isArray(jobRoles)) {
+          return (
+            <div className="text-red-600 bg-red-50 border border-red-200 rounded p-4 my-4">
+              <strong>Error:</strong> Could not load job roles. Please refresh the page or contact support.<br />
+              <span className="text-sm">(jobRoles is not an array)</span>
+            </div>
+          );
+        }
+
         // Filter job roles based on selected departments
         const filteredRoles = jobRoles.filter(role => 
             selectedDepartments.some(deptName => {

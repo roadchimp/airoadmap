@@ -1,36 +1,58 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage'; // Assuming storage is exported from server/storage.ts
+import { withAuthAndSecurity } from '../middleware';
 import { insertPerformanceMetricSchema } from '@shared/schema'; // Import schema for validation
 import { z } from 'zod'; // Import z
 
+// Input validation schema
+const performanceMetricSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1),
+  category: z.string().min(1),
+  unit: z.string().min(1),
+  targetValue: z.number().optional(),
+  currentValue: z.number().optional(),
+  departmentId: z.number().int().positive().optional(),
+  roleId: z.number().int().positive().optional(),
+  metadata: z.record(z.any()).optional()
+});
+
 // GET /api/performance-metrics
 // Lists all performance metrics
-export async function GET() {
+async function getPerformanceMetrics(request: Request) {
   try {
     const metrics = await storage.listPerformanceMetrics();
-    return NextResponse.json(metrics);
+    return NextResponse.json({ success: true, data: metrics });
   } catch (error) {
-    console.error('Error listing performance metrics:', error);
-    return NextResponse.json({ message: 'Failed to retrieve performance metrics.' }, { status: 500 });
+    console.error('Error fetching performance metrics:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch performance metrics' },
+      { status: 500 }
+    );
   }
 }
 
 // POST /api/performance-metrics
 // Creates a new performance metric
-export async function POST(request: Request) {
+async function createPerformanceMetric(request: Request) {
   try {
     const body = await request.json();
-    // Validate the request body against the schema
-    const validatedData = insertPerformanceMetricSchema.parse(body);
-
-    const newMetric = await storage.createPerformanceMetric(validatedData);
-    return NextResponse.json(newMetric, { status: 201 });
+    const validatedData = performanceMetricSchema.parse(body);
+    
+    const metric = await storage.createPerformanceMetric(validatedData);
+    return NextResponse.json({ success: true, data: metric });
   } catch (error) {
     console.error('Error creating performance metric:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ message: 'Invalid request data', errors: error.errors }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid performance metric data', details: error.errors },
+        { status: 400 }
+      );
     }
-    return NextResponse.json({ message: 'Failed to create performance metric.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create performance metric' },
+      { status: 500 }
+    );
   }
 }
 
@@ -93,5 +115,9 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ message: 'Failed to delete performance metric.' }, { status: 500 });
   }
 }
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getPerformanceMetrics);
+export const POST = withAuthAndSecurity(createPerformanceMetric);
 
 // TODO: Add POST, PATCH, DELETE handlers for Performance Metrics 

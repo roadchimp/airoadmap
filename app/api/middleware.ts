@@ -1,133 +1,352 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { createClient } from '@/../../utils/supabase/server';
-import { cookies } from 'next/headers';
-import { storage } from '@/../../server/pg-storage';
+import { randomBytes, createHmac } from 'crypto';
 
 /**
- * Get the authenticated user from Supabase auth
- * Use this in API routes to get the current user
+ * CRITICAL: CVE-2025-29927 Protection
+ * Block x-middleware-subrequest header to prevent authentication bypass
  */
-export async function getAuthUser() {
-  console.log("Attempting to get auth user in middleware...");
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+function isHeaderSpoofingAttempt(request: NextRequest): boolean {
+  const maliciousHeaders = [
+    'x-middleware-subrequest',
+    'x-middleware-rewrite',
+    'x-invoke-subrequest',
+    'x-forwarded-host',
+    'x-forwarded-proto',
+    'x-forwarded-port'
+  ];
   
-  if (session) {
-    console.log("Auth user found in middleware:", JSON.stringify(session.user, null, 2));
-  } else {
-    console.log("No active session found in middleware.");
+  for (const header of maliciousHeaders) {
+    if (request.headers.has(header)) {
+      const clientIp = getClientIpAddress(request);
+      console.error(`🚨 SECURITY ALERT: Blocked malicious header ${header} from ${clientIp}`);
+      return true;
+    }
   }
-  
-  return {
-    user: session?.user || null,
-    session
-  };
+  return false;
 }
 
 /**
- * Get the authenticated user and their profile
- * Returns user, session, and profile information
+ * Extract client IP address from request headers
+ * Handles both Vercel and self-hosted environments
  */
-export async function getAuthUserWithProfile() {
-  const { user, session } = await getAuthUser();
-  
-  if (!user) {
-    return { user: null, session: null, profile: null };
+function getClientIpAddress(request: NextRequest): string {
+  // Try x-forwarded-for first (most common proxy header)
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    // x-forwarded-for can contain multiple IPs, take the first one
+    return forwardedFor.split(',')[0].trim();
   }
   
-  // Get user profile from our database
-  const profile = await storage.getUserProfileByAuthId(user.id);
+  // Try x-real-ip (alternative proxy header)
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) {
+    return realIp.trim();
+  }
   
-  return {
-    user,
-    session,
-    profile
-  };
+  // Try x-client-ip (another alternative)
+  const clientIp = request.headers.get('x-client-ip');
+  if (clientIp) {
+    return clientIp.trim();
+  }
+  
+  // Fallback to unknown if no IP headers are present
+  return 'unknown';
+}
+
+// Memory-based rate limiting
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+async function checkRateLimit(ip: string): Promise<boolean> {
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute window
+  const maxRequests = 10;
+  
+  // Clean expired entries
+  for (const [key, value] of rateLimitMap.entries()) {
+    if (value.resetTime < now) {
+      rateLimitMap.delete(key);
+    }
+  }
+  
+  const current = rateLimitMap.get(ip);
+  
+  if (!current) {
+    // First request from this IP
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+  
+  if (current.resetTime < now) {
+    // Window expired, reset
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+  
+  if (current.count >= maxRequests) {
+    return false; // Rate limited
+  }
+  
+  // Increment counter
+  current.count++;
+  return true;
+}
+
+// CSRF token secret - should be in env vars in production
+const CSRF_SECRET = process.env.CSRF_SECRET || 'your-csrf-secret-key';
+
+/**
+ * Generate a CSRF token for a user
+ */
+export function generateCsrfToken(userId: string): string {
+  const timestamp = Date.now();
+  const random = randomBytes(32).toString('hex');
+  const data = `${userId}:${timestamp}:${random}`;
+  const hmac = createHmac('sha256', CSRF_SECRET);
+  hmac.update(data);
+  const token = `${data}:${hmac.digest('hex')}`;
+  return Buffer.from(token).toString('base64');
 }
 
 /**
- * Check if a request is authenticated
- * Use this to protect API routes
+ * Validate a CSRF token
  */
-export async function requireAuth(request: Request) {
-  console.log(`requireAuth called for: ${request.method} ${request.url}`);
-  const { user } = await getAuthUser();
-  
-  if (!user) {
-    console.error(`requireAuth: Unauthorized access attempt to ${request.method} ${request.url}. No user found.`);
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-  }
-  
-  console.log(`requireAuth: Authorized access for user ${user.id} to ${request.method} ${request.url}`);
-  return null; // No response means the request can continue
-}
-
-/**
- * Auth middleware that sets up authentication context for storage operations (GET)
- * This ensures RLS policies are applied with the correct user context
- */
-export function withAuthGet(handler: (request: Request, authId: string, context?: any) => Promise<Response>) {
-  return async function GET(request: Request, context?: any) {
-    // Check authentication
-    const authResponse = await requireAuth(request);
-    if (authResponse) {
-      return authResponse; // Return auth error if present
+export function validateCsrfToken(token: string, userId: string): boolean {
+  try {
+    const decoded = Buffer.from(token, 'base64').toString();
+    const [tokenUserId, timestamp, random, signature] = decoded.split(':');
+    
+    // Verify user ID matches
+    if (tokenUserId !== userId) {
+      return false;
     }
     
-    // Get authenticated user
-    const { user } = await getAuthUser();
-    const authId = user!.id; // We know user exists because requireAuth passed
-    
-    console.log(`withAuthGet: Calling handler for ${request.url} with authId: ${authId}`);
-    // Call the handler with the auth ID and context (including params)
-    return handler(request, authId, context);
-  };
-}
-
-/**
- * Auth middleware that sets up authentication context for storage operations (POST)
- * This ensures RLS policies are applied with the correct user context
- */
-export function withAuthPost(handler: (request: Request, authId: string, context?: any) => Promise<Response>) {
-  return async function POST(request: Request, context?: any) {
-    // Check authentication
-    const authResponse = await requireAuth(request);
-    if (authResponse) {
-      return authResponse; // Return auth error if present
+    // Verify token hasn't expired (24 hours)
+    const tokenAge = Date.now() - parseInt(timestamp);
+    if (tokenAge > 24 * 60 * 60 * 1000) {
+      return false;
     }
     
-    // Get authenticated user
-    const { user } = await getAuthUser();
-    const authId = user!.id; // We know user exists because requireAuth passed
+    // Verify signature
+    const data = `${tokenUserId}:${timestamp}:${random}`;
+    const hmac = createHmac('sha256', CSRF_SECRET);
+    hmac.update(data);
+    const expectedSignature = hmac.digest('hex');
     
-    console.log(`withAuthPost: Calling handler for ${request.url} with authId: ${authId}`);
-    // Call the handler with the auth ID and context (including params)
-    return handler(request, authId, context);
-  };
-}
-
-/**
- * @deprecated Use withAuthGet or withAuthPost instead
- */
-export function withAuth(handler: (request: Request, authId: string) => Promise<Response>) {
-  console.warn('withAuth is deprecated, use withAuthGet or withAuthPost instead');
-  return withAuthGet(handler);
-}
-
-/**
- * Check if a user's email is confirmed
- * Returns true if confirmed, false if not
- */
-export async function isUserEmailConfirmed() {
-  const { user } = await getAuthUser();
-  
-  if (!user) {
+    return signature === expectedSignature;
+  } catch (error) {
+    console.error('CSRF token validation failed:', error);
     return false;
   }
+}
+
+/**
+ * Secure user authentication using getUser() instead of getSession()
+ * This prevents JWT spoofing attacks
+ */
+async function getAuthenticatedUser(request: NextRequest) {
+  try {
+    // Add memory-based rate limiting
+    const ip = getClientIpAddress(request);
+    const isAllowed = await checkRateLimit(ip);
+    if (!isAllowed) {
+      throw new Error('Too many requests');
+    }
+
+    const supabase = createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      return null;
+    }
+    
+    // Add CSRF token validation for non-GET requests
+    if (request.method !== 'GET') {
+      const csrfToken = request.headers.get('x-csrf-token');
+      if (!csrfToken || !validateCsrfToken(csrfToken, user.id)) {
+        throw new Error('Invalid CSRF token');
+      }
+    }
+    
+    return user;
+  } catch (error) {
+    console.error('Auth validation failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Main middleware function with CVE-2025-29927 protection
+ */
+export async function middleware(request: NextRequest) {
+  // CRITICAL: Block CVE-2025-29927 exploitation attempts
+  if (isHeaderSpoofingAttempt(request)) {
+    return new NextResponse(
+      JSON.stringify({ 
+        error: 'Forbidden: Invalid request headers detected',
+        code: 'HEADER_SPOOFING_BLOCKED'
+      }), 
+      { 
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+
+  const { pathname } = request.nextUrl;
   
-  return user.email_confirmed_at !== null;
-} 
+  // Define protected routes that require authentication
+  const protectedRoutes = [
+    '/dashboard',
+    '/api/assessments', 
+    '/api/reports',
+    '/api/user'
+  ];
+  
+  const isProtectedRoute = protectedRoutes.some(route => 
+    pathname.startsWith(route)
+  );
+  
+  if (isProtectedRoute) {
+    const user = await getAuthenticatedUser(request);
+    
+    if (!user) {
+      // Redirect to login for page routes
+      if (!pathname.startsWith('/api/')) {
+        const loginUrl = new URL('/login', request.url);
+        loginUrl.searchParams.set('redirectTo', pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+      
+      // Return 401 for API routes  
+      return new NextResponse(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+  }
+  
+  const response = NextResponse.next();
+  
+  // Add security headers
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  
+  return response;
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};
+
+type ApiHandler = (request: NextRequest, context: any) => Promise<NextResponse>;
+
+/**
+ * Add security headers to a response
+ */
+export function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  return response;
+}
+
+/**
+ * Higher-order function to wrap API route handlers with security headers
+ */
+export function withSecurityHeaders(handler: ApiHandler): ApiHandler {
+  return async (request: NextRequest, context: any) => {
+    try {
+      const response = await handler(request, context);
+      return addSecurityHeaders(response);
+    } catch (error) {
+      console.error('API route error:', error);
+      return addSecurityHeaders(
+        NextResponse.json(
+          { error: 'Internal server error' },
+          { status: 500 }
+        )
+      );
+    }
+  };
+}
+
+/**
+ * Secure auth middleware for API routes
+ * Validates user authentication and CSRF token
+ */
+export function withAuth(handler: ApiHandler): ApiHandler {
+  return async (request: NextRequest, context: any) => {
+    try {
+      // Rate limiting
+      const ip = getClientIpAddress(request);
+      const isAllowed = await checkRateLimit(ip);
+      if (!isAllowed) {
+        return addSecurityHeaders(
+          NextResponse.json(
+            { error: 'Too many requests' },
+            { status: 429 }
+          )
+        );
+      }
+
+      // Auth validation
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error || !user) {
+        return addSecurityHeaders(
+          NextResponse.json(
+            { error: 'Unauthorized' },
+            { status: 401 }
+          )
+        );
+      }
+
+      // CSRF protection for non-GET requests
+      if (request.method !== 'GET') {
+        const csrfToken = request.headers.get('x-csrf-token');
+        if (!csrfToken || !validateCsrfToken(csrfToken, user.id)) {
+          return addSecurityHeaders(
+            NextResponse.json(
+              { error: 'Invalid CSRF token' },
+              { status: 403 }
+            )
+          );
+        }
+      }
+
+      // Add user to request context
+      const contextWithUser = { ...context, user };
+      const response = await handler(request, contextWithUser);
+      return addSecurityHeaders(response);
+    } catch (error) {
+      console.error('Auth middleware error:', error);
+      return addSecurityHeaders(
+        NextResponse.json(
+          { error: 'Internal server error' },
+          { status: 500 }
+        )
+      );
+    }
+  };
+}
+
+/**
+ * Combined middleware that applies both auth and security headers
+ */
+export function withAuthAndSecurity(handler: ApiHandler): ApiHandler {
+  return withSecurityHeaders(withAuth(handler));
+}
+

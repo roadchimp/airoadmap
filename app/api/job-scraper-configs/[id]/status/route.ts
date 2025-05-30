@@ -1,29 +1,37 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
+import { withAuthAndSecurity } from '../../../middleware';
+import { z } from 'zod';
 
-interface Params {
-  id: string;
-}
+const idParamSchema = z.object({
+  id: z.string().min(1)
+});
+const statusUpdateSchema = z.object({
+  isActive: z.boolean()
+});
 
-// PATCH /api/job-scraper-configs/:id/status
-export async function PATCH(request: Request, { params }: { params: Params }) {
-  const id = parseInt(params.id);
-  if (isNaN(id)) {
-    return NextResponse.json({ message: 'Invalid job scraper config ID' }, { status: 400 });
-  }
-
+// PATCH /api/job-scraper-configs/[id]/status
+async function updateJobScraperConfigStatus(request: Request, { params }: { params: { id: string } }) {
   try {
-    const { isActive } = await request.json();
-    if (typeof isActive !== 'boolean') {
-      return NextResponse.json({ message: 'isActive is required and must be a boolean' }, { status: 400 });
+    const { id } = idParamSchema.parse(params);
+    const configId = parseInt(id);
+    if (isNaN(configId)) {
+      return NextResponse.json({ error: 'Invalid job scraper config ID' }, { status: 400 });
     }
-    
-    const config = await storage.updateJobScraperConfigStatus(id, isActive);
-    return NextResponse.json(config);
+    const body = await request.json();
+    const validatedData = statusUpdateSchema.parse(body);
+    const config = await storage.updateJobScraperConfigStatus(configId, validatedData.isActive);
+    if (!config) {
+      return NextResponse.json({ error: 'Job scraper config not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, data: config });
   } catch (error) {
     console.error('Error updating job scraper config status:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error updating job scraper config status';
-     // Assuming 400 based on original code, could be 500 or 404 if ID not found
-    return NextResponse.json({ message: errorMessage }, { status: 400 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid status data', details: error.errors }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to update job scraper config status' }, { status: 500 });
   }
-} 
+}
+
+export const PATCH = withAuthAndSecurity(updateJobScraperConfigStatus); 

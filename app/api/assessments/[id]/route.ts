@@ -1,68 +1,120 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import { unstable_noStore } from 'next/cache';
+import { withAuthAndSecurity } from '../../middleware';
+import { z } from 'zod';
+import { wizardStepDataSchema } from '@shared/schema';
 
-interface Params {
-  id: string;
-}
+// Input validation schema
+const assessmentUpdateSchema = wizardStepDataSchema.partial().extend({
+  strategicFocus: z.array(z.string()).optional()
+});
 
-// GET /api/assessments/:id
-export async function GET(request: Request, { params }: { params: Params }) {
-  // Disable caching for this route
-  unstable_noStore();
-  
+// GET /api/assessments/[id]
+async function getAssessment(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
     const assessmentId = parseInt(params.id);
     if (isNaN(assessmentId)) {
-      return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
     }
-    
+
     const assessment = await storage.getAssessment(assessmentId);
     if (!assessment) {
-      return NextResponse.json({ message: 'Assessment not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Assessment not found' },
+        { status: 404 }
+      );
     }
-    
-    // Add debug logging
-    console.log(`GET /api/assessments/${assessmentId} - Retrieved assessment:`, assessment);
-    console.log(`Organization data:`, (assessment as any).organization || 'No organization data');
-    
-    return NextResponse.json(assessment, {
-      headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate'
-      }
-    });
+
+    return NextResponse.json({ success: true, data: assessment });
   } catch (error) {
-    console.error('Error fetching assessment by ID:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { 
-      status: 500,
-      headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate'
-      }
-    });
+    console.error('Error fetching assessment:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch assessment' },
+      { status: 500 }
+    );
   }
 }
 
-// PATCH /api/assessments/:id/step
-export async function PATCH(request: Request, { params }: { params: Params }) {
-  const assessmentId = parseInt(params.id);
-  if (isNaN(assessmentId)) {
-    return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
-  }
-  
+// PATCH /api/assessments/[id]
+async function updateAssessment(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const body = await request.json(); // Note: No explicit validation here, matches original
-    
+    const assessmentId = parseInt(params.id);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const validatedData = assessmentUpdateSchema.parse(body);
+
     // Extract strategicFocus if present
-    const { strategicFocus, ...stepData } = body;
-    
-    // Pass strategicFocus as a separate parameter if it exists
-    const assessment = await storage.updateAssessmentStep(assessmentId, stepData, strategicFocus);
-    
-    return NextResponse.json(assessment);
+    const { strategicFocus, ...stepData } = validatedData;
+
+    const assessment = await storage.updateAssessmentStep(
+      assessmentId,
+      stepData,
+      strategicFocus
+    );
+    if (!assessment) {
+      return NextResponse.json(
+        { error: 'Assessment not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: assessment });
   } catch (error) {
-    console.error('Error updating assessment step:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error updating assessment step';
-    return NextResponse.json({ message: errorMessage }, { status: 400 }); // Assuming 400 based on original
+    console.error('Error updating assessment:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid assessment data', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to update assessment' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// DELETE /api/assessments/[id]
+async function deleteAssessment(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const assessmentId = parseInt(params.id);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
+    }
+
+    await storage.deleteAssessment(assessmentId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting assessment:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete assessment' },
+      { status: 500 }
+    );
+  }
+}
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getAssessment);
+export const PATCH = withAuthAndSecurity(updateAssessment);
+export const DELETE = withAuthAndSecurity(deleteAssessment); 

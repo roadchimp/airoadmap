@@ -1,28 +1,53 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
+import { withAuthAndSecurity } from '../../../middleware';
+import { z } from 'zod';
 
-interface Params {
-  id: string;
-}
+// Input validation schema
+const statusUpdateSchema = z.object({
+  status: z.enum(['draft', 'submitted', 'completed'])
+});
 
-// PATCH /api/assessments/:id/status
-export async function PATCH(request: Request, { params }: { params: Params }) {
-  const assessmentId = parseInt(params.id);
-  if (isNaN(assessmentId)) {
-    return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
-  }
-
+// PATCH /api/assessments/[id]/status
+async function updateAssessmentStatus(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { status } = await request.json();
-    if (!status || typeof status !== 'string') {
-      return NextResponse.json({ message: 'Status is required and must be a string' }, { status: 400 });
+    const assessmentId = parseInt(params.id);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
     }
-    
-    const assessment = await storage.updateAssessmentStatus(assessmentId, status);
-    return NextResponse.json(assessment);
+
+    const body = await request.json();
+    const validatedData = statusUpdateSchema.parse(body);
+
+    const assessment = await storage.updateAssessmentStatus(assessmentId, validatedData.status);
+    if (!assessment) {
+      return NextResponse.json(
+        { error: 'Assessment not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: assessment });
   } catch (error) {
     console.error('Error updating assessment status:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error updating assessment status';
-    return NextResponse.json({ message: errorMessage }, { status: 400 }); // Assuming 400 based on original
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid status data', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to update assessment status' },
+      { status: 500 }
+    );
   }
 }
+
+// Export the handler wrapped with auth and security middleware
+export const PATCH = withAuthAndSecurity(updateAssessmentStatus);

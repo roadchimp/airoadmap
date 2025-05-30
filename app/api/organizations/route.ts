@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server';
-import { storage } from '@/../../server/pg-storage';
-import { withAuthGet, withAuthPost } from '../middleware';
-import { unstable_noStore } from 'next/cache';
+import { storage } from '@/server/storage';
+import { withAuthAndSecurity } from '../middleware';
+import { z } from 'zod';
+
+// Input validation schema
+const organizationSchema = z.object({
+  name: z.string().min(1),
+  industry: z.string().min(1),
+  size: z.enum(['Small', 'Medium', 'Large']),
+  description: z.string().optional(),
+  website: z.string().url().optional(),
+  metadata: z.record(z.any()).optional()
+});
 
 /**
  * GET /api/organizations
  * Get all organizations accessible to the current user
  */
-async function getOrganizationsHandler(request: Request, authId: string) {
-  // Disable caching for this route
-  unstable_noStore();
-  
+async function getOrganizations(request: Request) {
   try {
-    // Pass the authId to storage methods to enable RLS
-    const organizations = await storage.listOrganizations(authId);
-    
-    return NextResponse.json(organizations);
+    const organizations = await storage.listOrganizations();
+    return NextResponse.json({ success: true, data: organizations });
   } catch (error) {
     console.error('Error fetching organizations:', error);
     return NextResponse.json(
@@ -25,40 +30,22 @@ async function getOrganizationsHandler(request: Request, authId: string) {
   }
 }
 
-// Export the handler wrapped with auth middleware
-export const GET = withAuthGet(getOrganizationsHandler);
-
-// Handler for creating organizations
-async function createOrganizationHandler(request: Request, authId: string) {
+// POST /api/organizations
+async function createOrganization(request: Request) {
   try {
-    const data = await request.json();
+    const body = await request.json();
+    const validatedData = organizationSchema.parse(body);
     
-    // Validate required fields
-    if (!data.name || !data.industry || !data.size) {
+    const organization = await storage.createOrganization(validatedData);
+    return NextResponse.json({ success: true, data: organization });
+  } catch (error) {
+    console.error('Error creating organization:', error);
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Name, industry, and size are required' },
+        { error: 'Invalid organization data', details: error.errors },
         { status: 400 }
       );
     }
-    
-    // Create the organization
-    const organization = await storage.createOrganization({
-      name: data.name,
-      industry: data.industry,
-      size: data.size,
-      description: data.description
-    });
-    
-    // Create a link between user and organization in user_profiles
-    await storage.createUserProfile({
-      auth_id: authId,
-      organization_id: organization.id,
-      full_name: data.fullName || null
-    });
-    
-    return NextResponse.json(organization);
-  } catch (error) {
-    console.error('Error creating organization:', error);
     return NextResponse.json(
       { error: 'Failed to create organization' },
       { status: 500 }
@@ -66,5 +53,6 @@ async function createOrganizationHandler(request: Request, authId: string) {
   }
 }
 
-// Export the handler wrapped with auth middleware
-export const POST = withAuthPost(createOrganizationHandler); 
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getOrganizations);
+export const POST = withAuthAndSecurity(createOrganization); 

@@ -1,0 +1,44 @@
+{
+  "departments": {
+    "sourceCount": 6,
+    "destCount": 0,
+    "isValid": false,
+    "difference": 6
+  },
+  "job_roles": {
+    "sourceCount": 9,
+    "destCount": 0,
+    "isValid": false,
+    "difference": 9
+  },
+  "ai_tools": {
+    "sourceCount": 315,
+    "destCount": 315,
+    "isValid": true,
+    "difference": 0
+  },
+  "ai_capabilities": {
+    "sourceCount": 216,
+    "destCount": 216,
+    "isValid": true,
+    "difference": 0
+  },
+  "capability_tool_mapping": {
+    "sourceCount": 1030,
+    "destCount": 1030,
+    "isValid": true,
+    "difference": 0
+  },
+  "capability_job_roles": {
+    "sourceCount": 733,
+    "destCount": 0,
+    "isValid": false,
+    "difference": 733
+  },
+  "capability_role_impacts": {
+    "sourceCount": 0,
+    "destCount": 0,
+    "isValid": true,
+    "difference": 0
+  }
+}

@@ -1,78 +1,61 @@
-import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { insertReportSchema } from '@shared/schema';
 import { ZodError } from 'zod';
 import { unstable_noStore } from 'next/cache';
+import { createClient } from '@/../../utils/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuthAndSecurity } from '../middleware';
+import { z } from 'zod';
+
+// Input validation schema
+const reportSchema = z.object({
+  assessmentId: z.number().int().positive(),
+  executiveSummary: z.string().min(1),
+  prioritizationData: z.record(z.any()).optional(),
+  aiSuggestions: z.record(z.any()).optional(),
+  performanceImpact: z.record(z.any()).optional(),
+  consultantCommentary: z.string().optional(),
+  aiAdoptionScoreDetails: z.record(z.any()).optional(),
+  roiDetails: z.record(z.any()).optional()
+});
 
 // GET /api/reports
-export async function GET(request: Request) {
-  // Disable caching for this route
-  unstable_noStore();
-  
+async function getReports(request: Request) {
   try {
-    const url = new URL(request.url);
-    const assessmentId = url.searchParams.get('assessmentId');
-
-    if (assessmentId) {
-      // Convert to number
-      const assessmentIdNum = parseInt(assessmentId, 10);
-      
-      if (isNaN(assessmentIdNum)) {
-        return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
-      }
-      
-      // Find report by assessment ID
-      const report = await storage.getReportByAssessment(assessmentIdNum);
-      return NextResponse.json({ reports: report ? [report] : [] }, {
-        headers: {
-          'Cache-Control': 'no-store, max-age=0, must-revalidate'
-        }
-      });
-    }
-    
-    // Fetch all reports
     const reports = await storage.listReports();
-    
-    // Sort reports by generatedAt timestamp (most recent first)
-    const sortedReports = [...reports].sort((a, b) => 
-      new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
-    );
-    
-    return NextResponse.json({ reports: sortedReports }, {
-      headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate'
-      }
-    });
+    return NextResponse.json({ success: true, data: reports });
   } catch (error) {
     console.error('Error fetching reports:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { 
-      status: 500,
-      headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate'
-      }
-    });
+    return NextResponse.json(
+      { error: 'Failed to fetch reports' },
+      { status: 500 }
+    );
   }
 }
 
 // POST /api/reports
-export async function POST(request: Request) {
+async function createReport(request: Request) {
   try {
     const body = await request.json();
-    const validatedData = insertReportSchema.parse(body);
+    const validatedData = reportSchema.parse(body);
+    
     const report = await storage.createReport(validatedData);
-    return NextResponse.json(report, { 
-      status: 201,
-      headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate'
-      }
-    });
+    return NextResponse.json({ success: true, data: report });
   } catch (error) {
     console.error('Error creating report:', error);
-    if (error instanceof ZodError) {
-      return NextResponse.json({ message: "Invalid report data", errors: error.errors }, { status: 400 });
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid report data', details: error.errors },
+        { status: 400 }
+      );
     }
-    const errorMessage = error instanceof Error ? error.message : 'Invalid report data';
-    return NextResponse.json({ message: errorMessage }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Failed to create report' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getReports);
+export const POST = withAuthAndSecurity(createReport); 

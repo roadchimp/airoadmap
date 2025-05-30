@@ -1,0 +1,30 @@
+{
+  "departments": {
+    "sourceCount": 6,
+    "insertedCount": 6
+  },
+  "job_roles": {
+    "sourceCount": 9,
+    "insertedCount": 9
+  },
+  "ai_tools": {
+    "sourceCount": 315,
+    "insertedCount": 315
+  },
+  "ai_capabilities": {
+    "sourceCount": 216,
+    "insertedCount": 216
+  },
+  "capability_tool_mapping": {
+    "sourceCount": 1030,
+    "insertedCount": 1030
+  },
+  "capability_job_roles": {
+    "sourceCount": 733,
+    "insertedCount": 733
+  },
+  "capability_role_impacts": {
+    "sourceCount": 0,
+    "insertedCount": 0
+  }
+}

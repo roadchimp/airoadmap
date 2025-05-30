@@ -7,10 +7,12 @@ interface AuthContextType {
   organizationId: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  csrfToken: string | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, password: string, organizationName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  refreshCsrfToken: () => Promise<void>;
 }
 
 interface UserMetadata {
@@ -28,6 +30,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+
+  // Function to fetch a new CSRF token
+  const refreshCsrfToken = async () => {
+    if (!user) {
+      setCsrfToken(null);
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/csrf-token', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch CSRF token');
+      }
+
+      const { token } = await response.json();
+      setCsrfToken(token);
+    } catch (error) {
+      console.error('Failed to refresh CSRF token:', error);
+      setCsrfToken(null);
+    }
+  };
 
   // Check initial auth status and set up auth state listener
   useEffect(() => {
@@ -42,14 +72,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Extract organization ID from user metadata
           const metadata = session.user.user_metadata as UserMetadata;
           setOrganizationId(metadata?.organization_id || null);
+          // Fetch initial CSRF token
+          await refreshCsrfToken();
         } else {
           setUser(null);
           setOrganizationId(null);
+          setCsrfToken(null);
         }
       } catch (error) {
         console.error("Auth check failed:", error);
         setUser(null);
         setOrganizationId(null);
+        setCsrfToken(null);
       } finally {
         setIsLoading(false);
       }
@@ -66,9 +100,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Extract organization ID from user metadata
           const metadata = session.user.user_metadata as UserMetadata;
           setOrganizationId(metadata?.organization_id || null);
+          // Refresh CSRF token on auth state change
+          await refreshCsrfToken();
         } else {
           setUser(null);
           setOrganizationId(null);
+          setCsrfToken(null);
         }
         setIsLoading(false);
       }
@@ -95,6 +132,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.user) {
         const metadata = data.user.user_metadata as UserMetadata;
         setOrganizationId(metadata?.organization_id || null);
+        // Refresh CSRF token after login
+        await refreshCsrfToken();
       }
 
       return { success: true };
@@ -131,6 +170,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, error: data.error || 'Signup failed' };
       }
 
+      // Refresh CSRF token after signup
+      await refreshCsrfToken();
       return { success: true };
     } catch (error) {
       console.error("Signup failed:", error);
@@ -149,6 +190,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await supabase.auth.signOut();
       setUser(null);
       setOrganizationId(null);
+      setCsrfToken(null);
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
@@ -163,6 +205,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(data.user);
         const metadata = data.user.user_metadata as UserMetadata;
         setOrganizationId(metadata?.organization_id || null);
+        // Refresh CSRF token after session refresh
+        await refreshCsrfToken();
       }
     } catch (error) {
       console.error("Session refresh failed:", error);
@@ -174,10 +218,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     organizationId,
     isLoading,
     isAuthenticated: !!user && !isLoading,
+    csrfToken,
     login,
     signup,
     logout,
-    refreshSession
+    refreshSession,
+    refreshCsrfToken
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

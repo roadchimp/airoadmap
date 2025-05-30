@@ -1,29 +1,53 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
+import { withAuthAndSecurity } from '../../../middleware';
+import { z } from 'zod';
 
-interface Params {
-  id: string;
-}
+// Input validation schema
+const commentarySchema = z.object({
+  commentary: z.string().min(1)
+});
 
-// PATCH /api/reports/:id/commentary
-export async function PATCH(request: Request, { params }: { params: Params }) {
-  const reportId = parseInt(params.id);
-  if (isNaN(reportId)) {
-    return NextResponse.json({ message: 'Invalid report ID' }, { status: 400 });
-  }
-
+// PATCH /api/reports/[id]/commentary
+async function updateReportCommentary(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { commentary } = await request.json();
-    if (!commentary || typeof commentary !== 'string') {
-      return NextResponse.json({ message: 'Commentary is required and must be a string' }, { status: 400 });
+    const reportId = parseInt(params.id);
+    if (isNaN(reportId)) {
+      return NextResponse.json(
+        { error: 'Invalid report ID' },
+        { status: 400 }
+      );
     }
-    
-    const report = await storage.updateReportCommentary(reportId, commentary);
-    return NextResponse.json(report);
+
+    const body = await request.json();
+    const validatedData = commentarySchema.parse(body);
+
+    const report = await storage.updateReportCommentary(reportId, validatedData.commentary);
+    if (!report) {
+      return NextResponse.json(
+        { error: 'Report not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: report });
   } catch (error) {
     console.error('Error updating report commentary:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Error updating report commentary';
-    // Assuming 400 based on original code, could be 500 if storage layer fails
-    return NextResponse.json({ message: errorMessage }, { status: 400 }); 
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid commentary data', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to update report commentary' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+// Export the handler wrapped with auth and security middleware
+export const PATCH = withAuthAndSecurity(updateReportCommentary); 

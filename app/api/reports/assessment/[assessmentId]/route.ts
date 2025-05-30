@@ -1,40 +1,100 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
+import { withAuthAndSecurity } from '../../../middleware';
+import { z } from 'zod';
 import { calculatePrioritization } from '@/server/lib/prioritizationEngine';
 import { calculateAiAdoptionScore, type CalculatedAiAdoptionScore } from '@/server/lib/aiAdoptionScoreEngine';
-import { withAuthGet, withAuthPost } from '@/app/api/middleware';
 import type { 
   WizardStepData, 
-  AssessmentResponse, 
-  AiAdoptionScoreInputComponents,
-  OrganizationScoreWeights
+  OrganizationScoreWeights,
+  AiAdoptionScoreInputComponents
 } from '@shared/schema';
 
 interface Params {
   assessmentId: string;
 }
 
-// GET /api/reports/assessment/:assessmentId
-export const GET = withAuthGet(async (request: Request, authId: string, { params }: { params: Params }) => {
+// GET /api/reports/assessment/[assessmentId]
+async function getReportByAssessment(
+  request: Request,
+  { params }: { params: { assessmentId: string } }
+) {
   try {
     const assessmentId = parseInt(params.assessmentId);
     if (isNaN(assessmentId)) {
-      return NextResponse.json({ message: 'Invalid assessment ID' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
     }
-    
+
     const report = await storage.getReportByAssessment(assessmentId);
     if (!report) {
-      // Changed to 404 to match original logic more closely
-      return NextResponse.json({ message: 'Report not found for this assessment' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Report not found' },
+        { status: 404 }
+      );
     }
-    
-    return NextResponse.json(report);
+
+    return NextResponse.json({ success: true, data: report });
   } catch (error) {
-    console.error('Error fetching report by assessment ID:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ message: errorMessage }, { status: 500 });
+    console.error('Error fetching report by assessment:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch report' },
+      { status: 500 }
+    );
   }
-});
+}
+
+// POST /api/reports/assessment/[assessmentId]
+async function createReportForAssessment(
+  request: Request,
+  { params }: { params: { assessmentId: string } }
+) {
+  try {
+    const assessmentId = parseInt(params.assessmentId);
+    if (isNaN(assessmentId)) {
+      return NextResponse.json(
+        { error: 'Invalid assessment ID' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const validatedData = z.object({
+      executiveSummary: z.string().min(1),
+      prioritizationData: z.record(z.any()).optional(),
+      aiSuggestions: z.record(z.any()).optional(),
+      performanceImpact: z.record(z.any()).optional(),
+      consultantCommentary: z.string().optional(),
+      aiAdoptionScoreDetails: z.record(z.any()).optional(),
+      roiDetails: z.record(z.any()).optional()
+    }).parse(body);
+
+    const report = await storage.createReport({
+      assessmentId,
+      ...validatedData
+    });
+
+    return NextResponse.json({ success: true, data: report });
+  } catch (error) {
+    console.error('Error creating report for assessment:', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid report data', details: error.errors },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to create report' },
+      { status: 500 }
+    );
+  }
+}
+
+// Export the handlers wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getReportByAssessment);
+export const POST = withAuthAndSecurity(createReportForAssessment);
 
 // POST /api/reports/assessment/:assessmentId
 // Generate a new report for the given assessment

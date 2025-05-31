@@ -55,6 +55,43 @@ This document details the technologies, tools, and development environment used 
 *   **`zod`:** Schema validation
 *   **`react-hook-form`:** Form handling
 *   **`lucide-react`:** Icon library
+*   **`@supabase/supabase-js`:** Authentication and database client
+
+## Authentication & Security Architecture
+
+The application uses Supabase for authentication with a custom middleware security layer:
+
+### Authentication System
+*   **Provider:** Supabase Auth with GitHub OAuth and email/password
+*   **User Management:** Dual-layer system with Supabase auth and internal user profiles
+*   **Session Handling:** Server-side cookies with automatic refresh
+*   **CSRF Protection:** Token-based CSRF protection for API routes
+
+### API Security Middleware
+*   **Location:** `app/api/middleware.ts`
+*   **Authentication Middleware (`withAuth`):**
+    - Validates Supabase sessions using server-side cookies
+    - Maps Supabase user IDs to internal user profile IDs
+    - Auto-creates user profiles for new authenticated users
+    - Adds user context to request handlers
+*   **CSRF Middleware (`withCsrf`):**
+    - Validates CSRF tokens for state-changing operations
+    - Integrates with client-side API client for seamless token handling
+*   **Combined Middleware (`withAuthAndSecurity`):**
+    - Applies both authentication and CSRF protection
+    - Used for all protected API routes
+
+### User Profile System
+*   **Database Tables:** 
+    - `userProfiles` - Internal user records with integer IDs
+    - Linked to Supabase auth via `auth_id` (UUID) field
+*   **Auto-Creation:** User profiles automatically created on first login
+*   **Mapping:** API routes resolve Supabase UUIDs to integer user IDs for database operations
+
+### Client-Side Security
+*   **API Client:** `utils/api-client.ts` handles CSRF token injection
+*   **Authentication Hook:** `hooks/UseAuth.tsx` manages auth state and CSRF tokens
+*   **Token Management:** Automatic CSRF token refresh and injection into API calls
 
 ## Client-Server Component Architecture
 

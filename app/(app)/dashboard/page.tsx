@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import DashboardContent from "./DashboardContent";
 import { useAuth } from '../../../hooks/UseAuth';
 import { apiClient } from '../../../utils/api-client';
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 interface DashboardData {
   assessmentCountInProgress: number;
@@ -46,7 +48,18 @@ export default function DashboardPage() {
   }, [isAuthenticated]);
 
   if (!isAuthenticated) {
-    return <div>Please log in to access the dashboard.</div>;
+    return (
+      <div className="container mx-auto px-6 pt-16">
+        <div className="flex flex-col items-center space-y-4">
+          <p className="text-lg text-gray-600">Please log in to access the dashboard.</p>
+          <Link href="/login">
+            <Button className="bg-red-600 hover:bg-red-700 text-white">
+              Sign In
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (csrfLoading) {

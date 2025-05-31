@@ -70,6 +70,58 @@ This pattern prevents the "Refs cannot be used in Server Components" error while
   - Type-safe API routes with shared types
 - **API:** REST principles with Next.js API Routes
 
+## API Security Patterns
+
+### Authentication & Authorization Middleware
+We've implemented a robust security layer for API routes using a composable middleware pattern:
+
+**Core Middleware Functions:**
+- `withAuth(handler)` - Validates authentication and maps users
+- `withCsrf(handler)` - Validates CSRF tokens for state-changing operations  
+- `withAuthAndSecurity(handler)` - Combines both auth and CSRF protection
+
+**Usage Pattern:**
+```typescript
+// Protected API route example
+export const POST = withAuthAndSecurity(async (request: Request, context: any) => {
+  // User is available in context.user (mapped to internal user profile)
+  // CSRF validation already completed
+  const user = context.user;
+  // ... route logic
+});
+```
+
+### User Identity Mapping
+**Challenge:** Supabase provides UUID auth IDs, but internal database uses integer user IDs
+**Solution:** Automatic user profile creation and mapping
+- Middleware checks for existing user profile by `auth_id`
+- Creates new profile automatically if none exists
+- Provides consistent integer `userId` to route handlers
+- Maintains link between Supabase auth and internal user data
+
+### CSRF Protection Strategy
+**Client-Side:**
+- `useAuth` hook provides CSRF tokens
+- `apiClient` automatically injects tokens into requests
+- Tokens refreshed automatically on auth state changes
+
+**Server-Side:**
+- CSRF middleware validates tokens on state-changing operations (POST, PATCH, DELETE)
+- Tokens generated per-session for security
+- Integration with Supabase session management
+
+### Authentication State Management
+**Dual Authentication Context:**
+- Supabase handles OAuth flows and session management
+- Custom `useAuth` hook provides app-specific auth state
+- Automatic redirect to login for unauthenticated users
+- User profile data cached and synchronized
+
+**Route Protection:**
+- Protected pages check authentication in Server Components
+- Automatic user profile lookup/creation on first login
+- Graceful handling of authentication failures
+
 ## Core Components
 - **User Interface:**
   - Next.js App Router pages and layouts

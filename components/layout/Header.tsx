@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu, LogOut, HelpCircle } from "lucide-react";
+import { Menu, LogOut, LogIn, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '@/hooks/UseAuth';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,9 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
 
 const Header = () => {
-  const { logout, user } = useAuth();
+  const { logout, user, isAuthenticated } = useAuth();
+  const router = useRouter();
   
   // Get user display name - prefer full name, fall back to email
   const displayName = user?.user_metadata?.full_name || 
@@ -44,6 +46,10 @@ const Header = () => {
     }
   };
 
+  const handleSignIn = () => {
+    router.push('/login');
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 h-16 w-full flex items-center justify-between px-4 md:px-6">
       {/* Title on the left */}
@@ -68,22 +74,33 @@ const Header = () => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-gray-200 text-gray-700">{initials}</AvatarFallback>
+                <AvatarFallback className="bg-gray-200 text-gray-700">
+                  {isAuthenticated ? initials : 'U'}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{displayName}</p>
-                <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Sign out</span>
-            </DropdownMenuItem>
+            {isAuthenticated ? (
+              <>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{displayName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem onClick={handleSignIn}>
+                <LogIn className="mr-2 h-4 w-4" />
+                <span>Sign in</span>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

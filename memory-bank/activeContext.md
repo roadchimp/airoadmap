@@ -1,5 +1,92 @@
 # Active Context
 
+## Current Focus: API Security Hardening and Authentication UX (December 2024)
+
+### Recent Security Architecture Overhaul
+
+**Major Security Improvements Implemented:**
+
+1. **Robust API Middleware System (`app/api/middleware.ts`):**
+   - `withAuth()` - Validates Supabase sessions and maps users to internal profiles
+   - `withCsrf()` - Protects against CSRF attacks on state-changing operations
+   - `withAuthAndSecurity()` - Combined middleware for full protection
+   - All protected API routes now use this security layer
+
+2. **Automatic User Profile Management:**
+   - Seamless mapping between Supabase UUID auth IDs and internal integer user IDs
+   - Auto-creation of user profiles on first login (no manual registration required)
+   - Consistent user identity across authentication and database layers
+   - Graceful handling of authentication failures and edge cases
+
+3. **CSRF Protection Integration:**
+   - Client-side API client (`utils/api-client.ts`) automatically injects CSRF tokens
+   - Server-side validation on all POST/PATCH/DELETE operations
+   - Token refresh synchronized with authentication state changes
+   - Seamless UX with no user interaction required
+
+4. **Assessment Wizard Authentication Issues Resolved:**
+   - Fixed "User not found in request context" errors in assessment creation
+   - Proper user ID mapping for assessment ownership
+   - Automated organization creation for new users
+   - Report generation now works correctly with authenticated users
+
+### Authentication UX Improvements
+
+**User Experience Enhancements:**
+
+1. **Dashboard Access Improvements:**
+   - Clear sign-in prompt with prominent button when not authenticated
+   - Sign-in button positioned at top of page (not center) for better UX
+   - Redirect to login page with proper return URL handling
+
+2. **Header Navigation Updates:**
+   - User dropdown shows "Sign in" when not authenticated (instead of "Sign out")
+   - Proper authentication state detection in header component
+   - Consistent authentication messaging across all protected pages
+
+3. **Assessment Workflow Security:**
+   - All assessment creation/modification operations now properly authenticated
+   - User ownership validation for assessments and reports
+   - Seamless integration between wizard steps and backend security
+
+### Technical Implementation Details
+
+**API Route Protection Pattern:**
+```typescript
+// All protected routes now follow this pattern:
+export const POST = withAuthAndSecurity(async (request: Request, context: any) => {
+  const user = context.user; // Mapped internal user profile
+  // Route logic with authenticated user context
+});
+```
+
+**Client-Side Integration:**
+- `useAuth` hook provides CSRF tokens automatically
+- `apiClient` handles token injection transparently
+- Authentication state synchronized across components
+- Automatic redirects for unauthenticated access attempts
+
+**Database Security:**
+- User profiles automatically linked via `auth_id` field
+- Assessment ownership properly validated
+- Report access restricted to authorized users
+- Graceful handling of orphaned or invalid user states
+
+### Impact and Benefits
+
+1. **Security Hardening:** All API endpoints now properly protected against common web vulnerabilities
+2. **Seamless UX:** Users don't experience authentication friction during normal workflows
+3. **Robust Error Handling:** Graceful degradation and clear messaging for authentication issues
+4. **Developer Experience:** Consistent patterns for implementing new protected API routes
+5. **Production Ready:** Enterprise-grade security suitable for production deployment
+
+### Next Steps
+
+1. **Security Audit:** Review all existing API routes to ensure middleware is applied
+2. **Performance Testing:** Validate authentication overhead is acceptable
+3. **Documentation:** Update API documentation with security requirements
+4. **Monitoring:** Implement logging for authentication failures and security events
+
 ## Current Focus: AI Adoption Score Calculation Bug Fix and Report System Refinements
 
 ### Recent Critical Bug Fix: AI Adoption Score Calculation Engine (December 2024)

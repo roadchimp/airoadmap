@@ -6,8 +6,8 @@ interface Params {
 }
 
 // GET /api/assessment-scores/:wizardStepId
-export async function GET(request: Request, { params }: { params: Params }) {
-  const { wizardStepId } = params;
+export async function GET(request: Request, { params }: { params: Promise<Params> }) {
+  const { wizardStepId } = await params;
   
   if (!wizardStepId) {
     // This check might be redundant due to route parameter presence, but kept for parity

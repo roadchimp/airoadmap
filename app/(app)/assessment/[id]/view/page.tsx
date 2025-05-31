@@ -4,9 +4,9 @@ import { Assessment } from '@shared/schema';
 import AssessmentViewer from "../../_components/assessment-viewer"; // We'll create this component
 
 interface AssessmentViewPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // Fetch data for a specific assessment on the server
@@ -33,7 +33,8 @@ async function getAssessmentResponses(id: number) {
 }
 
 export default async function ViewAssessmentPage({ params }: AssessmentViewPageProps) {
-  const assessmentId = parseInt(params.id);
+  const { id } = await params;
+  const assessmentId = parseInt(id);
 
   if (isNaN(assessmentId)) {
     notFound(); // If ID is not a number, show 404
@@ -57,7 +58,8 @@ export default async function ViewAssessmentPage({ params }: AssessmentViewPageP
 
 // Add metadata generation based on assessment title
 export async function generateMetadata({ params }: AssessmentViewPageProps) {
-  const assessmentId = parseInt(params.id);
+  const { id } = await params;
+  const assessmentId = parseInt(id);
   if (isNaN(assessmentId)) return { title: 'Assessment Not Found' };
   
   const assessment = await getAssessmentData(assessmentId);

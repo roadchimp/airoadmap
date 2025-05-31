@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 
-interface Params {
-  id: string;
-}
-
 // PATCH /api/job-descriptions/:id/status
-export async function PATCH(request: Request, { params }: { params: Params }) {
-  const id = parseInt(params.id);
-  if (isNaN(id)) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const parsedId = parseInt(id);
+  if (isNaN(parsedId)) {
     return NextResponse.json({ message: 'Invalid job description ID' }, { status: 400 });
   }
 
@@ -19,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
     }
     // Optional: Validate errorMsg if present
 
-    const jobDescription = await storage.updateJobDescriptionStatus(id, status, errorMsg);
+    const jobDescription = await storage.updateJobDescriptionStatus(parsedId, status, errorMsg);
     return NextResponse.json(jobDescription);
   } catch (error) {
     console.error('Error updating job description status:', error);

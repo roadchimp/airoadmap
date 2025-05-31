@@ -11,9 +11,10 @@ interface ReportPageData {
 // GET /api/reports/:id
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const reportId = parseInt(params.id, 10);
+  const { id } = await params;
+  const reportId = parseInt(id, 10);
 
   if (isNaN(reportId)) {
     return NextResponse.json({ error: 'Invalid report ID' }, { status: 400 });

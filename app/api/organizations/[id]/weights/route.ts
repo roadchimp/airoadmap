@@ -8,10 +8,11 @@ import { getOrganizationScoreWeights } from "@/server/lib/aiAdoptionScoreEngine"
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const organizationId = parseInt(params.id, 10);
+    const { id } = await params;
+    const organizationId = parseInt(id, 10);
     if (isNaN(organizationId)) {
       return NextResponse.json({ error: "Invalid organization ID" }, { status: 400 });
     }
@@ -83,10 +84,10 @@ export async function GET(
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const organizationId = parseInt(params.id, 10);
+    const organizationId = parseInt((await params).id, 10);
     if (isNaN(organizationId)) {
       return NextResponse.json({ error: "Invalid organization ID" }, { status: 400 });
     }

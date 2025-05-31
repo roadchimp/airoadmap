@@ -132,8 +132,9 @@ const NewAssessment: React.FC = () => {
     queryKey: ["/api/departments"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/departments");
-      if (!response.ok) throw new Error('Failed to fetch departments');
-      return response.json() as Promise<Department[]>;
+      const result = await response.json();
+      // Handle new API response format: { success: true, data: [...] }
+      return result.data || result;
     },
   });
   
@@ -141,8 +142,9 @@ const NewAssessment: React.FC = () => {
     queryKey: ["/api/job-roles"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/job-roles");
-      if (!response.ok) throw new Error('Failed to fetch job roles');
-      return response.json() as Promise<JobRole[]>;
+      const result = await response.json();
+      // Handle new API response format: { success: true, data: [...] }
+      return result.data || result;
     },
   });
   

@@ -17,6 +17,7 @@ interface Report {
 const Profile: React.FC = () => {
   const router = useRouter();
   const { user, logout, organizationId, isAuthenticated, isLoading } = useAuth();
+  const { csrfToken, isLoading: csrfLoading } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [error, setError] = useState<string | null>(null);

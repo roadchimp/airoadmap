@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation';
 
 interface EditRedirectPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function EditRedirectPage({ params }: EditRedirectPageProps) {
+export default async function EditRedirectPage({ params }: EditRedirectPageProps) {
+  const { id } = await params;
   // Redirect to the correct edit URL structure
-  redirect(`/assessment/${params.id}`);
+  redirect(`/assessment/${id}`);
 } 

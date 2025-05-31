@@ -154,7 +154,7 @@ async function getAuthenticatedUser(request: NextRequest) {
       throw new Error('Too many requests');
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error || !user) {
@@ -165,7 +165,7 @@ async function getAuthenticatedUser(request: NextRequest) {
     if (request.method !== 'GET') {
       const csrfToken = request.headers.get('x-csrf-token');
       if (!csrfToken || !validateCsrfToken(csrfToken, user.id)) {
-        throw new Error('Invalid CSRF token');
+        throw new Error('CSRF validation failed: Token mismatch');
       }
     }
     
@@ -302,7 +302,7 @@ export function withAuth(handler: ApiHandler): ApiHandler {
       }
 
       // Auth validation
-      const supabase = createClient();
+      const supabase = await createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error || !user) {

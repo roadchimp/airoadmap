@@ -27,13 +27,13 @@ async function getAssessments(request: Request) {
 }
 
 // POST /api/assessments
-async function createAssessment(request: Request) {
+async function createAssessment(request: Request, context: any) {
   try {
     const body = await request.json();
-    const validatedData = assessmentCreateSchema.parse(body);
+    console.log('Received assessment payload:', JSON.stringify(body, null, 2));
     
-    // Get user from request (added by withAuth middleware)
-    const user = (request as any).user;
+    // Get user from context (added by withAuth middleware)
+    const user = context.user;
     if (!user) {
       return NextResponse.json(
         { error: 'User not found in request context' },
@@ -41,14 +41,37 @@ async function createAssessment(request: Request) {
       );
     }
     
-    const assessment = await storage.createAssessment({
-      ...validatedData,
-      userId: user.id
-    });
+    // Look up the user profile to get the integer user ID
+    let userProfile = await storage.getUserProfileByAuthId(user.id);
+    
+    // If no user profile exists, create one automatically
+    if (!userProfile) {
+      console.log(`Creating user profile for auth ID: ${user.id}`);
+      userProfile = await storage.createUserProfile({
+        auth_id: user.id,
+        full_name: user.email?.split('@')[0] || 'User', // Basic name from email
+        // organization_id will be null initially
+      });
+      console.log(`Created user profile with ID: ${userProfile.id}`);
+    }
+    
+    // Add userId to the payload before validation
+    const payloadWithUserId = {
+      ...body,
+      userId: userProfile.id
+    };
+    
+    console.log('Payload with userId:', JSON.stringify(payloadWithUserId, null, 2));
+    
+    const validatedData = assessmentCreateSchema.parse(payloadWithUserId);
+    console.log('Validated assessment data:', JSON.stringify(validatedData, null, 2));
+    
+    const assessment = await storage.createAssessment(validatedData);
     return NextResponse.json({ success: true, data: assessment });
   } catch (error) {
     console.error('Error creating assessment:', error);
     if (error instanceof z.ZodError) {
+      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
       return NextResponse.json(
         { error: 'Invalid assessment data', details: error.errors },
         { status: 400 }

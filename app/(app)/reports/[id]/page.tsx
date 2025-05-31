@@ -42,13 +42,20 @@ interface ReportPageData {
 }
 
 interface ReportPageProps {
-  params: { id: string }
-  searchParams?: { [key: string]: string | string[] | undefined }
+  params: Promise<{ id: string }>
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default function ReportPage({ params }: ReportPageProps) {
+export default async function ReportPage({ params }: ReportPageProps) {
+  const { id } = await params;
+  
+  // Since we're now using await, we need to pass the reportId to a client component
+  // Let's create a client component that handles all the state and effects
+  return <ReportPageClient reportId={parseInt(id, 10)} />;
+}
+
+function ReportPageClient({ reportId }: { reportId: number }) {
   const router = useRouter()
-  const reportId = parseInt(params.id, 10)
   
   // All hooks must be called at the top, before any conditional logic
   const [activeTab, setActiveTab] = useState("executive-summary")
@@ -1123,7 +1130,7 @@ export default function ReportPage({ params }: ReportPageProps) {
       <ReportSettingsModal 
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
-        reportId={params.id ? Number(params.id) : undefined}
+        reportId={reportId}
       />
 
       {/* Share Modal */}

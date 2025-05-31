@@ -142,8 +142,9 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
         const response = await apiRequest("GET", "/api/departments"); // Remove <Department[]>
         // Ensure apiRequest returns a standard Response or throws on error
         if (!response.ok) throw new Error('Failed to fetch departments'); 
-        const data = await response.json();
-        return data as Department[]; // Add type assertion here
+        const result = await response.json();
+        // Handle new API response format: { success: true, data: [...] }
+        return result.data || result;
      },
      staleTime: Infinity, // Departments likely don't change often within the session
    });

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { withAuthAndSecurity } from '../../../middleware';
 import { z } from 'zod';
@@ -8,10 +8,14 @@ const departmentParamSchema = z.object({
 });
 
 // GET /api/job-roles/department/[departmentId]
-async function getJobRolesByDepartment(request: Request, { params }: { params: { departmentId: string } }) {
+async function getJobRolesByDepartment(
+  request: NextRequest, 
+  context: { params: Promise<{ departmentId: string }>; user: any }
+) {
   try {
-    const { departmentId } = departmentParamSchema.parse(params);
-    const id = parseInt(departmentId);
+    const { departmentId } = await context.params;
+    const validatedParams = departmentParamSchema.parse({ departmentId });
+    const id = parseInt(validatedParams.departmentId);
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid department ID' }, { status: 400 });
     }

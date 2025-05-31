@@ -91,7 +91,12 @@ const Library: React.FC = () => {
     isLoading: isLoadingDepartments 
   } = useQuery({
     queryKey: ['/api/departments'],
-    queryFn: getDepartments
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/departments");
+      const result = await response.json();
+      // Handle new API response format: { success: true, data: [...] }
+      return result.data || result;
+    }
   });
   
   // Update departments state when data is fetched

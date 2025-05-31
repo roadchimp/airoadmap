@@ -1,12 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { withAuthAndSecurity } from '../../middleware';
 import { z } from 'zod';
 import type { ProcessedJobContent } from '@shared/schema';
-
-interface Params {
-  id: string;
-}
 
 // Input validation schema for processed content
 const processedContentSchema = z.object({
@@ -41,17 +37,21 @@ const jobDescriptionUpdateSchema = z.object({
 });
 
 // GET /api/job-descriptions/:id
-async function getJobDescription(request: Request, { params }: { params: Params }) {
+async function getJobDescription(
+  request: NextRequest, 
+  context: { params: Promise<{ id: string }>; user: any }
+) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const jobDescriptionId = parseInt(id);
+    if (isNaN(jobDescriptionId)) {
       return NextResponse.json(
         { error: 'Invalid job description ID' },
         { status: 400 }
       );
     }
     
-    const jobDescription = await storage.getJobDescription(id);
+    const jobDescription = await storage.getJobDescription(jobDescriptionId);
     if (!jobDescription) {
       return NextResponse.json(
         { error: 'Job description not found' },
@@ -73,10 +73,14 @@ async function getJobDescription(request: Request, { params }: { params: Params 
 }
 
 // PATCH /api/job-descriptions/:id
-async function updateJobDescription(request: Request, { params }: { params: Params }) {
+async function updateJobDescription(
+  request: NextRequest, 
+  context: { params: Promise<{ id: string }>; user: any }
+) {
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    const { id } = await context.params;
+    const jobDescriptionId = parseInt(id);
+    if (isNaN(jobDescriptionId)) {
       return NextResponse.json(
         { error: 'Invalid job description ID' },
         { status: 400 }
@@ -86,12 +90,12 @@ async function updateJobDescription(request: Request, { params }: { params: Para
     const validatedData = jobDescriptionUpdateSchema.parse(body);
     // Only allow updating processedContent via a dedicated method
     if (validatedData.processedContent) {
-      const updated = await storage.updateJobDescriptionProcessedContent(id, validatedData.processedContent);
+      const updated = await storage.updateJobDescriptionProcessedContent(jobDescriptionId, validatedData.processedContent);
       return NextResponse.json({ success: true, data: updated });
     }
     // Only allow updating status via a dedicated method
     if (validatedData.status) {
-      const updated = await storage.updateJobDescriptionStatus(id, validatedData.status, validatedData.error);
+      const updated = await storage.updateJobDescriptionStatus(jobDescriptionId, validatedData.status, validatedData.error);
       return NextResponse.json({ success: true, data: updated });
     }
     return NextResponse.json({ error: 'Only processedContent or status can be updated via this endpoint.' }, { status: 400 });

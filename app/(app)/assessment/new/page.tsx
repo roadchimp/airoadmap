@@ -5,7 +5,7 @@ import { storage } from '@/server/storage';
 import { Assessment } from '@shared/schema';
 
 interface NewAssessmentPageProps {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 // Function to fetch assessment data if an ID is provided
@@ -24,7 +24,8 @@ async function getInitialAssessmentData(id: string | undefined): Promise<Assessm
 }
 
 export default async function NewAssessmentPage({ searchParams }: NewAssessmentPageProps) {
-  const assessmentId = searchParams?.id as string | undefined;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const assessmentId = resolvedSearchParams?.id as string | undefined;
   let initialAssessmentData: Assessment | null = null;
 
   if (assessmentId) {

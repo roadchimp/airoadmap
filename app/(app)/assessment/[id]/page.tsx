@@ -5,9 +5,9 @@ import type { Assessment } from '@shared/schema';
 import { unstable_noStore } from 'next/cache';
 
 interface AssessmentDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // Fetch data for a specific assessment on the server
@@ -26,7 +26,8 @@ async function getAssessmentData(id: number): Promise<Assessment | null> {
 }
 
 export default async function EditAssessmentPage({ params }: AssessmentDetailPageProps) {
-  const assessmentId = parseInt(params.id);
+  const { id } = await params;
+  const assessmentId = parseInt(id);
 
   if (isNaN(assessmentId)) {
     notFound(); // If ID is not a number, show 404
@@ -44,7 +45,8 @@ export default async function EditAssessmentPage({ params }: AssessmentDetailPag
 
 // Optional: Add metadata generation based on assessment title
 export async function generateMetadata({ params }: AssessmentDetailPageProps) {
-  const assessmentId = parseInt(params.id);
+  const { id } = await params;
+  const assessmentId = parseInt(id);
   if (isNaN(assessmentId)) return { title: 'Assessment Not Found' };
   
   const assessment = await getAssessmentData(assessmentId);

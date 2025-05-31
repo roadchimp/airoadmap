@@ -6,10 +6,11 @@ import { AiAdoptionScoreInputComponents } from "@shared/schema";
 // GET handler retrieves the AI Adoption Score for an assessment
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const assessmentId = parseInt(params.id, 10);
+    const { id } = await params;
+    const assessmentId = parseInt(id, 10);
     if (isNaN(assessmentId)) {
       return NextResponse.json({ error: "Invalid assessment ID" }, { status: 400 });
     }
@@ -57,10 +58,11 @@ export async function GET(
 // POST handler updates the AI Adoption Score inputs for an assessment
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const assessmentId = parseInt(params.id, 10);
+    const { id } = await params;
+    const assessmentId = parseInt(id, 10);
     if (isNaN(assessmentId)) {
       return NextResponse.json({ error: "Invalid assessment ID" }, { status: 400 });
     }

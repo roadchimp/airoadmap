@@ -1,9 +1,11 @@
 'use client';
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from '../../../hooks/UseAuth';
+import { apiClient } from '../../../utils/api-client';
 
 interface DashboardContentProps {
   assessmentCountInProgress: number;
@@ -16,6 +18,23 @@ export default function DashboardContent({
   assessmentCountCompleted,
   reportCount
 }: DashboardContentProps) {
+  const { user, isAuthenticated } = useAuth();
+  const { csrfToken, isLoading: csrfLoading } = useAuth();
+
+  useEffect(() => {
+    if (csrfToken) {
+      apiClient.setCsrfToken(csrfToken);
+    }
+  }, [csrfToken]);
+
+  if (!isAuthenticated) {
+    return <div>Please log in to access the dashboard.</div>;
+  }
+
+  if (csrfLoading) {
+    return <div>Loading security tokens...</div>;
+  }
+
   return (
     <div className="container mx-auto p-6 space-y-6 bg-gray-50">
       <h1 className="text-3xl font-bold text-foreground">Assessment Dashboard</h1>

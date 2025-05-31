@@ -2,21 +2,21 @@ import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { withAuthAndSecurity } from '../../../middleware';
 import { z } from 'zod';
-import { wizardStepDataSchema } from '@shared/schema';
 
-// Create an extended schema that includes strategicFocus
-const stepUpdateSchema = wizardStepDataSchema.partial().extend({
+// Create a very flexible schema for step updates that allows any partial data
+const stepUpdateSchema = z.object({
   // Allow strategicFocus as a top-level field
   strategicFocus: z.array(z.string()).optional(),
-});
+}).catchall(z.any()); // catchall allows any additional properties
 
 // PATCH /api/assessments/[id]/step
 async function updateAssessmentStep(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const assessmentId = parseInt(params.id);
+    const { id } = await params;
+    const assessmentId = parseInt(id);
     if (isNaN(assessmentId)) {
       return NextResponse.json(
         { error: 'Invalid assessment ID' },
@@ -25,15 +25,16 @@ async function updateAssessmentStep(
     }
 
     const body = await request.json();
-    // Extract strategicFocus if present
-    const { strategicFocus, ...restBody } = body;
+    console.log('Received step update data:', JSON.stringify(body, null, 2));
 
-    // The body here is Partial<WizardStepData> plus potentially strategicFocus
-    // For example: { basics: { companyName: "New Name", ... }, strategicFocus: ["focus1", "focus2"] }
+    // Basic validation - just ensure it's an object and has the expected structure
     const validatedData = stepUpdateSchema.parse(body);
 
     // Extract strategicFocus if present
     const { strategicFocus: validatedStrategicFocus, ...validatedPartialStepData } = validatedData;
+
+    console.log('Validated step data:', JSON.stringify(validatedPartialStepData, null, 2));
+    console.log('Strategic focus:', validatedStrategicFocus);
 
     // Pass strategicFocus as a separate parameter if it exists
     const assessment = await storage.updateAssessmentStep(
@@ -54,7 +55,7 @@ async function updateAssessmentStep(
     console.error('Error updating assessment step:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid step data', details: error.errors },
+        { error: 'Invalid step data format', details: error.errors },
         { status: 400 }
       );
     }

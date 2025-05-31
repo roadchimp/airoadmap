@@ -1,28 +1,21 @@
-import { NextResponse } from 'next/server';
-import { getAuthUser, requireAuth } from '../../middleware';
-import { storage } from '@/../../server/pg-storage';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuthAndSecurity } from '../../middleware';
+import { storage } from '@/server/storage';
 
 /**
  * GET /api/organizations/[id]
  * Get a specific organization accessible to the current user
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+async function getOrganization(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }>; user: any }
 ) {
-  // Check if the user is authenticated
-  const authResponse = await requireAuth(request);
-  if (authResponse) return authResponse;
+  const { id } = await context.params;
+  const { user } = context;
   
-  // Get the authenticated user
-  const { user } = await getAuthUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const orgId = parseInt(id);
   
-  const id = parseInt(params.id);
-  
-  if (isNaN(id)) {
+  if (isNaN(orgId)) {
     return NextResponse.json(
       { error: 'Invalid organization ID' },
       { status: 400 }
@@ -31,7 +24,7 @@ export async function GET(
   
   try {
     // Pass the auth ID to the storage layer for RLS policy enforcement
-    const organization = await storage.getOrganization(id, user.id);
+    const organization = await storage.getOrganization(orgId, user.id);
     
     if (!organization) {
       return NextResponse.json(
@@ -42,10 +35,13 @@ export async function GET(
     
     return NextResponse.json(organization);
   } catch (error) {
-    console.error(`Error fetching organization ${id}:`, error);
+    console.error(`Error fetching organization ${orgId}:`, error);
     return NextResponse.json(
       { error: 'Failed to fetch organization' },
       { status: 500 }
     );
   }
-} 
+}
+
+// Export the handler wrapped with auth and security middleware
+export const GET = withAuthAndSecurity(getOrganization); 

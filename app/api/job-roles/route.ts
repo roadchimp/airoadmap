@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { withAuthAndSecurity } from '../middleware';
 import { z } from 'zod';
@@ -13,7 +13,10 @@ const jobRoleSchema = z.object({
 });
 
 // GET /api/job-roles
-async function getJobRoles(request: Request) {
+async function getJobRoles(
+  request: NextRequest,
+  context: { user: any }
+) {
   try {
     const roles = await storage.listJobRoles();
     return NextResponse.json({ success: true, data: roles });
@@ -27,7 +30,10 @@ async function getJobRoles(request: Request) {
 }
 
 // POST /api/job-roles
-async function createJobRole(request: Request) {
+async function createJobRole(
+  request: NextRequest,
+  context: { user: any }
+) {
   try {
     const body = await request.json();
     const validatedData = jobRoleSchema.parse(body);

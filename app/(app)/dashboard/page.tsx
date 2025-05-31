@@ -1,72 +1,67 @@
-import React from "react";
-import { storage } from "@/server/storage";
-import type { Assessment } from "@shared/schema";
+'use client';
+
+import React, { useEffect, useState } from "react";
 import DashboardContent from "./DashboardContent";
+import { useAuth } from '../../../hooks/UseAuth';
+import { apiClient } from '../../../utils/api-client';
 
-// Server Component that fetches data
-export default async function DashboardPage() {
-  // Fetch dynamic data directly in the Server Component
-  let assessmentCountInProgress = 0;
-  let assessmentCountCompleted = 0;
-  let reportCount = 0;
-  let fetchError = null;
+interface DashboardData {
+  assessmentCountInProgress: number;
+  assessmentCountCompleted: number;
+  reportCount: number;
+}
 
-  try {
-    // Fetch assessments and handle potential schema errors
-    let assessments: Assessment[] = [];
-    let reports: any[] = [];
-    
-    try {
-      assessments = await storage.listAssessments();
-      if (!Array.isArray(assessments)) {
-        assessments = [];
-      }
-    } catch (assessmentError) {
-      console.error("Error fetching assessments:", assessmentError);
-      // Continue with empty assessments array
+export default function DashboardPage() {
+  const { user, isAuthenticated, csrfToken, isLoading: csrfLoading } = useAuth();
+  const [data, setData] = useState<DashboardData>({
+    assessmentCountInProgress: 0,
+    assessmentCountCompleted: 0,
+    reportCount: 0
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  // Set CSRF token on apiClient when it becomes available
+  useEffect(() => {
+    if (csrfToken) {
+      apiClient.setCsrfToken(csrfToken);
     }
-    
-    try {
-      reports = await storage.listReports();
-      if (!Array.isArray(reports)) {
-        reports = [];
+  }, [csrfToken]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Temporarily use the simple endpoint that works
+        const response = await apiClient.get<DashboardData>('/api/dashboard-simple');
+        setData(response);
+      } catch (err) {
+        setError('Failed to load dashboard data');
+        console.error('Dashboard data fetch error:', err);
       }
-    } catch (reportsError) {
-      console.error("Error fetching reports:", reportsError);
-      // Continue with empty reports array
+    };
+
+    // Only fetch data when authenticated (don't need CSRF for simple endpoint)
+    if (isAuthenticated) {
+      fetchData();
     }
-    
-    // Process assessment data
-    assessments.forEach((assessment: Assessment) => {
-      if (assessment.status === 'completed') {
-        assessmentCountCompleted++;
-      } else {
-        // Assuming any status other than completed is "in progress" for this display
-        assessmentCountInProgress++;
-      }
-    });
+  }, [isAuthenticated]);
 
-    reportCount = reports.length;
-
-  } catch (error) {
-    console.error("Error processing dashboard data:", error);
-    fetchError = error instanceof Error ? error.message : "Failed to load dashboard data";
+  if (!isAuthenticated) {
+    return <div>Please log in to access the dashboard.</div>;
   }
 
-  // Handle potential fetch error
-  if (fetchError) {
-    return (
-      <div className="container mx-auto p-6 text-center text-red-600">
-        <p>Error loading dashboard: {fetchError}</p>
-      </div>
-    );
+  if (csrfLoading) {
+    return <div>Loading security tokens...</div>;
+  }
+
+  if (error) {
+    return <div className="container mx-auto p-6 text-center text-red-600">{error}</div>;
   }
 
   return (
     <DashboardContent
-      assessmentCountInProgress={assessmentCountInProgress}
-      assessmentCountCompleted={assessmentCountCompleted}
-      reportCount={reportCount}
+      assessmentCountInProgress={data.assessmentCountInProgress}
+      assessmentCountCompleted={data.assessmentCountCompleted}
+      reportCount={data.reportCount}
     />
   );
 } 

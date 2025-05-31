@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/form";
 import { useAuth } from "@/hooks/UseAuth";
 import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../../../../../utils/api-client";
 
 // --- Interfaces --- (Should ideally be in a types file)
 interface WizardStep {
@@ -181,6 +182,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { csrfToken } = useAuth(); // Add CSRF token from auth context
   
   // Add a loading state for step transitions
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -314,12 +316,22 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   // --- Data Fetching --- 
   const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
-    queryFn: async () => (await apiRequest("GET", "/api/departments")).json(),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/departments");
+      const result = await response.json();
+      // Handle new API response format: { success: true, data: [...] }
+      return result.data || result;
+    },
   });
   
   const { data: jobRoles = [] } = useQuery<JobRole[]>({
     queryKey: ["/api/job-roles"],
-    queryFn: async () => (await apiRequest("GET", "/api/job-roles")).json(),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/job-roles");
+      const result = await response.json();
+      // Handle new API response format: { success: true, data: [...] }
+      return result.data || result;
+    },
   });
 
   // --- Mutations --- 
@@ -372,11 +384,25 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       return response.json() as Promise<Assessment>;
     },
     onSuccess: (data) => {
-      setAssessment(prev => ({ 
-        ...prev, 
-        stepData: data.stepData || {},
-        strategicFocus: data.strategicFocus || prev.strategicFocus 
-      }));
+      console.log(`[Mutation Success] Backend response:`, JSON.stringify(data, null, 2));
+      
+      setAssessment(prev => {
+        // Merge the response data with existing stepData instead of replacing it
+        const mergedStepData = {
+          ...prev.stepData,           // Preserve existing local state
+          ...(data.stepData || {}),   // Overlay response data
+        };
+        
+        console.log(`[Mutation Success] Previous stepData:`, JSON.stringify(prev.stepData, null, 2));
+        console.log(`[Mutation Success] Response stepData:`, JSON.stringify(data.stepData, null, 2));
+        console.log(`[Mutation Success] Merged stepData:`, JSON.stringify(mergedStepData, null, 2));
+        
+        return { 
+          ...prev, 
+          stepData: mergedStepData,
+          strategicFocus: data.strategicFocus || prev.strategicFocus 
+        };
+      });
       queryClient.invalidateQueries({ queryKey: [`/api/assessments/${data.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/assessments"] });
       toast({ title: "Progress Saved", description: "Your changes have been saved.", duration: 2000 });
@@ -400,19 +426,8 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         console.log("TEMPORARY DIAGNOSTIC: Appending test_auth_bypass=true to report generation API call:", apiUrl);
       }
 
-      const res = await fetch(apiUrl, { // Use the potentially modified apiUrl
-        method: "POST",
-        credentials: "include", // Include credentials (cookies) in the request
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        console.error("API error response:", errorData);
-        throw new Error(`Failed to generate report: ${res.status} ${res.statusText}`);
-      }
-      const data = await res.json();
+      // Use apiClient instead of fetch to include CSRF token and proper authentication
+      const data = await apiClient.post<{ reportId: string }>(apiUrl, {});
       return data.reportId;
     },
     onSuccess: (reportId: string) => {
@@ -438,6 +453,13 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   });
 
   // --- Effects ---
+  
+  // Set CSRF token on apiClient when available
+  useEffect(() => {
+    if (csrfToken) {
+      apiClient.setCsrfToken(csrfToken);
+    }
+  }, [csrfToken]);
   
   // Effect to load from local cache when assessment ID becomes available
   useEffect(() => {
@@ -468,6 +490,12 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   // Effect to handle prefetching data for the next step
   useEffect(() => {
     const currentStepId = wizardSteps[currentStepIndex]?.id;
+    
+    console.log('=== STEP NAVIGATION DEBUG ===');
+    console.log('Current step:', currentStepId);
+    console.log('Assessment state roles:', assessment.stepData.roles?.selectedRoles);
+    console.log('Form state roles:', form.getValues().roles?.selectedRoles);
+    console.log('=== END STEP NAVIGATION DEBUG ===');
     
     if (currentStepId === 'painPoints') {
       const selectedRoles = assessment.stepData.roles?.selectedRoles || [];
@@ -522,20 +550,24 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
           console.log('No pain points updates needed');
           return prev; 
         });
+      } else {
+        console.log('!!! NO ROLES FOUND - This is the problem !!!');
+        console.log('Assessment stepData:', assessment.stepData);
+        console.log('Form values:', form.getValues());
       }
-      // It's also useful to clear pain points if NO roles are selected, 
-      // but only if painPoints data actually exists to avoid unnecessary updates.
-      // else if (selectedRoles.length === 0 && assessment.stepData.painPoints?.roleSpecificPainPoints) {
-      //   setAssessment(prev => {
-      //     const newStepData = JSON.parse(JSON.stringify(prev.stepData));
-      //     if (newStepData.painPoints) { // Ensure painPoints object exists
-      //       newStepData.painPoints.roleSpecificPainPoints = {}; // Clear role-specific points
-      //       return { ...prev, stepData: newStepData };
-      //     }
-      //     return prev;
-      //   });
-      // }
     }
+
+    // If you need to clear pain points when leaving the step, add this back
+    // if (previousStepId === 'painPoints' && currentStepId !== 'painPoints') {
+    //   setAssessment(prev => {
+    //     const newStepData = JSON.parse(JSON.stringify(prev.stepData));
+    //     if (newStepData.painPoints) { // Ensure painPoints object exists
+    //       newStepData.painPoints.roleSpecificPainPoints = {}; // Clear role-specific points
+    //       return { ...prev, stepData: newStepData };
+    //     }
+    //     return prev;
+    //   });
+    // }
   }, [currentStepIndex, assessment.stepData.roles?.selectedRoles, wizardSteps]); // Track the entire selectedRoles array
 
   // Sync state with URL step parameter AND update maxReachedStepIndex if needed
@@ -552,6 +584,11 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   // Sync form values from assessment.stepData when navigating between steps
   useEffect(() => {
     const stepId = wizardSteps[currentStepIndex].id;
+    
+    console.log(`[Form Sync] Syncing form for step: ${stepId}`);
+    console.log(`[Form Sync] Assessment stepData:`, JSON.stringify(assessment.stepData, null, 2));
+    console.log(`[Form Sync] Current form values before sync:`, JSON.stringify(form.getValues(), null, 2));
+    
     if (assessment.stepData && Object.keys(assessment.stepData).length > 0) {
       // Always reset with ALL available step data to maintain state across steps
       const currentFormValues = form.getValues();
@@ -559,6 +596,8 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         ...currentFormValues,        // Start with current form state
         ...assessment.stepData,      // Overlay all assessment step data
       };
+      
+      console.log(`[Form Sync] Merged data:`, JSON.stringify(mergedData, null, 2));
       
       // Special handling for basics step - ensure organization data is included
       // This is critical for submitted assessments where basics might not be in stepData
@@ -610,13 +649,11 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         }
       }
       
-      console.log(`[Form Sync] Syncing form for step: ${stepId}`);
-      console.log(`[Form Sync] Current form values:`, currentFormValues);
-      console.log(`[Form Sync] Assessment step data:`, assessment.stepData);
-      console.log(`[Form Sync] Merged data:`, mergedData);
-      
       // Reset form with merged data to preserve all steps
       form.reset(mergedData, { keepDefaultValues: true });
+      console.log(`[Form Sync] Form reset complete. New form values:`, JSON.stringify(form.getValues(), null, 2));
+    } else {
+      console.log(`[Form Sync] No assessment stepData available or empty object`);
     }
     // Clear validation errors when changing steps
     setValidationError(null);
@@ -641,9 +678,10 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       const currentStepId = wizardSteps[currentStepIndex].id;
       
       console.log(`[Save Step] Saving data for step: ${currentStepId}`);
-      console.log(`[Save Step] Current form data:`, currentFormData);
-      console.log(`[Save Step] Previous assessment data:`, assessment.stepData);
+      console.log(`[Save Step] Current form data:`, JSON.stringify(currentFormData, null, 2));
+      console.log(`[Save Step] Previous assessment data:`, JSON.stringify(assessment.stepData, null, 2));
       
+      // CRITICAL: Update the local state FIRST to ensure UI consistency
       setAssessment(prev => {
         // Create a deep merge of existing step data with new form data
         const mergedStepData = {
@@ -661,7 +699,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
           }
         });
         
-        console.log(`[Save Step] Merged step data:`, mergedStepData);
+        console.log(`[Save Step] Merged step data:`, JSON.stringify(mergedStepData, null, 2));
         
         const updatedAssessment = {
           ...prev,
@@ -672,8 +710,10 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         // Save to local cache immediately
         if (prev.id) {
           saveToLocalCache(prev.id, mergedStepData);
+          console.log(`[Save Step] Saved to local cache for assessment ${prev.id}`);
         }
         
+        console.log(`[Save Step] Updated assessment state:`, JSON.stringify(updatedAssessment, null, 2));
         return updatedAssessment;
       });
 
@@ -682,16 +722,24 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       
       if (assessment.id) {
         try {
+          console.log(`[Save Step] Persisting to backend for assessment ${assessment.id}`);
+          
+          const backendPayload = {
+            ...assessment.stepData,
+            ...currentFormData,
+          };
+          
+          console.log(`[Save Step] Backend payload:`, JSON.stringify(backendPayload, null, 2));
+          
           // Use the updateAssessmentStepMutation for existing assessments
-          await updateAssessmentStepMutation.mutateAsync({
+          const result = await updateAssessmentStepMutation.mutateAsync({
             id: assessment.id,
-            stepData: {
-              ...assessment.stepData,
-              ...currentFormData,
-            },
+            stepData: backendPayload,
             // Pass strategicFocus to the mutation
             strategicFocus: strategicFocus,
           });
+          
+          console.log(`[Save Step] Backend response:`, JSON.stringify(result, null, 2));
           console.log(`[Save Step] Successfully persisted step data to backend for assessment ${assessment.id}`);
         } catch (error) {
           console.error(`[Save Step] Failed to persist step data to backend:`, error);
@@ -706,6 +754,7 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         if (currentStepId === 'basics' && currentFormData.basics?.companyName && currentFormData.basics?.reportName) {
           try {
             console.log(`[Save Step] Creating new assessment with basics data`);
+            console.log(`[Save Step] Basics data:`, JSON.stringify(currentFormData.basics, null, 2));
             
             // CRITICAL FIX: Create organization first with company name
             let organizationId = 1; // Default fallback
@@ -713,26 +762,31 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
             if (currentFormData.basics.companyName) {
               try {
                 // Create organization with the company name
-                const orgResponse = await apiRequest("POST", "/api/organizations", {
+                const orgPayload = {
                   name: currentFormData.basics.companyName,
                   industry: currentFormData.basics.industry || "Unknown",
                   size: currentFormData.basics.size || "Unknown",
                   description: `Organization for ${currentFormData.basics.companyName}`,
-                });
+                };
+                
+                console.log(`[Save Step] Creating organization with payload:`, JSON.stringify(orgPayload, null, 2));
+                
+                const orgResponse = await apiRequest("POST", "/api/organizations", orgPayload);
                 
                 if (orgResponse.ok) {
                   const newOrganization = await orgResponse.json();
                   organizationId = newOrganization.id;
-                  console.log(`[Save Step] Created organization with ID: ${organizationId}`);
+                  console.log(`[Save Step] Created organization with ID: ${organizationId}`, newOrganization);
                 } else {
-                  console.warn(`[Save Step] Failed to create organization, using default ID`);
+                  const errorText = await orgResponse.text();
+                  console.warn(`[Save Step] Failed to create organization:`, errorText);
                 }
               } catch (orgError) {
-                console.warn(`[Save Step] Organization creation failed, using default:`, orgError);
+                console.warn(`[Save Step] Organization creation failed:`, orgError);
               }
             }
             
-            const payload = {
+            const assessmentPayload = {
               basics: currentFormData.basics,
               stepData: { ...assessment.stepData, ...currentFormData },
               organizationId: organizationId,
@@ -743,8 +797,10 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
               companyStage: currentFormData.basics?.companyStage,
             };
             
-            const createdAssessment = await createAssessmentMutation.mutateAsync(payload);
-            console.log(`[Save Step] Created new assessment with ID: ${createdAssessment.id}`);
+            console.log(`[Save Step] Creating assessment with payload:`, JSON.stringify(assessmentPayload, null, 2));
+            
+            const createdAssessment = await createAssessmentMutation.mutateAsync(assessmentPayload);
+            console.log(`[Save Step] Created new assessment:`, JSON.stringify(createdAssessment, null, 2));
             
           } catch (error) {
             console.error(`[Save Step] Failed to create assessment:`, error);
@@ -754,14 +810,20 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
               variant: "destructive",
             });
           }
+        } else {
+          console.log(`[Save Step] Not creating assessment - either not basics step or missing required data`);
+          console.log(`[Save Step] Step ID: ${currentStepId}, Company Name: ${currentFormData.basics?.companyName}, Report Name: ${currentFormData.basics?.reportName}`);
         }
       }
       
       setIsSaving(false);
       
-      // Execute success callback
+      // Execute success callback AFTER all updates
       if (onSuccess) {
-        setTimeout(onSuccess, 0); // Ensure state update completes first
+        console.log(`[Save Step] Executing success callback`);
+        setTimeout(() => {
+          onSuccess();
+        }, 100); // Small delay to ensure state updates complete
       }
     } catch (error) {
       console.error('[Save Step] Error saving step data:', error);
@@ -777,44 +839,27 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
   // --- Enhance navigation handlers with transition state ---
   const handleNext = useCallback(async () => {
     if (isTransitioning) return;
-    const currentStepId = wizardSteps[currentStepIndex].id;
-    // Handle validation
-    let isValid = true;
-    let fieldsToValidate: Path<WizardStepData>[] = [];
-    if (currentStepId === 'basics') {
-      fieldsToValidate.push(...[
-        'basics.companyName',
-        'basics.reportName',
-        'basics.industry',
-        'basics.size',
-        'basics.industryMaturity',
-        'basics.companyStage',
-      ] as Path<WizardStepData>[]);
-    }
-    fieldsToValidate = Array.from(new Set(fieldsToValidate));
-    if (fieldsToValidate.length > 0) {
-      isValid = await form.trigger(fieldsToValidate, {});
-    }
+    
+    console.log('=== HANDLE NEXT - VALIDATION DEBUG ===');
+    const currentStepId = wizardSteps[currentStepIndex]?.id;
+    const formData = form.getValues();
+    console.log('Current step ID:', currentStepId);
+    console.log('Form data before validation:', JSON.stringify(formData, null, 2));
+    console.log('Form state before validation:', form.formState);
+    console.log('Current form errors before trigger:', form.formState.errors);
+    
+    const isValid = await form.trigger();
+    
+    console.log('Validation result:', isValid);
+    console.log('Form errors after trigger:', form.formState.errors);
+    console.log('Form state after trigger:', form.formState);
+    console.log('=== END VALIDATION DEBUG ===');
+    
     if (!isValid) {
-      // Set the validation error message
-      setValidationError("Please complete all required fields marked with * before proceeding");
-      
-      // Check for fields with errors and create a more specific message
-      if (form.formState.errors) {
-        // Count errors in form.formState.errors
-        const errorCount = Object.keys(form.formState.errors).reduce((count, key) => {
-          // Each key might have nested errors, just count the top level keys for simplicity
-          return count + 1;
-        }, 0);
-        
-        if (errorCount > 0) {
-          setValidationError(`Please complete ${errorCount} required field${errorCount > 1 ? 's' : ''} marked with * before proceeding`);
-        }
-      }
-      
+      setValidationError("Please correct errors on this step before continuing");
       toast({
         title: "Validation Error",
-        description: "Please correct the errors shown on the form before proceeding.",
+        description: "Please correct errors on this step before continuing.",
         variant: "destructive",
       });
       return;
@@ -822,14 +867,28 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     // Clear any validation error when valid
     setValidationError(null);
     setIsTransitioning(true);
+    
+    console.log('=== HANDLE NEXT DEBUGGING ===');
+    const formDataAfterValidation = form.getValues();
+    console.log('Form data after validation:', JSON.stringify(formDataAfterValidation, null, 2));
+    console.log('Assessment state before save:', JSON.stringify(assessment.stepData, null, 2));
+    console.log('=== END HANDLE NEXT DEBUGGING ===');
+    
     try {
       await saveCurrentStep(() => {
+        console.log('=== INSIDE SAVE CALLBACK ===');
+        console.log('Assessment state after save:', assessment.stepData);
+        console.log('Form data after save:', form.getValues());
+        console.log('=== END SAVE CALLBACK ===');
+        
         if (currentStepIndex < wizardSteps.length - 1) {
           const nextIndex = currentStepIndex + 1;
           const nextStepId = wizardSteps[nextIndex].id;
           setMaxReachedStepIndex(prevMax => Math.max(prevMax, nextIndex));
           // Navigate based on whether this is a new assessment draft (with id) or a brand-new assessment
           const basePath = assessment.id ? `/assessment/${assessment.id}` : "/assessment/new";
+          
+          console.log(`Navigating to step ${nextStepId} at ${basePath}?step=${nextStepId}`);
           router.push(`${basePath}?step=${nextStepId}`);
         }
       });
@@ -945,24 +1004,19 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
         // Only create organization if this is a new assessment
         try {
           console.log("Creating organization with company name:", combinedStepData.basics.companyName);
-          const orgResponse = await apiRequest("POST", "/api/organizations", {
+          const orgResponse = await apiClient.post<{ id: number; name: string; industry: string; size: string }>("/api/organizations", {
             name: combinedStepData.basics.companyName,
             industry: combinedStepData.basics.industry || "Unknown",
             size: combinedStepData.basics.size || "Unknown",
             description: `Organization for ${combinedStepData.basics.companyName}`,
           });
           
-          if (orgResponse.ok) {
-            const newOrganization = await orgResponse.json();
-            resolvedOrganizationId = newOrganization.id;
-            console.log("Created organization with ID:", resolvedOrganizationId);
-            toast({
-              title: "Organization Created",
-              description: `Created organization: ${combinedStepData.basics.companyName}`,
-            });
-          } else {
-            console.warn("Failed to create organization, using default ID");
-          }
+          resolvedOrganizationId = orgResponse.id;
+          console.log("Created organization with ID:", resolvedOrganizationId);
+          toast({
+            title: "Organization Created",
+            description: `Created organization: ${combinedStepData.basics.companyName}`,
+          });
         } catch (orgError) {
           console.warn("Organization creation failed, proceeding with default:", orgError);
         }
@@ -970,14 +1024,14 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       
       // Prepare the payload with the combined data
       const payload = {
-        basics: combinedStepData.basics,
+        title: combinedStepData.basics?.reportName || "New AI Transformation Assessment",
         stepData: combinedStepData,
         organizationId: resolvedOrganizationId,
-        userId: 2, // Use user_id 2 which we created in the database
+        // Remove hardcoded userId - it will come from the authenticated user profile
         strategicFocus: strategicFocus, // Include the strategicFocus field
-        industry: combinedStepData.basics?.industry,
-        industryMaturity: combinedStepData.basics?.industryMaturity,
-        companyStage: combinedStepData.basics?.companyStage,
+        industry: combinedStepData.basics?.industry || "Unknown",
+        industryMaturity: combinedStepData.basics?.industryMaturity || "Immature",
+        companyStage: combinedStepData.basics?.companyStage || "Startup",
         aiAdoptionScoreInputs: hasAiAdoptionScoreInputs ? combinedStepData.aiAdoptionScoreInputs : undefined,
       };
       
@@ -991,15 +1045,8 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
       // PRODUCTION FIX: Remove test_auth_bypass parameter for production
       const assessmentApiUrl = "/api/assessments";
       console.log(`Submitting to: ${assessmentApiUrl}`);
-      const response = await apiRequest("POST", assessmentApiUrl, payload);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Assessment creation failed:", errorText);
-        throw new Error(`Failed to create assessment: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-      
-      const createdAssessment = await response.json();
+      const response = await apiClient.post<{ success: boolean; data: Assessment }>(assessmentApiUrl, payload);
+      const createdAssessment = response.data;
       
       toast({
         title: "Assessment Created",
@@ -1539,15 +1586,29 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
          // Ensure painPointsData is correctly typed
         const painPointsData: Partial<WizardStepData['painPoints']> = stepData.painPoints || {};
 
-        console.log('Pain Points Step - All data:', {
-          selectedRoles,
-          painPointsData
-        });
+        console.log('=== PAIN POINTS STEP DEBUG ===');
+        console.log('Selected roles from stepData:', selectedRoles);
+        console.log('Pain points data:', painPointsData);
+        console.log('Full stepData:', stepData);
+        console.log('Current assessment state:', assessment);
+        console.log('Form values:', form.getValues());
+        console.log('=== END DEBUG ===');
 
         return (
           <React.Fragment>
             <h2 className="text-xl font-semibold mb-1">{title}</h2>
             <p className="text-muted-foreground mb-4">{description}</p>
+            
+            {/* Debug information - remove after fixing */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md text-sm">
+                <p><strong>Debug Info:</strong></p>
+                <p>Selected Roles Count: {selectedRoles.length}</p>
+                <p>Pain Points Data Keys: {Object.keys(painPointsData.roleSpecificPainPoints || {}).join(', ')}</p>
+                <p>Roles: {selectedRoles.map(r => `${r.title} (ID: ${r.id})`).join(', ')}</p>
+              </div>
+            )}
+            
             <div className="space-y-6">
               {selectedRoles.length > 0 ? (
                 selectedRoles.map((role) => {
@@ -1555,9 +1616,10 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                   const roleId = role.id?.toString() || '';
                   const rolePainPoints = painPointsData.roleSpecificPainPoints?.[roleId];
                   
-                  console.log(`Pain Points Step - Role ${role.title} (ID: ${roleId}):`, {
+                  console.log(`Pain Points for Role ${role.title} (ID: ${roleId}):`, {
                     roleData: role,
-                    painPointsData: rolePainPoints  
+                    rolePainPoints,
+                    availableKeys: Object.keys(painPointsData.roleSpecificPainPoints || {})
                   });
                   
                   return (
@@ -1624,7 +1686,10 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
                   );
                 })
               ) : (
-                <p className="text-muted-foreground">Please select roles in the previous step to identify pain points.</p>
+                <div className="text-center p-8 text-muted-foreground">
+                  <p className="text-lg mb-2">No roles selected</p>
+                  <p>Please go back to Step 2 (Role Selection) and select roles to identify pain points.</p>
+                </div>
               )}
               <div>
                 <Label>General Organizational Pain Points</Label>

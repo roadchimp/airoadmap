@@ -33,25 +33,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
 
   // Function to fetch a new CSRF token
-  const refreshCsrfToken = async () => {
-    if (!user) {
+  const refreshCsrfToken = async (userToUse?: User | null) => {
+    const currentUser = userToUse || user;
+    console.log('refreshCsrfToken called, user:', currentUser?.id);
+    
+    if (!currentUser) {
+      console.log('No user found, setting CSRF token to null');
       setCsrfToken(null);
       return;
     }
 
     try {
+      console.log('Fetching CSRF token for user:', currentUser.id);
       const response = await fetch('/api/auth/csrf-token', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Important: include cookies
       });
 
+      console.log('CSRF token response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch CSRF token');
+        const errorText = await response.text();
+        console.error('CSRF token fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch CSRF token: ${response.status}`);
       }
 
       const { token } = await response.json();
+      console.log('CSRF token received:', token ? 'yes' : 'no');
       setCsrfToken(token);
     } catch (error) {
       console.error('Failed to refresh CSRF token:', error);
@@ -72,8 +83,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Extract organization ID from user metadata
           const metadata = session.user.user_metadata as UserMetadata;
           setOrganizationId(metadata?.organization_id || null);
-          // Fetch initial CSRF token
-          await refreshCsrfToken();
+          // Fetch initial CSRF token with the actual user
+          await refreshCsrfToken(session.user);
         } else {
           setUser(null);
           setOrganizationId(null);
@@ -100,8 +111,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Extract organization ID from user metadata
           const metadata = session.user.user_metadata as UserMetadata;
           setOrganizationId(metadata?.organization_id || null);
-          // Refresh CSRF token on auth state change
-          await refreshCsrfToken();
+          // Refresh CSRF token on auth state change with the actual user
+          await refreshCsrfToken(session.user);
         } else {
           setUser(null);
           setOrganizationId(null);
@@ -132,8 +143,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.user) {
         const metadata = data.user.user_metadata as UserMetadata;
         setOrganizationId(metadata?.organization_id || null);
-        // Refresh CSRF token after login
-        await refreshCsrfToken();
+        // Refresh CSRF token after login with the actual user
+        await refreshCsrfToken(data.user);
       }
 
       return { success: true };

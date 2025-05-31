@@ -9,10 +9,11 @@ import { storage } from '@/server/storage';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reportId = parseInt(params.id);
+    const { id } = await params;
+    const reportId = parseInt(id);
     if (isNaN(reportId)) {
       return NextResponse.json({ error: 'Invalid report ID' }, { status: 400 });
     }

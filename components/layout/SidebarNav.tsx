@@ -125,13 +125,13 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
           </nav>
         </div>
 
-        {/* Home link */}
-        <div className="border-t border-gray-200">
+        {/* Home link - positioned at the very bottom */}
+        <div className="p-2 border-t border-gray-200 mt-auto">
           <Link
             href="/"
             onClick={onClose}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 m-2 text-sm text-gray-700 transition-colors hover:bg-orange-50 hover:text-orange-600 group",
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-orange-50 hover:text-orange-600 group",
               isActive('/', true) && "bg-orange-100 font-medium text-orange-600",
               collapsed && "justify-center px-2"
             )}

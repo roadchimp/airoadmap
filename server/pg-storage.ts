@@ -413,7 +413,7 @@ export class PgStorage implements IStorage {
         if (!toolsByCapabilityId.has(capId)) {
             toolsByCapabilityId.set(capId, []);
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+         
         const { capabilityId, ...toolData } = record; // Exclude capabilityId from tool object
         toolsByCapabilityId.get(capId)!.push(toolData as AiTool);
     });
@@ -641,7 +641,7 @@ export class PgStorage implements IStorage {
       if (!toolsByCapabilityId.has(capId)) {
         toolsByCapabilityId.set(capId, []);
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const { capabilityId, ...toolData } = record;
       toolsByCapabilityId.get(capId)!.push(toolData as AiTool);
     });

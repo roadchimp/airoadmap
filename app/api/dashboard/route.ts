@@ -1,7 +1,7 @@
 // app/api/dashboard/route.ts
 import { storage } from "@/server/storage";
 import { NextResponse } from "next/server";
-import { withAuthAndSecurity } from "../middleware";
+import { withAuthAndSecurity } from "../middleware/AuthMiddleware";
 
 export const GET = withAuthAndSecurity(async () => {
   try {

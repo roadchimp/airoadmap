@@ -31,6 +31,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {

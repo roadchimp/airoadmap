@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storage } from '@/server/storage'; // Assuming @/server alias points to server/
-import { withAuthAndSecurity } from '../middleware';
+import { withAuthAndSecurity } from '../middleware/AuthMiddleware';
 
 // GET /api/departments
 async function getDepartments(

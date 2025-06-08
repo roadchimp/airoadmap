@@ -1,5 +1,6 @@
 // Central session management with dual storage strategy
 import { useEffect, useState } from 'react';
+import { StorageManager, SessionError, CacheEntry, StorageConfig } from './ErrorTypes';
 
 type SessionState = {
     currentStep: number;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuthAndSecurity } from '../../middleware';
+import { withAuthAndSecurity } from '../../middleware/AuthMiddleware';
 import { storage } from '@/server/storage';
 
 /**

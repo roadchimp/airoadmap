@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createClient } from '@/../../utils/supabase/server';
 import { randomBytes, createHmac } from 'crypto';
 
+
 /**
  * CRITICAL: CVE-2025-29927 Protection
  * Block x-middleware-subrequest header to prevent authentication bypass
@@ -349,4 +350,3 @@ export function withAuth(handler: ApiHandler): ApiHandler {
 export function withAuthAndSecurity(handler: ApiHandler): ApiHandler {
   return withSecurityHeaders(withAuth(handler));
 }
-

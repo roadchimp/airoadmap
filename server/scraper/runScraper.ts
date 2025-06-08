@@ -11,7 +11,7 @@ const main = async () => {
     console.log('Starting job scraper for LinkedIn tech jobs...');
     
     // Try to get an existing config
-    let configs = await storage.listJobScraperConfigs();
+    const configs = await storage.listJobScraperConfigs();
     let config: JobScraperConfig | undefined;
     
     // If no configs exist, create one

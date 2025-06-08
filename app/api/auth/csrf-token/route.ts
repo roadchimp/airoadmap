@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/../../utils/supabase/server';
-import { generateCsrfToken } from '../../middleware';
+import { generateCsrfToken } from '../../middleware/AuthMiddleware';
 
 export async function GET(request: Request) {
   try {

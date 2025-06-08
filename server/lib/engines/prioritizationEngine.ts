@@ -103,7 +103,7 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
     else effortLevel = "high";
     
     // Determine priority
-    let priority = heatmapData.matrix[valueLevel][effortLevel].priority;
+    const priority = heatmapData.matrix[valueLevel][effortLevel].priority;
     
     // Create prioritized item
     const prioritizedItem: PrioritizedItem = {

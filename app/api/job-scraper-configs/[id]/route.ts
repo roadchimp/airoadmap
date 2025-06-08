@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import { withAuthAndSecurity } from '../../middleware';
+import { withAuthAndSecurity } from '../../middleware/AuthMiddleware';
 import { z } from 'zod';
 
 const idParamSchema = z.object({

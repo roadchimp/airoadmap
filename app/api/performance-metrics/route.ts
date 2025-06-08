@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage'; // Assuming storage is exported from server/storage.ts
-import { withAuthAndSecurity } from '../middleware';
+import { withAuthAndSecurity } from '../middleware/AuthMiddleware';
 import { insertPerformanceMetricSchema } from '@shared/schema'; // Import schema for validation
 import { z } from 'zod'; // Import z
 

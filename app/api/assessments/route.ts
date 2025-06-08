@@ -4,7 +4,7 @@ import { ZodError } from 'zod';
 import { createClient } from '@/../../utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withAuthAndSecurity } from '../middleware';
+import { withAuthAndSecurity } from '../middleware/AuthMiddleware';
 import { unstable_noStore } from 'next/cache';
 
 // Input validation schema

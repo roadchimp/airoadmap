@@ -24,7 +24,15 @@ export enum WizardStep {
 export type OrganizationBasics = Pick<
   InsertOrganization,
   'name' | 'industry' | 'size' | 'description'
->;
+> & {
+  // Additional organization info fields
+  reportName?: string;
+  industryMaturity?: 'Mature' | 'Immature';
+  companyStage?: 'Startup' | 'Early Growth' | 'Scaling' | 'Mature';
+  strategicFocus?: string[];
+  keyBusinessGoals?: string;
+  keyStakeholders?: string[];
+};
 
 export interface RoleSelection {
   selectedRoles: JobRole[];
@@ -32,26 +40,52 @@ export interface RoleSelection {
 
 export interface AreasForImprovement {
   selectedAreas?: string[];
+  roleSpecificPainPoints?: Record<string, {
+    description?: string;
+    severity?: number;
+    frequency?: number;
+    impact?: number;
+  }>;
+  generalPainPoints?: string;
 }
 
 export interface WorkVolumeData {
   taskVolume?: number;
   taskComplexity?: number;
+  roleWorkVolume?: Record<string, {
+    volume?: string;
+    complexity?: string;
+    repetitiveness?: number;
+    notes?: string;
+  }>;
 }
 
 export interface DataSystemsData {
-  dataSources?: string[];
-  softwareSystems?: string[];
+  // Updated data systems structure
+  dataAccessibility?: 'Easy (Well-documented, readily available)' | 'Moderate (Requires some effort/cleanup)' | 'Difficult (Siloed, requires significant effort)';
+  dataQuality?: 'Good (Accurate, complete, consistent)' | 'Fair (Some inconsistencies or gaps)' | 'Poor (Inaccurate, incomplete, unreliable)';
+  systemsIntegration?: 'Easy (APIs available, modern systems)' | 'Moderate (Some custom work needed)' | 'Difficult (Legacy systems, lack of APIs)';
+  relevantTools?: string;
+  notes?: string;
 }
 
 export interface ReadinessData {
-  changeReadiness?: number;
-  aiExpectations?: number;
+  // Updated readiness structure
+  organizationalReadiness?: 'High (Proactive, adaptable culture)' | 'Medium (Some resistance, needs clear communication)' | 'Low (Resistant to change, requires significant effort)';
+  stakeholderAlignment?: 'High (Clear consensus, shared vision)' | 'Medium (General agreement, some differing priorities)' | 'Low (Significant disagreement or lack of clarity)';
+  anticipatedTrainingNeeds?: string;
+  expectedAdoptionChallenges?: string;
+  keySuccessMetrics?: string;
 }
 
 export interface RoiTargetsData {
-  costSavings?: number;
-  revenueGrowth?: number;
+  // Updated ROI targets structure
+  adoptionRateForecast?: number;
+  timeSavings?: number;
+  affectedUsers?: number;
+  costEfficiencyGains?: number;
+  performanceImprovement?: number;
+  toolSprawlReduction?: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface ReviewSubmitData {

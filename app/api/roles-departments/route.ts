@@ -3,8 +3,13 @@ import { getStorage } from '@/server/storage';
 import { DepartmentRoleSummary } from '@/server/storage';
 import { JobRole, Department } from '@/lib/session/sessionTypes';
 
-function convertToSessionTypes(data: DepartmentRoleSummary[]): { hierarchical: Department[], roles: JobRole[] } {
-    const hierarchical: Department[] = [];
+// Extended Department type to include roles array
+interface DepartmentWithRoles extends Department {
+    roles: JobRole[];
+}
+
+function convertToSessionTypes(data: DepartmentRoleSummary[]): { hierarchical: DepartmentWithRoles[], roles: JobRole[] } {
+    const hierarchical: DepartmentWithRoles[] = [];
     const roles: JobRole[] = [];
 
     data.forEach(summary => {
@@ -28,7 +33,7 @@ function convertToSessionTypes(data: DepartmentRoleSummary[]): { hierarchical: D
             return sessionRole;
         });
 
-        // Map database Department to session Department type  
+        // Map database Department to session Department type with nested roles
         hierarchical.push({
             id: summary.department_id,
             name: summary.department_name,
@@ -36,6 +41,7 @@ function convertToSessionTypes(data: DepartmentRoleSummary[]): { hierarchical: D
             is_active: true, // Default to true if not specified
             created_at: new Date(), // This should be from the DB
             updated_at: new Date(),
+            roles: departmentRoles, // Nest roles under their department
         });
     });
 

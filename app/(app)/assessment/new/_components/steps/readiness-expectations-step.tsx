@@ -2,61 +2,123 @@
 
 import React from 'react';
 import { useSession } from '@/lib/session/SessionContext';
-import  QuestionCard  from '../QuestionCard';
+import { WizardStep } from '@/lib/session/sessionTypes';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { ReadinessData } from '@/lib/session/sessionTypes';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import QuestionCard from '@/app/(app)/assessment/new/_components/QuestionCard';
 
-export const ReadinessExpectationsStep = () => {
+const ReadinessExpectationsStep = () => {
   const { session, setStepData } = useSession();
-  const { currentStepIndex } = session;
+  const currentStepIndex = WizardStep.READINESS_EXPECTATIONS;
+  const currentData = session.steps[currentStepIndex]?.data.readiness || {};
 
-  const data = session.steps[currentStepIndex]?.data.readiness || { changeReadiness: 5, aiExpectations: 5 };
-
-  const handleSliderChange = (key: 'changeReadiness' | 'aiExpectations', value: number[]) => {
-    const newData: ReadinessData = {
-      ...data,
-      [key]: value[0],
-    };
-    setStepData(currentStepIndex, { readiness: newData }, true);
+  const handleFieldChange = (field: string, value: string) => {
+    setStepData(currentStepIndex, {
+      readiness: {
+        ...currentData,
+        [field]: value
+      }
+    }, true);
   };
 
   return (
-    <QuestionCard
-      title="Readiness & Expectations"
-      description="Assess your organization's readiness for change and expectations for AI."
+    <QuestionCard 
+      title="Readiness & Expectations" 
+      description="Help us understand your organization's readiness for AI adoption and expected challenges."
     >
-      <div className="space-y-8">
-        <div className="space-y-4">
-          <Label htmlFor="changeReadiness" className="text-lg">Change Readiness</Label>
-          <p className="text-sm text-gray-600">
-            On a scale of 1 to 10, how prepared is your organization to adopt new technologies and processes?
-          </p>
-          <Slider
-            id="changeReadiness"
-            min={1}
-            max={10}
-            step={1}
-            value={[data.changeReadiness || 5]}
-            onValueChange={(value) => handleSliderChange('changeReadiness', value)}
-          />
-          <div className="text-center font-semibold">{data.changeReadiness}</div>
+      <div className="space-y-6">
+        {/* Organizational Readiness for Change */}
+        <div>
+          <Label className="text-base font-medium text-gray-900">Organizational Readiness for Change</Label>
+          <Select 
+            value={currentData.organizationalReadiness || ''} 
+            onValueChange={(value) => handleFieldChange('organizationalReadiness', value)}
+          >
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Select readiness level..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="High (Proactive, adaptable culture)">
+                High (Proactive, adaptable culture)
+              </SelectItem>
+              <SelectItem value="Medium (Some resistance, needs clear communication)">
+                Medium (Some resistance, needs clear communication)
+              </SelectItem>
+              <SelectItem value="Low (Resistant to change, requires significant effort)">
+                Low (Resistant to change, requires significant effort)
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        
-        <div className="space-y-4">
-          <Label htmlFor="aiExpectations" className="text-lg">AI Expectations</Label>
-          <p className="text-sm text-gray-600">
-            On a scale of 1 to 10, what are the expectations for the impact of AI in the short term (1-2 years)?
-          </p>
-          <Slider
-            id="aiExpectations"
-            min={1}
-            max={10}
-            step={1}
-            value={[data.aiExpectations || 5]}
-            onValueChange={(value) => handleSliderChange('aiExpectations', value)}
+
+        {/* Stakeholder Alignment on AI Goals */}
+        <div>
+          <Label className="text-base font-medium text-gray-900">Stakeholder Alignment on AI Goals</Label>
+          <Select 
+            value={currentData.stakeholderAlignment || ''} 
+            onValueChange={(value) => handleFieldChange('stakeholderAlignment', value)}
+          >
+            <SelectTrigger className="mt-2">
+              <SelectValue placeholder="Select alignment level..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="High (Clear consensus, shared vision)">
+                High (Clear consensus, shared vision)
+              </SelectItem>
+              <SelectItem value="Medium (General agreement, some differing priorities)">
+                Medium (General agreement, some differing priorities)
+              </SelectItem>
+              <SelectItem value="Low (Significant disagreement or lack of clarity)">
+                Low (Significant disagreement or lack of clarity)
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Anticipated Training Needs */}
+        <div>
+          <Label htmlFor="anticipatedTrainingNeeds" className="text-base font-medium text-gray-900">
+            Anticipated Training Needs
+          </Label>
+          <Textarea
+            id="anticipatedTrainingNeeds"
+            placeholder="Describe potential training requirements for employees to adopt new AI tools or processes..."
+            value={currentData.anticipatedTrainingNeeds || ''}
+            onChange={(e) => handleFieldChange('anticipatedTrainingNeeds', e.target.value)}
+            className="mt-2"
+            rows={4}
           />
-          <div className="text-center font-semibold">{data.aiExpectations}</div>
+        </div>
+
+        {/* Expected Adoption Challenges */}
+        <div>
+          <Label htmlFor="expectedAdoptionChallenges" className="text-base font-medium text-gray-900">
+            Expected Adoption Challenges
+          </Label>
+          <Textarea
+            id="expectedAdoptionChallenges"
+            placeholder="List potential hurdles to successful AI adoption (e.g., technical integration, user resistance, budget constraints)..."
+            value={currentData.expectedAdoptionChallenges || ''}
+            onChange={(e) => handleFieldChange('expectedAdoptionChallenges', e.target.value)}
+            className="mt-2"
+            rows={4}
+          />
+        </div>
+
+        {/* Key Success Metrics for AI Initiatives */}
+        <div>
+          <Label htmlFor="keySuccessMetrics" className="text-base font-medium text-gray-900">
+            Key Success Metrics for AI Initiatives
+          </Label>
+          <Textarea
+            id="keySuccessMetrics"
+            placeholder="How will the success of AI adoption be measured? (e.g., % time saved, cost reduction, improved quality score)..."
+            value={currentData.keySuccessMetrics || ''}
+            onChange={(e) => handleFieldChange('keySuccessMetrics', e.target.value)}
+            className="mt-2"
+            rows={4}
+          />
         </div>
       </div>
     </QuestionCard>

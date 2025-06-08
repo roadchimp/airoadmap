@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import { storage } from "@/server/storage";
-import AssessmentWizard from "../new/_components/assessment-wizard"; // Use the same wizard component
 import type { Assessment } from '@shared/schema';
 import { unstable_noStore } from 'next/cache';
+import EditAssessmentClient from './edit-assessment-client';
 
 interface AssessmentDetailPageProps {
   params: Promise<{
@@ -40,7 +40,7 @@ export default async function EditAssessmentPage({ params }: AssessmentDetailPag
   }
 
   // Pass the fetched assessment data to the client component
-  return <AssessmentWizard initialAssessmentData={initialAssessmentData} />;
+  return <EditAssessmentClient initialAssessmentData={initialAssessmentData} />;
 }
 
 // Optional: Add metadata generation based on assessment title

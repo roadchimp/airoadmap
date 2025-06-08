@@ -1,52 +1,91 @@
+import {
+  InsertOrganization,
+  JobRole,
+  Department,
+} from '@shared/schema';
+
+export type { Department, JobRole };
+
 export * from './errorTypes'; // Re-export error types and interfaces
 
-export interface Department {
-  id: string;
-  name: string;
-  description?: string;
-  roles: JobRole[];
-  createdAt: string;
-  updatedAt: string;
+// New 8-step enum
+export enum WizardStep {
+  ORGANIZATION_INFO = 0,
+  ROLE_SELECTION = 1,
+  AREAS_FOR_IMPROVEMENT = 2,
+  WORK_VOLUME_COMPLEXITY = 3,
+  DATA_SYSTEMS = 4,
+  READINESS_EXPECTATIONS = 5,
+  ROI_TARGETS = 6,
+  REVIEW_SUBMIT = 7,
 }
 
-export interface JobRole {
-  id: string;
-  title: string;
-  departmentId: string;
-  department?: Department;
-  level: 'junior' | 'mid' | 'senior' | 'lead' | 'executive';
-  skills: string[];
-  description?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+// Data structure for each wizard step
+export type OrganizationBasics = Pick<
+  InsertOrganization,
+  'name' | 'industry' | 'size' | 'description'
+>;
+
+export interface RoleSelection {
+  selectedRoles: JobRole[];
 }
 
-export interface WizardStep {
-  id: string;
+export interface AreasForImprovement {
+  selectedAreas?: string[];
+}
+
+export interface WorkVolumeData {
+  taskVolume?: number;
+  taskComplexity?: number;
+}
+
+export interface DataSystemsData {
+  dataSources?: string[];
+  softwareSystems?: string[];
+}
+
+export interface ReadinessData {
+  changeReadiness?: number;
+  aiExpectations?: number;
+}
+
+export interface RoiTargetsData {
+  costSavings?: number;
+  revenueGrowth?: number;
+}
+
+export interface ReviewSubmitData {
+  // This step might not have data of its own, but we define it for consistency
+  [key: string]: any;
+}
+
+export interface WizardStepData {
+  basics: OrganizationBasics;
+  roleSelection: RoleSelection;
+  areasForImprovement: AreasForImprovement;
+  workVolume: WorkVolumeData;
+  dataSystems: DataSystemsData;
+  readiness: ReadinessData;
+  roiTargets: RoiTargetsData;
+  reviewSubmit: ReviewSubmitData;
+}
+
+export interface StepState {
+  id: string; // Corresponds to key in wizardStepMap
   name: string;
   isCompleted: boolean;
   isValid: boolean;
-  data: Record<string, any>;
+  data: WizardStepData;
   errors: Record<string, string[]>;
 }
 
 export interface AssessmentSession {
-  id: string;
-  userId?: string;
-  currentStep: number;
-  totalSteps: number;
-  steps: WizardStep[];
-  selectedDepartment?: Department;
-  selectedJobRole?: JobRole;
+  id: string; // Assessment ID
+  currentStepIndex: number;
+  steps: StepState[];
   isAutoSaving: boolean;
-  lastSaved: string | null;
+  lastSaved: number | null;
   expiresAt: string;
-  metadata: {
-    startedAt: string;
-    userAgent: string;
-    sessionSource: 'new' | 'restored' | 'migrated';
-  };
 }
 
 // Storage configuration types
@@ -69,16 +108,22 @@ export interface CacheEntry<T> {
 export type SessionAction =
   | { type: 'INITIALIZE_SESSION'; payload: Partial<AssessmentSession> }
   | { type: 'SET_CURRENT_STEP'; payload: number }
-  | { type: 'UPDATE_STEP_DATA'; payload: { stepId: string; data: Record<string, any> } }
-  | { type: 'SET_STEP_ERRORS'; payload: { stepId: string; errors: Record<string, string[]> } }
-  | { type: 'MARK_STEP_COMPLETED'; payload: string }
-  | { type: 'SELECT_DEPARTMENT'; payload: Department }
-  | { type: 'SELECT_JOB_ROLE'; payload: JobRole }
+  | {
+      type: 'SET_STEP_DATA';
+      payload: {
+        stepIndex: number;
+        data: Partial<WizardStepData>;
+        isValid?: boolean;
+        isCompleted?: boolean;
+      };
+    }
+  | { type: 'SET_STEP_ERRORS'; payload: { stepIndex: number; errors: Record<string, string[]> } }
   | { type: 'SET_AUTO_SAVING'; payload: boolean }
-  | { type: 'SESSION_SAVED'; payload: string }
-  | { type: 'SESSION_LOAD_ERROR'; payload: string }
-  | { type: 'RESET_SESSION' }
-  | { type: 'EXTEND_SESSION'; payload: string };
+  | { type: 'SESSION_SAVED'; payload: { timestamp: number } }
+  | { type: 'RESET_SESSION' };
+
+// A placeholder for StorageManager to avoid breaking other parts of the app
+export interface StorageManager {}
 
 // Middleware types
 export interface MiddlewareContext {
@@ -88,16 +133,3 @@ export interface MiddlewareContext {
 }
 
 export type Middleware = (context: MiddlewareContext) => (next: React.Dispatch<SessionAction>) => (action: SessionAction) => void;
-
-// API Response types
-export interface DepartmentRoleResponse {
-  departments: Department[];
-  roles: JobRole[];
-  hierarchical: Department[];
-  metadata: {
-    totalDepartments: number;
-    totalRoles: number;
-    lastUpdated: string;
-    cacheVersion: string;
-  };
-}

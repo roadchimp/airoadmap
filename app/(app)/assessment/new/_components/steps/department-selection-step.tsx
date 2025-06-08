@@ -8,12 +8,15 @@ const DepartmentSelectionStep: React.FC = () => {
   const { 
     session, 
     departments, 
-    selectDepartment,
-    updateStepData 
+    setStepData 
   } = useSession();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const selectedDepartmentId = session.steps.find(step => step.id === 'department-selection')?.data.department?.id;
+  const { currentStepIndex } = session;
+  
+  // Store department selection in reviewSubmit section which allows any properties
+  const stepData = session.steps[currentStepIndex]?.data || {};
+  const selectedDepartment = stepData.reviewSubmit?.selectedDepartment;
 
   const filteredDepartments = useMemo(() => {
     if (!searchTerm.trim()) return departments;
@@ -25,8 +28,13 @@ const DepartmentSelectionStep: React.FC = () => {
   }, [departments, searchTerm]);
 
   const handleDepartmentSelect = (department: Department) => {
-    selectDepartment(department);
-    updateStepData('department-selection', { department, selectedAt: new Date().toISOString() });
+    setStepData(currentStepIndex, { 
+      reviewSubmit: {
+        ...stepData.reviewSubmit,
+        selectedDepartment: department, 
+        selectedAt: new Date().toISOString() 
+      }
+    });
   };
 
   if (departments.length === 0) {
@@ -63,7 +71,7 @@ const DepartmentSelectionStep: React.FC = () => {
           <DepartmentCard
             key={department.id}
             department={department}
-            isSelected={selectedDepartmentId === department.id}
+            isSelected={selectedDepartment?.id === department.id}
             onClick={() => handleDepartmentSelect(department)}
             showRoleCount={true}
           />

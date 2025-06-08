@@ -2,9 +2,39 @@
 import React from 'react';
 import { useSession } from '@/lib/session/SessionContext';
 
+interface AssessmentConfigData {
+  duration?: number;
+  questionTypes?: string[];
+}
+
 export const AssessmentConfigStep = () => {
-  const { session, updateStepData } = useSession();
-  const stepData = session.steps.find(s => s.id === 'assessment-config')?.data || {};
+  const { session, setStepData } = useSession();
+  const { currentStepIndex } = session;
+  
+  // Store assessment config data in reviewSubmit section which allows any properties
+  const stepData = session.steps[currentStepIndex]?.data || {};
+  const configData: AssessmentConfigData = stepData.reviewSubmit?.assessmentConfig || { 
+    duration: 30, 
+    questionTypes: [] 
+  };
+
+  const handleDurationChange = (duration: number) => {
+    setStepData(currentStepIndex, { 
+      reviewSubmit: { 
+        ...stepData.reviewSubmit,
+        assessmentConfig: { ...configData, duration } 
+      }
+    });
+  };
+
+  const handleQuestionTypesChange = (questionTypes: string[]) => {
+    setStepData(currentStepIndex, { 
+      reviewSubmit: { 
+        ...stepData.reviewSubmit,
+        assessmentConfig: { ...configData, questionTypes } 
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -14,8 +44,8 @@ export const AssessmentConfigStep = () => {
           type="number"
           min="15"
           max="120"
-          value={stepData.duration || 30}
-          onChange={(e) => updateStepData('assessment-config', { duration: Number(e.target.value) })}
+          value={configData.duration || 30}
+          onChange={(e) => handleDurationChange(Number(e.target.value))}
           className="w-full p-2 border rounded"
         />
       </div>
@@ -27,13 +57,13 @@ export const AssessmentConfigStep = () => {
             <label key={type} className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                checked={stepData.questionTypes?.includes(type) || false}
+                checked={configData.questionTypes?.includes(type) || false}
                 onChange={(e) => {
-                  const currentTypes = stepData.questionTypes || [];
+                  const currentTypes = configData.questionTypes || [];
                   const updatedTypes = e.target.checked
                     ? [...currentTypes, type]
                     : currentTypes.filter((t: string) => t !== type);
-                  updateStepData('assessment-config', { questionTypes: updatedTypes });
+                  handleQuestionTypesChange(updatedTypes);
                 }}
               />
               <span>{type}</span>

@@ -8,29 +8,34 @@ function convertToSessionTypes(data: DepartmentRoleSummary[]): { hierarchical: D
     const roles: JobRole[] = [];
 
     data.forEach(summary => {
+        // Extract roles from summary and add missing departmentId
         const departmentRoles: JobRole[] = (summary.roles || []).map(role => {
+            // Map database JobRole to session JobRole type with safe property access
             const sessionRole: JobRole = {
-                id: String(role.id),
+                id: role.id,
                 title: role.title,
-                departmentId: String(summary.department_id),
-                level: role.level as any, // Assuming level matches the enum
+                departmentId: role.departmentId || summary.department_id, // Use department_id from summary if role doesn't have it
+                level: role.level || null,
                 skills: role.skills || [],
-                description: role.description || undefined,
-                isActive: role.is_active,
-                createdAt: role.created_at.toISOString(),
-                updatedAt: role.updated_at.toISOString(),
+                description: role.description || null,
+                keyResponsibilities: role.keyResponsibilities || [],
+                aiPotential: role.aiPotential || null,
+                is_active: role.is_active !== undefined ? role.is_active : true,
+                created_at: role.created_at || new Date(),
+                updated_at: role.updated_at || new Date(),
             };
             roles.push(sessionRole);
             return sessionRole;
         });
 
+        // Map database Department to session Department type  
         hierarchical.push({
-            id: String(summary.department_id),
+            id: summary.department_id,
             name: summary.department_name,
-            description: summary.department_description || undefined,
-            roles: departmentRoles,
-            createdAt: new Date().toISOString(), // This should be from the DB
-            updatedAt: summary.last_updated || new Date().toISOString(),
+            description: summary.department_description || null,
+            is_active: true, // Default to true if not specified
+            created_at: new Date(), // This should be from the DB
+            updated_at: new Date(),
         });
     });
 

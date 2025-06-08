@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
-import { AssessmentSession, SessionAction, StorageConfig, Department, JobRole } from './sessionTypes';
+import { AssessmentSession, SessionAction, StorageConfig, Department, JobRole, WizardStepData } from './sessionTypes';
 import { sessionReducer, createInitialSession } from './sessionReducer';
+import { initialSteps } from './wizardStepMap';
 import SessionStorageManager from './SessionStorageManager';
 import { createAutoSaveMiddleware } from './middleware/AutoSaveMiddleware';
 import { createValidationMiddleware } from './middleware/SessionValMiddleware';
@@ -13,9 +14,13 @@ interface SessionContextType {
   goToStep: (stepIndex: number) => void;
   goToNextStep: () => void;
   goToPreviousStep: () => void;
-  updateStepData: (stepId: string, data: Record<string, any>) => void;
-  selectDepartment: (department: Department) => void;
-  selectJobRole: (jobRole: JobRole) => void;
+  setStepData: (
+    stepIndex: number,
+    data: Partial<WizardStepData>,
+    isValid?: boolean,
+    departmentSelection?: Department,
+    jobRoleSelection?: JobRole
+  ) => void;
   resetSession: () => void;
   
   // Cache management
@@ -33,6 +38,7 @@ const SessionContext = createContext<SessionContextType | null>(null);
 interface SessionProviderProps {
   children: React.ReactNode;
   config?: Partial<StorageConfig>;
+  assessmentId?: string;
 }
 
 const defaultConfig: StorageConfig = {
@@ -45,12 +51,16 @@ const defaultConfig: StorageConfig = {
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ 
   children, 
-  config = {} 
+  config = {}, 
+  assessmentId,
 }) => {
   const finalConfig = { ...defaultConfig, ...config };
   const storageManager = useRef(new SessionStorageManager(finalConfig));
   
-  const [session, setSession] = useReducer(sessionReducer, createInitialSession());
+  const [session, setSession] = useReducer(sessionReducer, createInitialSession({
+    id: assessmentId,
+    steps: initialSteps,
+  }));
   const [departments, setDepartments] = React.useState<Department[]>([]);
   const [jobRoles, setJobRoles] = React.useState<JobRole[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -81,15 +91,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
       try {
         setIsLoading(true);
         
-        // Try to restore session from sessionStorage
-        const savedSession = await storageManager.current.load<AssessmentSession>('current_session', 'session');
+        const sessionKey = assessmentId || 'current_session';
+        const savedSession = await storageManager.current.load<AssessmentSession>(sessionKey, 'session');
         
         if (savedSession && new Date(savedSession.expiresAt) > new Date()) {
           dispatch({ type: 'INITIALIZE_SESSION', payload: savedSession });
         } else {
           // Clear expired session
-          await storageManager.current.remove('current_session', 'session');
-          dispatch({ type: 'INITIALIZE_SESSION', payload: {} });
+          await storageManager.current.remove(sessionKey, 'session');
+          dispatch({
+            type: 'INITIALIZE_SESSION',
+            payload: { id: assessmentId, steps: initialSteps },
+          });
         }
 
         // Load cached departments and roles
@@ -97,34 +110,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
         
       } catch (error) {
         setError(`Failed to initialize session: ${error}`);
-        dispatch({ type: 'INITIALIZE_SESSION', payload: {} });
+        dispatch({
+          type: 'INITIALIZE_SESSION',
+          payload: { id: assessmentId, steps: initialSteps },
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     initializeSession();
-  }, []);
+  }, [assessmentId]);
 
   // Cache management
   const refreshCache = useCallback(async () => {
     try {
-      // Try to load from localStorage first
-      const cachedData = await storageManager.current.load<{
-        departments: Department[];
-        jobRoles: JobRole[];
-        timestamp: number;
-      }>('roles_departments', 'local');
-
-      const cacheAge = cachedData ? Date.now() - cachedData.timestamp : Infinity;
-      const cacheMaxAge = 60 * 60 * 1000; // 1 hour
-
-      if (cachedData && cacheAge < cacheMaxAge) {
-        setDepartments(cachedData.departments);
-        setJobRoles(cachedData.jobRoles);
-        return;
-      }
-
       // Fetch fresh data from API
       const response = await fetch('/api/roles-departments');
       if (!response.ok) {
@@ -133,33 +133,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
 
       const apiData = await response.json();
       
-      setDepartments(apiData.hierarchical);
-      setJobRoles(apiData.roles);
-
-      // Cache the data
-      await storageManager.current.save(
-        'roles_departments',
-        {
-          departments: apiData.hierarchical,
-          jobRoles: apiData.roles,
-          timestamp: Date.now()
-        },
-        'local'
-      );
+      setDepartments(apiData.hierarchical || []);
+      setJobRoles(apiData.roles || []);
 
     } catch (error) {
       setError(`Failed to refresh cache: ${error}`);
-      
-      // Fall back to any existing cached data
-      const cachedData = await storageManager.current.load<{
-        departments: Department[];
-        jobRoles: JobRole[];
-      }>('roles_departments', 'local');
-      
-      if (cachedData) {
-        setDepartments(cachedData.departments);
-        setJobRoles(cachedData.jobRoles);
-      }
     }
   }, []);
 
@@ -169,29 +147,32 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
   }, [dispatch]);
 
   const goToNextStep = useCallback(() => {
-    dispatch({ type: 'SET_CURRENT_STEP', payload: session.currentStep + 1 });
-  }, [dispatch, session.currentStep]);
+    if (session.currentStepIndex < session.steps.length - 1) {
+      dispatch({ type: 'SET_CURRENT_STEP', payload: session.currentStepIndex + 1 });
+    }
+  }, [dispatch, session.currentStepIndex, session.steps.length]);
 
   const goToPreviousStep = useCallback(() => {
-    dispatch({ type: 'SET_CURRENT_STEP', payload: session.currentStep - 1 });
-  }, [dispatch, session.currentStep]);
+    if (session.currentStepIndex > 0) {
+      dispatch({ type: 'SET_CURRENT_STEP', payload: session.currentStepIndex - 1 });
+    }
+  }, [dispatch, session.currentStepIndex]);
 
-  const updateStepData = useCallback((stepId: string, data: Record<string, any>) => {
-    dispatch({ type: 'UPDATE_STEP_DATA', payload: { stepId, data } });
-  }, [dispatch]);
-
-  const selectDepartment = useCallback((department: Department) => {
-    dispatch({ type: 'SELECT_DEPARTMENT', payload: department });
-  }, [dispatch]);
-
-  const selectJobRole = useCallback((jobRole: JobRole) => {
-    dispatch({ type: 'SELECT_JOB_ROLE', payload: jobRole });
-  }, [dispatch]);
+  const setStepData = useCallback(
+    (stepIndex: number, data: Partial<WizardStepData>, isValid?: boolean) => {
+      dispatch({
+        type: 'SET_STEP_DATA',
+        payload: { stepIndex, data, isValid },
+      });
+    },
+    [dispatch]
+  );
 
   const resetSession = useCallback(async () => {
+    const sessionKey = assessmentId || 'current_session';
     await storageManager.current.clear('session');
     dispatch({ type: 'RESET_SESSION' });
-  }, [dispatch]);
+  }, [dispatch, assessmentId]);
 
   // Set up error handling
   useEffect(() => {
@@ -206,9 +187,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({
     goToStep,
     goToNextStep,
     goToPreviousStep,
-    updateStepData,
-    selectDepartment,
-    selectJobRole,
+    setStepData,
     resetSession,
     departments,
     jobRoles,

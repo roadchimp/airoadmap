@@ -2,8 +2,8 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback, u
 import { AssessmentSession, SessionAction, StorageConfig, Department, JobRole } from './sessionTypes';
 import { sessionReducer, createInitialSession } from './sessionReducer';
 import SessionStorageManager from './SessionStorageManager';
-import { createAutoSaveMiddleware } from '@/app/api/middleware/AutoSavemiddleware';
-import { createValidationMiddleware } from '@/app/api/middleware/SessionValMiddleware';
+import { createAutoSaveMiddleware } from './middleware/AutoSaveMiddleware';
+import { createValidationMiddleware } from './middleware/SessionValMiddleware';
 
 interface SessionContextType {
   session: AssessmentSession;

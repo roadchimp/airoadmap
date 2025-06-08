@@ -23,6 +23,7 @@ export default [
       "@typescript-eslint/no-this-alias": "off",
       "@typescript-eslint/no-empty-object-type": "off",
       "@typescript-eslint/no-empty-interface": "off",
+      "react/no-unescaped-entities": "off",
     }
   }
 ];

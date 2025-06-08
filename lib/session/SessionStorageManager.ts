@@ -163,6 +163,35 @@ class SessionStorageManager implements StorageManager {
     this.errorHandlers.push(handler);
   }
 
+  async estimate(): Promise<{usage: number, quota: number}> {
+    if (navigator.storage && navigator.storage.estimate) {
+      const { usage, quota } = await navigator.storage.estimate();
+      return { usage: usage || 0, quota: quota || 0 };
+    }
+    return { usage: 0, quota: 0 };
+  }
+
+  async getDirectory(): Promise<any> {
+    if (navigator.storage && (navigator.storage as any).getDirectory) {
+        return (navigator.storage as any).getDirectory();
+    }
+    return Promise.resolve();
+  }
+
+  async persist(): Promise<boolean> {
+    if (navigator.storage && navigator.storage.persist) {
+        return navigator.storage.persist();
+    }
+    return false;
+  }
+
+  async persisted(): Promise<boolean> {
+      if (navigator.storage && navigator.storage.persisted) {
+          return navigator.storage.persisted();
+      }
+      return false;
+  }
+
   private getStorageKey(key: string, storage: 'session' | 'local'): string {
     const prefix = storage === 'session' ? this.config.sessionStorageKey : this.config.localStorageKey;
     return `${prefix}_${key}`;

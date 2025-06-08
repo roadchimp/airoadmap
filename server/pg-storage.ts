@@ -7,6 +7,7 @@ import { IStorage, ReportWithMetricsAndRules, FullAICapability, ToolWithMappedCa
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 import { z } from 'zod'; // Import z for z.infer
+import { DepartmentRoleSummary } from './storage';
 
 // Import Drizzle schema tables and schemas (values)
 import { 
@@ -260,6 +261,14 @@ export class PgStorage implements IStorage {
   async createJobRole(role: InsertJobRole): Promise<BaseJobRole> {
     const result = await this.db.insert(jobRoles).values(role).returning();
     return result[0];
+  }
+
+  async getDepartmentRoleSummary(): Promise<DepartmentRoleSummary[]> {
+    await this.ensureInitialized();
+    // It's often better to refresh the view before querying it
+    await this.db.execute(sql`REFRESH MATERIALIZED VIEW mv_department_role_summary;`);
+    const result = await this.db.execute(sql`SELECT * FROM mv_department_role_summary;`);
+    return result.rows;
   }
 
   // AICapability methods

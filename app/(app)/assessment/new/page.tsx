@@ -1,42 +1,30 @@
-import AssessmentWizard from "./_components/assessment-wizard";
-import { Suspense } from 'react';
-import LoadingSpinner from '../../../../components/ui/LoadingSpinner'; // Assuming a loading spinner component exists
-import { storage } from '@/server/storage';
-import { Assessment } from '@shared/schema';
+'use client';
 
-interface NewAssessmentPageProps {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-}
+import React from 'react';
+import { SessionProvider } from '@/lib/session/SessionContext';
+import AssessmentWizard from './_components/assessment-wizard';
 
-// Function to fetch assessment data if an ID is provided
-async function getInitialAssessmentData(id: string | undefined): Promise<Assessment | null> {
-  if (!id) return null;
-  const assessmentId = parseInt(id, 10);
-  if (isNaN(assessmentId)) return null;
-  
-  try {
-    const assessment = await storage.getAssessment(assessmentId);
-    return assessment || null;
-  } catch (error) {
-    console.error(`Error fetching assessment ${assessmentId} for wizard:`, error);
-    return null;
-  }
-}
-
-export default async function NewAssessmentPage({ searchParams }: NewAssessmentPageProps) {
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const assessmentId = resolvedSearchParams?.id as string | undefined;
-  let initialAssessmentData: Assessment | null = null;
-
-  if (assessmentId) {
-    initialAssessmentData = await getInitialAssessmentData(assessmentId);
-    // Optional: if assessment data is not found for a given ID, you might want to redirect or show an error
-    // For now, the wizard will start fresh if initialAssessmentData is null.
-  }
-
+const NewAssessmentPage: React.FC = () => {
   return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <AssessmentWizard initialAssessmentData={initialAssessmentData} />
-    </Suspense>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
+        <div className="max-w-5xl mx-auto">
+          <header className="mb-8 text-center">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900">
+              Create New Assessment
+            </h1>
+            <p className="mt-2 text-lg text-gray-600">
+              Follow this guided wizard to build a tailored AI readiness assessment.
+            </p>
+          </header>
+          
+          <SessionProvider>
+            <AssessmentWizard />
+          </SessionProvider>
+        </div>
+      </div>
+    </div>
   );
-} 
+};
+
+export default NewAssessmentPage; 

@@ -1,4 +1,6 @@
-import { Middleware, MiddlewareContext, SessionAction } from '@/lib/session/sessionTypes';
+import { Middleware, MiddlewareContext, SessionAction } from '../sessionTypes';
+import SessionStorageManager from '../SessionStorageManager';
+
 
 export const createAutoSaveMiddleware = (
     saveInterval: number = 5000,
@@ -34,7 +36,7 @@ export const createAutoSaveMiddleware = (
             context.dispatch({ type: 'SET_AUTO_SAVING', payload: true });
             
             // Save session data to sessionStorage
-            await context.storage.save(
+            await (context.storage as SessionStorageManager).save(
               'current_session', 
               currentState, 
               'session'
@@ -42,7 +44,7 @@ export const createAutoSaveMiddleware = (
   
             // Save department/role data to localStorage for persistence
             if (currentState.selectedDepartment || currentState.selectedJobRole) {
-              await context.storage.save(
+              await (context.storage as SessionStorageManager).save(
                 'user_preferences',
                 {
                   department: currentState.selectedDepartment,

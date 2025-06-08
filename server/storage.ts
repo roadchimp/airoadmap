@@ -60,6 +60,16 @@ import {
   InsertAssessmentAICapability
 } from "../shared/schema";
 
+export type DepartmentRoleSummary = {
+  department_id: number;
+  department_name: string;
+  department_description: string | null;
+  total_roles: number;
+  active_roles: number;
+  roles: BaseJobRole[] | null;
+  last_updated: string | null;
+};
+
 export { type BaseAiTool as AiTool }; // Re-export BaseAiTool as AiTool
 
 import { PgStorage } from './pg-storage.ts';
@@ -149,6 +159,7 @@ export interface IStorage {
   listJobRoles(): Promise<JobRoleWithDepartment[]>;
   listJobRolesByDepartment(departmentId: number): Promise<JobRoleWithDepartment[]>;
   createJobRole(role: InsertJobRole): Promise<BaseJobRole>;
+  getDepartmentRoleSummary(): Promise<DepartmentRoleSummary[]>;
   
   // AICapability methods
   getAICapability(id: number): Promise<FullAICapability | undefined>;

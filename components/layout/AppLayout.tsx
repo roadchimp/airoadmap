@@ -68,7 +68,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           
         </div> {/* End Right Side Container */}
         
-      </div> // End Outermost container
+      </div> {/* End Outermost container */}
     </AuthProvider>
   );
 };

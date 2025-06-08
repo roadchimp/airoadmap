@@ -1,3 +1,5 @@
+export * from './errorTypes'; // Re-export error types and interfaces
+
 export interface Department {
   id: string;
   name: string;
@@ -56,7 +58,7 @@ export interface StorageConfig {
   expirationHours: number;
 }
 
-export interface CacheEntry {
+export interface CacheEntry<T> {
   data: T;
   timestamp: number;
   expiresAt: number;

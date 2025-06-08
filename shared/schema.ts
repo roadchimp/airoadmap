@@ -62,6 +62,9 @@ export const departments = pgTable("departments", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
+  is_active: boolean("is_active").default(true).notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const insertDepartmentSchema = createInsertSchema(departments).pick({
@@ -79,6 +82,11 @@ export const jobRoles = pgTable("job_roles", {
   description: text("description"),
   keyResponsibilities: text("key_responsibilities").array(),
   aiPotential: aiPotentialEnum("ai_potential").default("Medium"), // Use enum, default "Medium", nullable (no .notNull())
+  level: text("level"),
+  skills: text("skills").array(),
+  is_active: boolean("is_active").default(true).notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Let createInsertSchema infer all fields, then omit 'id'

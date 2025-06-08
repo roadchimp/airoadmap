@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { SessionProvider } from "@/lib/session/SessionContext";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/client/queryClient";

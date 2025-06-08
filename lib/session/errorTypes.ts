@@ -22,5 +22,9 @@ export interface SessionError {
     clear: (storage?: 'session' | 'local') => Promise<void>;
     isAvailable: (storage?: 'session' | 'local') => boolean;
     onError: (error: SessionError) => void;
+    estimate: () => Promise<{usage: number, quota: number}>;
+    getDirectory: () => Promise<any>;
+    persist: () => Promise<boolean>;
+    persisted: () => Promise<boolean>;
   }
   

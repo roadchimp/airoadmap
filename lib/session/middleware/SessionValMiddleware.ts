@@ -1,5 +1,5 @@
 // middleware/validation-middleware.ts
-import { Middleware, SessionAction } from '@/lib/session/sessionTypes';
+import { Middleware, SessionAction } from '../sessionTypes';
 
 export const createValidationMiddleware = (): Middleware => {
   return (context) => (next) => (action: SessionAction) => {

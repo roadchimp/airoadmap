@@ -539,3 +539,33 @@ The Reports UI has been updated to accommodate the new database schema:
    - Ensured all components properly reference the new schema
 
 The priority enum was also renamed from `capability_priority` to `capability_priority_enum` for better naming consistency.
+
+## Session Management Module (Assessment Wizard)
+
+**Status:** `Completed`
+
+A global session management module has been implemented for the assessment wizard, providing a robust, centralized, and maintainable state management solution.
+
+### Core Architecture
+
+- **React Context (`SessionProvider`):** Located at `lib/session/SessionContext.tsx`, this provider wraps the entire assessment wizard. It initializes the session, manages state and cache, and provides the `useSession` hook for child components to access session data and actions.
+- **`useReducer` for State Management:** All session state transitions are handled by the `sessionReducer` in `lib/session/sessionReducer.ts`. This ensures predictable state updates and centralizes business logic.
+- **Middleware Layer:**
+    - **Auto-Save (`AutoSaveMiddleware.ts`):** A debounced and interval-based middleware automatically persists the session to browser storage, providing status updates via the UI.
+    - **Validation (`SessionValMiddleware.ts`):** A middleware that provides synchronous validation for step data and navigation logic.
+- **Dual-Storage Strategy (`SessionStorageManager.ts`):**
+    - **`sessionStorage`:** Used for transient wizard state that should be cleared when the browser tab is closed.
+    - **`localStorage`:** Used for persistent data like department/role selections and the department/role cache, featuring automatic cache expiration and a stale-while-revalidate strategy.
+
+### API and Database Enhancements
+
+- **Consolidated API Endpoint (`/api/roles-departments`):** Replaces the previous `/api/departments` and `/api/job-roles` endpoints. It fetches all necessary data in a single, efficient query.
+- **Materialized View (`mv_department_role_summary`):** The database now includes a materialized view that pre-aggregates department and role data. This view is queried by the new API endpoint, significantly improving performance.
+- **Database Schema:** The `departments` and `job_roles` tables have been updated with `is_active` flags and other columns to support the new features. All schema changes are managed via Drizzle migrations.
+
+### Frontend Component Refactoring
+
+- **Smart Container / Dumb Components:** The `AssessmentWizard` component is now a "smart" container that manages all logic, while the individual step components (`BasicInfoStep`, `DepartmentSelectionStep`, etc.) are "dumb" components that simply display data and dispatch actions to the session context.
+- **Client-Side Filtering:** The department and role selection steps now feature high-performance, client-side filtering and search, eliminating network requests during user interaction.
+
+This new architecture resolves previous issues with state synchronization, complex `useEffect` dependencies, and manual local storage management, resulting in a more performant, reliable, and developer-friendly assessment wizard.

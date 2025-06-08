@@ -39,9 +39,23 @@ const BasicInfoStep = () => {
 
   const [showCompanyStageHint, setShowCompanyStageHint] = React.useState(false);
 
+  // Ensure all form fields have proper default values to prevent controlled/uncontrolled warnings
+  const defaultValues: OrganizationBasics = {
+    name: stepData.name || '',
+    reportName: stepData.reportName || '',
+    industry: stepData.industry || '',
+    size: stepData.size || '',
+    description: stepData.description || '',
+    industryMaturity: stepData.industryMaturity || 'Mature',
+    companyStage: stepData.companyStage || 'Startup',
+    strategicFocus: stepData.strategicFocus || [],
+    keyBusinessGoals: stepData.keyBusinessGoals || '',
+    keyStakeholders: stepData.keyStakeholders || [],
+  };
+
   const form = useForm<OrganizationBasics>({
     resolver: zodResolver(basicInfoSchema),
-    defaultValues: stepData,
+    defaultValues,
     mode: 'onChange',
   });
 

@@ -56,11 +56,25 @@ const ReviewSubmitStep = () => {
     setSuccess(false);
 
     try {
+      // Get CSRF token first
+      const csrfResponse = await fetch('/api/auth/csrf-token', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      
+      if (!csrfResponse.ok) {
+        throw new Error('Failed to get CSRF token');
+      }
+      
+      const { token: csrfToken } = await csrfResponse.json();
+
       const response = await fetch('/api/assessment/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
         },
+        credentials: 'include',
         body: JSON.stringify(session),
       });
 

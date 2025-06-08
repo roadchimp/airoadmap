@@ -1,8 +1,12 @@
 import React from 'react';
 import { Department } from '@/lib/session/sessionTypes';
 
+interface DepartmentWithOptionalRoles extends Department {
+    roles?: { id: number; title: string }[];
+}
+
 interface DepartmentCardProps {
-    department: Department;
+    department: DepartmentWithOptionalRoles;
     isSelected: boolean;
     onClick: () => void;
     showRoleCount?: boolean;
@@ -20,7 +24,7 @@ const DepartmentCard: React.FC<DepartmentCardProps> = ({ department, isSelected,
             {department.description && <p className="text-sm text-gray-600 mt-1">{department.description}</p>}
             {showRoleCount && (
                 <div className="text-xs text-gray-500 mt-2">
-                    {department.roles.length} {department.roles.length === 1 ? 'role' : 'roles'} available
+                    {department.roles?.length || 0} {(department.roles?.length || 0) === 1 ? 'role' : 'roles'} available
                 </div>
             )}
         </button>

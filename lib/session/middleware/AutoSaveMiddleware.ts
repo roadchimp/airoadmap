@@ -16,11 +16,9 @@ export const createAutoSaveMiddleware = (
   
       // Actions that should trigger auto-save
       const autoSaveActions = [
-        'UPDATE_STEP_DATA',
-        'SELECT_DEPARTMENT', 
-        'SELECT_JOB_ROLE',
-        'MARK_STEP_COMPLETED',
-        'SET_CURRENT_STEP'
+        'SET_STEP_DATA',
+        'SET_CURRENT_STEP',
+        'INITIALIZE_SESSION'
       ];
   
       if (autoSaveActions.includes(action.type)) {
@@ -42,13 +40,13 @@ export const createAutoSaveMiddleware = (
               'session'
             );
   
-            // Save department/role data to localStorage for persistence
-            if (currentState.selectedDepartment || currentState.selectedJobRole) {
+            // Save role selection data to localStorage for persistence
+            const roleSelectionStep = currentState.steps.find(step => step.id === 'role-selection');
+            if (roleSelectionStep?.data?.roleSelection?.selectedRoles && roleSelectionStep.data.roleSelection.selectedRoles.length > 0) {
               await (context.storage as SessionStorageManager).save(
                 'user_preferences',
                 {
-                  department: currentState.selectedDepartment,
-                  jobRole: currentState.selectedJobRole,
+                  selectedRoles: roleSelectionStep.data.roleSelection.selectedRoles,
                   lastUpdated: new Date().toISOString()
                 },
                 'local'
@@ -58,14 +56,13 @@ export const createAutoSaveMiddleware = (
             lastSaveTime = Date.now();
             context.dispatch({ 
               type: 'SESSION_SAVED', 
-              payload: new Date().toISOString() 
+              payload: { timestamp: Date.now() } 
             });
   
           } catch (error) {
-            context.dispatch({ 
-              type: 'SESSION_LOAD_ERROR', 
-              payload: `Auto-save failed: ${error}` 
-            });
+            console.error('Auto-save failed:', error);
+          } finally {
+            context.dispatch({ type: 'SET_AUTO_SAVING', payload: false });
           }
         }, debounceDelay);
   

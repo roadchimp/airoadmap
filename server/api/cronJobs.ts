@@ -1,4 +1,4 @@
-import { JobScraper } from '../lib/jobScraper';
+import { JobScraper } from '../lib/services/jobScraper';
 import { JobProcessor } from '../lib/processors/jobProcessor';
 import type { Request, Response } from 'express';
 

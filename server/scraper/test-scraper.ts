@@ -1,4 +1,4 @@
-import { JobScraper } from '../lib/jobScraper';
+import { JobScraper } from '../lib/services/jobScraper';
 import type { JobScraperConfig } from '../../shared/schema';
 import dotenv from 'dotenv';
 

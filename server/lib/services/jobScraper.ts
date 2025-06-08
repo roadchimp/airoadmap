@@ -1,7 +1,7 @@
-import { InsertJobDescription, JobScraperConfig } from '../../shared/schema.ts';
-import { storage } from '../storage.ts';
+import { InsertJobDescription, JobScraperConfig } from '@shared/schema';
+import { storage } from '../../storage';
 import puppeteer, { Page } from 'puppeteer';
-import { LINKEDIN_EMAIL, LINKEDIN_PASSWORD } from '../config.ts';
+import { LINKEDIN_EMAIL, LINKEDIN_PASSWORD } from '../../config';
 import pLimit from 'p-limit';
 import fs from 'fs';
 import path from 'path';

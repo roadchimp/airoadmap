@@ -23,34 +23,15 @@ interface DepartmentRoleResponse {
 }
 
 export const RoleSelectionStep = () => {
-  const { session, setStepData } = useSession();
+  const { session, setStepData, departments, isLoading, error } = useSession();
   const { currentStepIndex } = session;
 
-  const [departmentData, setDepartmentData] = useState<DepartmentWithRoles[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedDepartments, setSelectedDepartments] = useState<number[]>([]);
 
   const selectedRoles = session.steps[currentStepIndex]?.data.roleSelection?.selectedRoles || [];
 
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/roles-departments');
-        if (!response.ok) {
-          throw new Error('Failed to fetch roles');
-        }
-        const data: DepartmentRoleResponse = await response.json();
-        setDepartmentData(data.hierarchical);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchRoles();
-  }, []);
+  // Use cached departments as DepartmentWithRoles (they already include roles from the API)
+  const departmentData = departments as DepartmentWithRoles[];
 
   const handleDepartmentToggle = (departmentId: number) => {
     const isSelected = selectedDepartments.includes(departmentId);

@@ -1,5 +1,5 @@
 import { put, del } from '@vercel/blob';
-import { BLOB_READ_WRITE_TOKEN } from '../config';
+import { BLOB_READ_WRITE_TOKEN } from '../../config';
 
 export class BlobStorage {
   private static instance: BlobStorage;

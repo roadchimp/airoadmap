@@ -1,6 +1,6 @@
-import { JobScraper } from '../lib/jobScraper.ts';
-import { storage } from '../storage.ts';
-import type { JobScraperConfig } from '../../shared/schema.ts';
+import { JobScraper } from '../lib/services/jobScraper';
+import { storage } from '../storage';
+import type { JobScraperConfig } from '../../shared/schema';
 import dotenv from 'dotenv';
 
 // Load environment variables

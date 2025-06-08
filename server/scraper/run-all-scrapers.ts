@@ -1,5 +1,5 @@
-import { JobScraper } from '../lib/jobScraper.ts';
-import { storage } from '../storage.ts';
+import { JobScraper } from '../lib/services/jobScraper';
+import { storage } from '../storage';
 import * as dotenv from 'dotenv';
 
 // Load environment variables

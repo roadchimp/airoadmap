@@ -157,13 +157,21 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
       departmentId: 1,
       description: '',
       keyResponsibilities: [],
-      aiPotential: 'Medium'
+      aiPotential: 'Medium',
+      level: null,
+      skills: [],
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date()
     };
     
     const department: Department = {
       id: 1,
       name: item.department,
-      description: ''
+      description: null,
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date()
     };
     
     const rolePainPoints = painPoints[item.id.toString()] || {};
@@ -181,13 +189,21 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
       departmentId: 1,
       description: '',
       keyResponsibilities: [],
-      aiPotential: 'Medium'
+      aiPotential: 'Medium',
+      level: null,
+      skills: [],
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date()
     };
     
     const department: Department = {
       id: 1,
       name: item.department,
-      description: ''
+      description: null,
+      is_active: true,
+      created_at: new Date(),
+      updated_at: new Date()
     };
     
     // Call AI service for performance impact predictions

@@ -3,7 +3,7 @@
 import React from 'react';
 import { SessionProvider } from '@/lib/session/SessionContext';
 import WizardLayout from './_components/WizardLayout';
-import { AssessmentWizard } from './_components/AssessmentWizard';
+import { AssessmentWizard } from './_components/assessment-wizard';
 
 const NewAssessmentPage: React.FC = () => {
   return (

@@ -1,152 +1,89 @@
 'use client';
 
-import React from 'react';
-import { useSession } from '@/lib/session/SessionContext';
-import WizardStepIndicator from './wizard-step-indicator';
-import BasicInfoStep from './steps/basic-info-step';
-import DepartmentSelectionStep from './steps/department-selection-step';
-import RoleSelectionStep from './steps/role-selection-step';
-import AssessmentConfigStep from './steps/assessment-config-step';
-import ReviewStep from './steps/review-step';
-import WizardNavigation from './wizard-navigation';
-import LoadingSpinner from '@/components/ui/loading-spinner';
-import ErrorBoundary from '@/components/ui/error-boundary';
+import React, { useEffect } from 'react';
+import { useSession } from '../../../../../lib/session/SessionContext';
+import { wizardStepMap } from '../../../../../lib/session/wizardStepMap';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import type { Assessment } from '@shared/schema';
 
-interface StepComponent {
-  id: string;
-  component: React.ComponentType;
+interface AssessmentWizardProps {
+  initialAssessmentData?: Assessment;
 }
 
-const stepComponents: StepComponent[] = [
-  { id: 'basic-info', component: BasicInfoStep },
-  { id: 'department-selection', component: DepartmentSelectionStep },
-  { id: 'role-selection', component: RoleSelectionStep },
-  // { id: 'assessment-config', component: AssessmentConfigStep },
-  // { id: 'review', component: ReviewStep }
-];
+export const AssessmentWizard: React.FC<AssessmentWizardProps> = ({ 
+  initialAssessmentData 
+}) => {
+  const { session, goToNextStep, goToPreviousStep, setStepData } = useSession();
+  const { currentStepIndex, steps } = session;
 
-const AssessmentWizard: React.FC = () => {
-  const { 
-    session, 
-    isLoading, 
-    error,
-    goToNextStep,
-    goToPreviousStep,
-    goToStep
-  } = useSession();
+  // Scroll to top when step changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStepIndex]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-64">
-        <LoadingSpinner size="lg" />
-        <span className="ml-3 text-gray-600">Loading assessment wizard...</span>
-      </div>
-    );
-  }
+  // Load initial assessment data into session when editing
+  useEffect(() => {
+    if (initialAssessmentData?.stepData) {
+      const stepData = initialAssessmentData.stepData as any;
+      
+      // Map database stepData to session format
+      if (stepData.basics) {
+        setStepData(0, { basics: stepData.basics }, true, undefined, undefined);
+      }
+      if (stepData.roles) {
+        // Convert role IDs back to role objects if needed
+        setStepData(1, { roleSelection: { selectedRoles: [] } }, true, undefined, undefined);
+      }
+      if (stepData.painPoints) {
+        setStepData(2, { areasForImprovement: stepData.painPoints }, true, undefined, undefined);
+      }
+      if (stepData.workVolume) {
+        setStepData(3, { workVolume: stepData.workVolume }, true, undefined, undefined);
+      }
+      if (stepData.techStack) {
+        setStepData(4, { dataSystems: stepData.techStack }, true, undefined, undefined);
+      }
+      if (stepData.adoption) {
+        setStepData(5, { readiness: stepData.adoption }, true, undefined, undefined);
+      }
+      if (stepData.aiAdoptionScoreInputs) {
+        setStepData(6, { roiTargets: stepData.aiAdoptionScoreInputs }, true, undefined, undefined);
+      }
+    }
+  }, [initialAssessmentData?.id]); // Only run when assessment ID changes
 
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-red-800 mb-2">
-          Error Loading Wizard
-        </h3>
-        <p className="text-red-700">{error}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  const currentStepData = session.steps[session.currentStep];
-  const CurrentStepComponent = stepComponents[session.currentStep]?.component;
+  const stepsArray = React.useMemo(() => Object.values(wizardStepMap), []);
+  const CurrentStepComponent = stepsArray[currentStepIndex]?.component;
 
   if (!CurrentStepComponent) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-600">Invalid step configuration</p>
-      </div>
-    );
+    return <div>Step not found</div>;
   }
 
-  const canProceed = currentStepData.isValid || currentStepData.isCompleted;
-  const isLastStep = session.currentStep === session.totalSteps - 1;
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === stepsArray.length - 1;
 
   return (
-    <ErrorBoundary>
-      <div className="bg-white rounded-lg shadow-sm border">
-        {/* Step Indicator */}
-        <div className="border-b border-gray-200 px-6 py-4">
-          <WizardStepIndicator 
-            steps={session.steps}
-            currentStep={session.currentStep}
-            onStepClick={goToStep}
-          />
-        </div>
+    <div>
+      <CurrentStepComponent />
 
-        {/* Auto-save indicator */}
-        {session.isAutoSaving && (
-          <div className="bg-blue-50 border-b border-blue-200 px-6 py-2">
-            <div className="flex items-center text-sm text-blue-700">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
-              Auto-saving...
-            </div>
-          </div>
-        )}
-
-        {/* Current Step Content */}
-        <div className="px-6 py-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              {currentStepData.name}
-            </h2>
-            <div className="mt-1 flex items-center text-sm text-gray-500">
-              <span>Step {session.currentStep + 1} of {session.totalSteps}</span>
-              {session.lastSaved && (
-                <span className="ml-4">
-                  Last saved: {new Date(session.lastSaved).toLocaleTimeString()}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Step Errors */}
-          {Object.keys(currentStepData.errors).length > 0 && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-              <h4 className="text-sm font-medium text-red-800 mb-2">
-                Please correct the following errors:
-              </h4>
-              <ul className="text-sm text-red-700 space-y-1">
-                {Object.entries(currentStepData.errors).map(([field, errors]) => (
-                  <li key={field}>
-                    <strong>{field}:</strong> {errors.join(', ')}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Step Component */}
-          <CurrentStepComponent />
-        </div>
-
-        {/* Navigation */}
-        <div className="border-t border-gray-200 px-6 py-4">
-          <WizardNavigation
-            canGoBack={session.currentStep > 0}
-            canProceed={canProceed}
-            isLastStep={isLastStep}
-            onBack={goToPreviousStep}
-            onNext={goToNextStep}
-            isLoading={session.isAutoSaving}
-          />
-        </div>
+      <div className="flex justify-between mt-8">
+        <Button
+          onClick={goToPreviousStep}
+          disabled={isFirstStep}
+          variant="outline"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Previous Step
+        </Button>
+        <Button
+          onClick={goToNextStep}
+          disabled={!steps[currentStepIndex]?.isValid}
+        >
+          {isLastStep ? 'Finish & Review' : 'Next Step'}
+          <ArrowRight className="h-4 w-4 ml-2" />
+        </Button>
       </div>
-    </ErrorBoundary>
+    </div>
   );
-};
-
-export default AssessmentWizard; 
+}; 

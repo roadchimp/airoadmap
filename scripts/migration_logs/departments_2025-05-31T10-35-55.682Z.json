@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Sales",
+    "description": null
+  },
+  {
+    "id": 2,
+    "name": "Marketing",
+    "description": null
+  },
+  {
+    "id": 3,
+    "name": "Customer Success",
+    "description": null
+  },
+  {
+    "id": 4,
+    "name": "Support",
+    "description": null
+  },
+  {
+    "id": 5,
+    "name": "Operations",
+    "description": null
+  },
+  {
+    "id": 6,
+    "name": "IT",
+    "description": null
+  }
+]

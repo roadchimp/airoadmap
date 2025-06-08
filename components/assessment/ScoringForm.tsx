@@ -2,8 +2,8 @@
 
 import { useAssessmentScoring } from '@/hooks/useAssessmentScoring';
 import { SCORE_WEIGHTS, validateScores } from '../../shared/scoring';
-import { cn } from '@/lib/utils';
-import { getRatingStyle } from '@/lib/scoring-ui';
+import { cn } from '@/lib/session/utils';
+import { getRatingStyle } from '@/lib/client/scoring-ui';
 import { ScoreValue } from '../../shared/schema';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

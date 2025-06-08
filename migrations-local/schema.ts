@@ -6,7 +6,7 @@ export const assessmentStatus = pgEnum("assessment_status", ['draft', 'submitted
 export const capabilityPriorityEnum = pgEnum("capability_priority_enum", ['High', 'Medium', 'Low'])
 export const companyStageEnum = pgEnum("company_stage_enum", ['Startup', 'Early Growth', 'Scaling', 'Mature'])
 export const industryMaturityEnum = pgEnum("industry_maturity_enum", ['Mature', 'Immature'])
-export const performanceMetricsRelevanceEnum = pgEnum("performance_metrics_relevance_enum", ['low', 'medium', 'high'])
+export const performanceMetricsRelevanceEnum = pgEnum("performance_assessment_aimetrics_relevance_enum", ['low', 'medium', 'high'])
 
 
 export const userProfiles = pgTable("user_profiles", {

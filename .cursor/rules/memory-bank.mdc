@@ -19,7 +19,6 @@ flowchart TD
     PC --> AC[activeContext.md]
     SP --> AC
     TC --> AC
-    
     AC --> P[progress.md]
 
 ### Core Files (Required)

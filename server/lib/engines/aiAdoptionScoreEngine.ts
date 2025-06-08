@@ -4,8 +4,8 @@
 import type {
   AiAdoptionScoreInputComponents,
   OrganizationScoreWeights,
-} from '../../shared/schema';
-import { storage } from "../storage";
+} from '../../../shared/schema';
+import { storage } from "../../storage";
 
 // Define the types that were previously imported but not exported in schema.ts
 export interface CalculatedScoreComponent {

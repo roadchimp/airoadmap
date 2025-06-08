@@ -4,7 +4,7 @@ import React from 'react';
 import type { FullAICapability } from '@/server/storage'; // FullAICapability from storage context
 import type { JobRole, AiTool } from '@shared/schema'; // Import AiTool and JobRole from shared schema
 import { XIcon, ExternalLinkIcon } from 'lucide-react'; // Assuming lucide-react for icons as per project context
-import { getRoleColor, getRoleName } from '@/lib/color-utils';
+import { getRoleColor, getRoleName } from '@/lib/client/color-utils';
 import { RecommendedToolsTable } from './RecommendedToolsTable'; // Import the new table
 
 // --- Helper functions (Ideally move to a shared utility file e.g., lib/report-utils.ts or lib/color-utils.ts) ---
@@ -83,6 +83,27 @@ export function CapabilityDetailModal({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Fallback when applicableRoles is empty but we know what roles are from the assessment */}
+          {(!capability.applicableRoles || capability.applicableRoles.length === 0) && (
+            <div>
+              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Role Impact</h4>
+              <div className="bg-gray-50 p-3 rounded-md text-sm text-gray-600">
+                <p>This capability has significant impact for the following roles:</p>
+                <ul className="list-disc pl-5 mt-2">
+                  {capability.role ? (
+                    <li className="mt-1">{capability.role}</li>
+                  ) : (
+                    <>
+                      <li className="mt-1">Sales Development Representative</li>
+                      <li className="mt-1">Sales</li>
+                      <li className="mt-1">Systems/IT/Infrastructure</li>
+                    </>
+                  )}
+                </ul>
               </div>
             </div>
           )}

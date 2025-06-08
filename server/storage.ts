@@ -64,7 +64,7 @@ export { type BaseAiTool as AiTool }; // Re-export BaseAiTool as AiTool
 
 import { PgStorage } from './pg-storage.ts';
 import { z } from 'zod';
-import { calculatePrioritization } from './lib/prioritizationEngine';
+import { calculatePrioritization } from './lib/engines/prioritizationEngine.ts';
 
 /**
  * Represents a report along with its associated assessment details.
@@ -154,6 +154,7 @@ export interface IStorage {
   getAICapability(id: number): Promise<FullAICapability | undefined>;
   listAICapabilities(options?: { assessmentId?: string; roleIds?: string[]; categoryFilter?: string[] }): Promise<FullAICapability[]>;
   createAICapability(capability: InsertAICapability): Promise<BaseAICapability>;
+  updateCapabilityFilters(id: number, update: { role?: string | null; painPoint?: string | null; goal?: string | null }): Promise<BaseAICapability>;
   
   // New AICapability methods for global capabilities and assessment-specific links
   findOrCreateGlobalAICapability(
@@ -260,6 +261,7 @@ export interface IStorage {
   
   // New methods for capability-job role mapping
   mapCapabilityToJobRole(capabilityId: number, jobRoleId: number): Promise<void>;
+  mapCapabilityToJobRoleWithImpact(capabilityId: number, jobRoleId: number, impactScore: number): Promise<void>;
   unmapCapabilityFromJobRole(capabilityId: number, jobRoleId: number): Promise<void>;
   getJobRolesForCapability(capabilityId: number): Promise<BaseJobRole[]>;
   

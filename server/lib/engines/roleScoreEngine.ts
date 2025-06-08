@@ -1,4 +1,4 @@
-import { ScoreValue } from '../../shared/schema';
+import { ScoreValue } from '../../../shared/schema';
 
 interface RoleScoreInput {
   timeSavings: ScoreValue;

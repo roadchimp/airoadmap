@@ -36,7 +36,10 @@ npm install pg
 
 ```javascript
 const SOURCE_CONNECTION_STRING = 'postgresql://postgres:postgres@localhost:5432/airoadmap';
+Report-UI-2 Branch
 const DEST_CONNECTION_STRING = 'postgres://neondb_owner:npg_cyahU74CWOLK@ep-sweet-grass-a6pb2g91-pooler.us-west-2.aws.neon.tech/neondb';
+Main Branch
+const DEST_CONNECTION_STRING = 'postgresql://neondb_owner:npg_cyahU74CWOLK@ep-broad-cake-a63511f5-pooler.us-west-2.aws.neon.tech/neondb';
 ```
 
 3. Run the script:

@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { withAuthAndSecurity } from '../../../middleware';
 import { z } from 'zod';
-import { calculatePrioritization } from '@/server/lib/prioritizationEngine';
-import { calculateAiAdoptionScore, type CalculatedAiAdoptionScore } from '@/server/lib/aiAdoptionScoreEngine';
+import { calculatePrioritization } from '@/server/lib/engines/prioritizationEngine';
+import { calculateAiAdoptionScore, type CalculatedAiAdoptionScore } from '@/server/lib/engines/aiAdoptionScoreEngine';
 import type { 
   WizardStepData, 
   OrganizationScoreWeights,
@@ -113,6 +113,9 @@ async function createReportForAssessment(
       aiAdoptionScoreDetails,
       roiDetails
     });
+
+    // Update assessment status to completed
+    await storage.updateAssessmentStatus(parsedAssessmentId, "completed");
 
     return NextResponse.json({ success: true, data: report, reportId: report.id });
   } catch (error) {

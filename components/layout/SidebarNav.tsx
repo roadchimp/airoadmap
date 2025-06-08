@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from 'next/navigation';
 import { BarChart, FileText, ClipboardList, Clock, Library, Settings, Home, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from '@/hooks/UseAuth';
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/session/utils";
 import { Logo } from "@/components/ui/logo";
 
 interface SidebarNavProps {

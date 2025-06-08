@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import { calculatePrioritization } from '@/server/lib/prioritizationEngine';
+import { calculatePrioritization } from '@/server/lib/engines/prioritizationEngine';
 import type { WizardStepData, AssessmentResponse } from '@shared/schema';
 
 // POST /api/prioritize

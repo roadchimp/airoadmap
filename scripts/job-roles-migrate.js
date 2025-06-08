@@ -17,7 +17,7 @@ const { Pool } = pg;
 
 // Connection details
 const SOURCE_CONNECTION_STRING = 'postgresql://postgres:postgres@localhost:5432/airoadmap';
-const DEST_CONNECTION_STRING = 'postgres://neondb_owner:npg_cyahU74CWOLK@ep-sweet-grass-a6pb2g91-pooler.us-west-2.aws.neon.tech/neondb';
+const DEST_CONNECTION_STRING = 'postgresql://neondb_owner:npg_cyahU74CWOLK@ep-broad-cake-a63511f5-pooler.us-west-2.aws.neon.tech/neondb';
 
 // Create connection pools
 const sourcePool = new Pool({

@@ -2,8 +2,8 @@
 import { test, expect } from '@playwright/test';
 
 // const APP_URL = 'https://v0-ai-sherpas-demo.vercel.app';
-// const APP_URL = 'http://localhost:3000';
-const APP_URL = 'https://airoadmap-njnndsghw-roadchimps-projects.vercel.app';
+const APP_URL = 'http://localhost:3000';
+// const APP_URL = 'https://airoadmap-m8kuft9hu-roadchimps-projects.vercel.app/';
 
 test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
   // Test data based on Enterprise SaaS Inc. (ESI) case study
@@ -298,7 +298,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
         await page.locator(`label:has-text("${stakeholder}")`).click();
       }
       
-      await page.getByRole('button', { name: /next/i }).click();
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
       
       // Step: Role selection
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=roles`);
@@ -323,7 +323,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
         await page.getByRole('checkbox', { name: role, exact: true }).check();
       }
       
-      await page.getByRole('button', { name: /next/i }).click();
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
       
       // Step: Pain points
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=painPoints`);
@@ -419,7 +419,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
         }
       }
       
-      await page.getByRole('button', { name: /next/i }).click();
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
       
       // Step: Work volume
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=workVolume`);
@@ -612,7 +612,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
          }
       }
       
-      await page.getByRole('button', { name: /next/i }).click();
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
       
       // Step: Tech stack
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=techStack`);
@@ -634,7 +634,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
       await page.locator('button', { hasText: 'Select integration ease...' }).click();
       await page.getByRole('option', { name: new RegExp(testAssessment.techStack.systemsIntegration, 'i') }).click();
       
-      await page.getByRole('button', { name: /next/i }).click();
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
       
       // Step: Adoption readiness
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=adoption`);
@@ -657,7 +657,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
       // Key Success Metrics
       await page.locator('textarea[placeholder*="How will the success of AI adoption be measured"]').fill(testAssessment.adoption.successMetrics);
       
-      await page.getByRole('button', { name: /next/i }).click();
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
       
       // Step: ROI targets
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=aiAdoptionScoreInputs`);
@@ -699,7 +699,7 @@ test.describe('Enterprise SaaS Inc. (ESI) AI Transformation Assessment', () => {
       await page.locator('button', { hasText: /4 - Above Average/ }).click();
       await page.getByRole('option', { name: new RegExp(`${testAssessment.aiAdoptionScoreInputs.toolSprawlReductionScore}.*`), exact: false }).click();
       
-      await page.getByRole('button', { name: /next/i }).click();
+      await page.getByRole('button', { name: 'Next', exact: true }).click();
       
       // Step: Review
       await expect(page).toHaveURL(`${APP_URL}/assessment/new?step=review`);

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/client/queryClient";
+import { queryClient } from "@/lib/client/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import WizardLayout from "@/components/wizard/WizardLayout";
 import QuestionCard, { QuestionOption } from "@/components/wizard/QuestionCard";

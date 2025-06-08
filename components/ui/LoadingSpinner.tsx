@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils'; // Assuming cn utility exists
+import { cn } from '@/lib/session/utils'; // Assuming cn utility exists
 
 interface LoadingSpinnerProps {
   className?: string;

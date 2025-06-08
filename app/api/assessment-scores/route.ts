@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
-import { calculateRoleScore } from '@/server/lib/roleScoreEngine';
+import { calculateRoleScore } from '@/server/lib/engines/roleScoreEngine';
 
 // POST /api/assessment-scores
 export async function POST(request: Request) {

@@ -1,10 +1,13 @@
 import { storage } from "@/server/storage";
 import { NextRequest, NextResponse } from "next/server";
-import { getOrganizationScoreWeights } from "@/server/lib/aiAdoptionScoreEngine";
+import { getOrganizationScoreWeights } from "@/server/lib/engines/aiAdoptionScoreEngine";
 
 /**
- * GET /api/organizations/:id/weights
+ * GET /api/organizations/:id/weights?companyStage=<stage>&industry=<industry>
  * Retrieves organization score weights (will create defaults if not exists)
+ * Query parameters:
+ * - companyStage: Optional override for company stage (Startup, Early Growth, Scaling, Mature)
+ * - industry: Optional override for industry
  */
 export async function GET(
   req: NextRequest,
@@ -27,15 +30,24 @@ export async function GET(
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
+    // Extract query parameters
+    const url = new URL(req.url);
+    const companyStageOverride = url.searchParams.get('companyStage');
+    const industryOverride = url.searchParams.get('industry');
+
+    // Use overrides from query params if provided, otherwise fall back to organization data
+    const industry = industryOverride || organization.industry || 'Other';
+    const companyStage = companyStageOverride || 'Mature'; // Default to Mature if no company stage provided
+
     // Try to get weights with default fallbacks
     try {
       // Use the helper function imported from aiAdoptionScoreEngine that handles defaults
-      console.log(`Fetching weights using industry: ${organization.industry || 'Other'}, companyStage: ${organization.size || 'Mature'}`);
+      console.log(`Fetching weights using industry: ${industry}, companyStage: ${companyStage}`);
       
       const weights = await getOrganizationScoreWeights(
         organizationId,
-        organization.industry || "Other",  // Use organization's industry or default to "Other"
-        organization.size || "Mature"      // Use organization's size as a proxy for company stage, or default to "Mature"
+        industry,
+        companyStage
       );
       
       console.log(`Successfully retrieved weights:`, weights);

@@ -23,6 +23,15 @@ export function RoleSelector({ roles, selectedRoles, onRoleToggle }: RoleSelecto
     );
   }
 
+  const handleRoleClick = (e: React.MouseEvent, roleTitle: string) => {
+    e.preventDefault();
+    try {
+      onRoleToggle(roleTitle);
+    } catch (error) {
+      console.error('Error toggling role:', error);
+    }
+  };
+
   return (
     <div className="flex flex-wrap gap-2">
       {roles.map((role) => {
@@ -37,7 +46,7 @@ export function RoleSelector({ roles, selectedRoles, onRoleToggle }: RoleSelecto
                 ? "bg-[#e84c2b] hover:bg-[#d63916] text-white" 
                 : "hover:bg-gray-100 text-gray-700 border-gray-300"
             }`}
-            onClick={() => onRoleToggle(role.title)}
+            onClick={(e) => handleRoleClick(e, role.title)}
           >
             {role.title}
           </Badge>

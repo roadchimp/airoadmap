@@ -1,5 +1,5 @@
 import { JobScraper } from '../lib/jobScraper';
-import { JobProcessor } from '../lib/jobProcessor';
+import { JobProcessor } from '../lib/processors/jobProcessor';
 import type { Request, Response } from 'express';
 
 // Verify the request is authentic using a secret header

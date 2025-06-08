@@ -46,18 +46,15 @@ interface ReportPageProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
-export default async function ReportPage({ params }: ReportPageProps) {
-  const { id } = await params;
-  
-  // Since we're now using await, we need to pass the reportId to a client component
-  // Let's create a client component that handles all the state and effects
-  return <ReportPageClient reportId={parseInt(id, 10)} />;
+export default function ReportPage({ params }: ReportPageProps) {
+  // Use React.use() to unwrap the params promise in the client component
+  return <ReportPageClient params={params} />;
 }
 
-function ReportPageClient({ reportId }: { reportId: number }) {
+function ReportPageClient({ params }: { params: Promise<{ id: string }> }) {
+  // ALL HOOKS MUST BE AT THE TOP - NO EXCEPTIONS
   const router = useRouter()
-  
-  // All hooks must be called at the top, before any conditional logic
+  const [reportId, setReportId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState("executive-summary")
   
   // State for report data
@@ -99,6 +96,159 @@ function ReportPageClient({ reportId }: { reportId: number }) {
 
   // Pagination state
   const [currentPageCapabilities, setCurrentPageCapabilities] = useState(1)
+  
+  // All useMemo hooks
+  const allUniqueCategories = useMemo(() => {
+    const categoriesSet = new Set<string>()
+    allCapabilities.forEach(cap => { if (cap.category) categoriesSet.add(cap.category) })
+    return Array.from(categoriesSet).sort()
+  }, [allCapabilities])
+  
+  // Extract unique roles from capabilities
+  const roles = useMemo(() => {
+    const roleSet = new Set<string>()
+    allCapabilities.forEach(cap => {
+      if (cap.role) roleSet.add(cap.role)
+    })
+    return Array.from(roleSet).sort()
+  }, [allCapabilities])
+  
+  // Extract unique pain points from capabilities
+  const painPoints = useMemo(() => {
+    const painPointSet = new Set<string>()
+    allCapabilities.forEach(cap => {
+      if (cap.painPoint) painPointSet.add(cap.painPoint)
+    })
+    return Array.from(painPointSet).sort()
+  }, [allCapabilities])
+  
+  // Extract unique goals from capabilities
+  const goals = useMemo(() => {
+    const goalSet = new Set<string>()
+    allCapabilities.forEach(cap => {
+      if (cap.goal) goalSet.add(cap.goal)
+    })
+    return Array.from(goalSet).sort()
+  }, [allCapabilities])
+
+  // Filter tools based on filtered capabilities
+  const filteredTools = useMemo(() => {
+    console.log('Filtering tools. Total tools:', allTools.length);
+    console.log('Sample tools:', allTools.slice(0, 2));
+    
+    // If no tools available, return empty
+    if (!allTools || allTools.length === 0) {
+      console.log('No tools available');
+      return [];
+    }
+    
+    // Check if any filters are currently active
+    const hasActiveFilters = selectedCategories.length > 0 || 
+                            selectedRoles.length > 0 || 
+                            selectedPainPoints.length > 0 || 
+                            selectedGoals.length > 0;
+    
+    console.log('Has active filters:', hasActiveFilters);
+    
+    // If no filters are active, show all tools
+    if (!hasActiveFilters) {
+      console.log('No filters active, showing all tools');
+      return allTools;
+    }
+    
+    // Get the highlighted capabilities from the assessment if no user filters
+    const highlightedCapabilityNames = new Set<string>();
+    if (reportDetails?.aiSuggestions && Array.isArray(reportDetails.aiSuggestions)) {
+      reportDetails.aiSuggestions.forEach(suggestion => {
+        if (suggestion.capabilities && Array.isArray(suggestion.capabilities)) {
+          suggestion.capabilities.forEach((capability: {name: string, description: string}) => {
+            highlightedCapabilityNames.add(capability.name);
+          });
+        }
+      });
+      console.log('Highlighted capabilities from AI suggestions:', Array.from(highlightedCapabilityNames));
+    }
+    
+    // Apply category filter if active
+    let relevantCapabilities = [...allCapabilities];
+    if (selectedCategories.length > 0) {
+      relevantCapabilities = relevantCapabilities.filter(cap => 
+        cap.category && selectedCategories.includes(cap.category)
+      );
+      console.log('After category filter:', relevantCapabilities.length, 'capabilities');
+    }
+    
+    // Apply role filter if active - only exclude if role field has value AND it's not selected
+    if (selectedRoles.length > 0) {
+      relevantCapabilities = relevantCapabilities.filter(cap => 
+        !cap.role || selectedRoles.includes(cap.role)
+      );
+      console.log('After role filter:', relevantCapabilities.length, 'capabilities');
+    }
+    
+    // Apply pain point filter if active - only exclude if painPoint field has value AND it's not selected
+    if (selectedPainPoints.length > 0) {
+      relevantCapabilities = relevantCapabilities.filter(cap => 
+        !cap.painPoint || selectedPainPoints.includes(cap.painPoint)
+      );
+      console.log('After pain point filter:', relevantCapabilities.length, 'capabilities');
+    }
+    
+    // Apply goal filter if active - only exclude if goal field has value AND it's not selected
+    if (selectedGoals.length > 0) {
+      relevantCapabilities = relevantCapabilities.filter(cap => 
+        !cap.goal || selectedGoals.includes(cap.goal)
+      );
+      console.log('After goal filter:', relevantCapabilities.length, 'capabilities');
+    }
+    
+    // If filters resulted in no capabilities but we have highlighted ones, use those
+    if (relevantCapabilities.length === 0 && highlightedCapabilityNames.size > 0) {
+      relevantCapabilities = allCapabilities.filter(cap => 
+        highlightedCapabilityNames.has(cap.name)
+      );
+      console.log('Using highlighted capabilities as fallback:', relevantCapabilities.length);
+    }
+    
+    // If still no relevant capabilities, show all tools
+    if (relevantCapabilities.length === 0) {
+      console.log('No relevant capabilities found, showing all tools as fallback');
+      return allTools;
+    }
+    
+    // Create a Set of capability IDs for fast lookup
+    const capabilityIds = new Set(relevantCapabilities.map(cap => cap.id));
+    console.log('Relevant capability IDs:', Array.from(capabilityIds));
+    
+    // Filter tools that have at least one mapped capability matching our filter
+    const result = allTools.filter(tool => {
+      if (!tool.mappedCapabilities || tool.mappedCapabilities.length === 0) {
+        return false;
+      }
+      
+      const hasMatchingCapability = tool.mappedCapabilities.some(mappedCap => 
+        capabilityIds.has(mappedCap.id)
+      );
+      
+      if (hasMatchingCapability) {
+        console.log(`Tool "${tool.tool_name}" matches with capabilities:`, 
+          tool.mappedCapabilities.filter(cap => capabilityIds.has(cap.id)).map(cap => cap.name)
+        );
+      }
+      
+      return hasMatchingCapability;
+    });
+    
+    console.log('Final filtered tools count:', result.length);
+    return result;
+  }, [allTools, allCapabilities, selectedCategories, selectedRoles, selectedPainPoints, selectedGoals, reportDetails?.aiSuggestions]);
+  
+  // Unwrap params using useEffect instead of React.use() for better compatibility
+  useEffect(() => {
+    params.then(({ id }) => {
+      setReportId(parseInt(id, 10))
+    })
+  }, [params])
   
   // Add print styles on mount
   useEffect(() => {
@@ -188,24 +338,24 @@ function ReportPageClient({ reportId }: { reportId: number }) {
       );
     }
     
-    // Apply role filter
+    // Apply role filter - only filter if role field has value AND roles are selected
     if (selectedRoles.length > 0) {
       filtered = filtered.filter(capability => 
-        capability.role && selectedRoles.includes(capability.role)
+        !capability.role || selectedRoles.includes(capability.role)
       );
     }
     
-    // Apply pain point filter
+    // Apply pain point filter - only filter if painPoint field has value AND pain points are selected
     if (selectedPainPoints.length > 0) {
       filtered = filtered.filter(capability => 
-        capability.painPoint && selectedPainPoints.includes(capability.painPoint)
+        !capability.painPoint || selectedPainPoints.includes(capability.painPoint)
       );
     }
     
-    // Apply goal filter
+    // Apply goal filter - only filter if goal field has value AND goals are selected
     if (selectedGoals.length > 0) {
       filtered = filtered.filter(capability => 
-        capability.goal && selectedGoals.includes(capability.goal)
+        !capability.goal || selectedGoals.includes(capability.goal)
       );
     }
     
@@ -217,19 +367,35 @@ function ReportPageClient({ reportId }: { reportId: number }) {
   useEffect(() => {
     // setMatrixVisible(activeTab === "prioritization-matrix")
   }, [activeTab])
+  
+  // NOW we can do conditional returns - AFTER all hooks are declared
+  // Don't render anything until we have the reportId
+  if (reportId === null) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#e84c2b]"></div>
+        <p className="mt-4 font-medium text-gray-700">Loading report...</p>
+      </div>
+    )
+  }
 
+  // Handler functions
   const handleCategoryChange = (categories: string[]) => {
     setSelectedCategories(categories)
     setCurrentPageCapabilities(1) // Reset to first page on filter change
   }
 
   const handleRoleToggle = (roleTitle: string) => {
-    setSelectedRoles(prev => 
-      prev.includes(roleTitle) 
-        ? prev.filter(role => role !== roleTitle)
-        : [...prev, roleTitle]
-    )
-    setCurrentPageCapabilities(1) // Reset to first page on filter change
+    try {
+      setSelectedRoles(prev => 
+        prev.includes(roleTitle) 
+          ? prev.filter(role => role !== roleTitle)
+          : [...prev, roleTitle]
+      );
+      setCurrentPageCapabilities(1); // Reset to first page on filter change
+    } catch (error) {
+      console.error('Error toggling role:', error);
+    }
   }
 
   const handleCapabilityClick = (capability: FullAICapability) => {
@@ -241,82 +407,6 @@ function ReportPageClient({ reportId }: { reportId: number }) {
     setIsDetailModalOpen(false)
     setSelectedCapability(null)
   }
-
-  const allUniqueCategories = useMemo(() => {
-    const categoriesSet = new Set<string>()
-    allCapabilities.forEach(cap => { if (cap.category) categoriesSet.add(cap.category) })
-    return Array.from(categoriesSet).sort()
-  }, [allCapabilities])
-  
-  // Extract unique roles from capabilities
-  const roles = useMemo(() => {
-    const roleSet = new Set<string>()
-    allCapabilities.forEach(cap => {
-      if (cap.role) roleSet.add(cap.role)
-    })
-    return Array.from(roleSet).sort()
-  }, [allCapabilities])
-  
-  // Extract unique pain points from capabilities
-  const painPoints = useMemo(() => {
-    const painPointSet = new Set<string>()
-    allCapabilities.forEach(cap => {
-      if (cap.painPoint) painPointSet.add(cap.painPoint)
-    })
-    return Array.from(painPointSet).sort()
-  }, [allCapabilities])
-  
-  // Extract unique goals from capabilities
-  const goals = useMemo(() => {
-    const goalSet = new Set<string>()
-    allCapabilities.forEach(cap => {
-      if (cap.goal) goalSet.add(cap.goal)
-    })
-    return Array.from(goalSet).sort()
-  }, [allCapabilities])
-
-  // Filter tools based on filtered capabilities
-  const filteredTools = useMemo(() => {
-    // Check if any filters are currently active
-    const hasActiveFilters = selectedCategories.length > 0 || 
-                            selectedRoles.length > 0 || 
-                            selectedPainPoints.length > 0 || 
-                            selectedGoals.length > 0;
-    
-    // If no capabilities are filtered AND no filters are active, show all tools
-    if (filteredCapabilities.length === 0 && !hasActiveFilters) {
-      return allTools;
-    }
-    
-    // If no capabilities pass filters, show no tools (respect the filters)
-    if (filteredCapabilities.length === 0 && hasActiveFilters) {
-      return [];
-    }
-    
-    // Create a Set of filtered capability IDs for fast lookup
-    const filteredCapabilityIds = new Set(filteredCapabilities.map(cap => cap.id));
-    
-    // Filter tools that have at least one mapped capability in the filtered capabilities
-    const toolsWithMatchingCapabilities = allTools.filter(tool => {
-      if (!tool.mappedCapabilities || tool.mappedCapabilities.length === 0) {
-        return false;
-      }
-      
-      // Check if any of the tool's mapped capabilities are in the filtered capabilities
-      return tool.mappedCapabilities.some(mappedCap => 
-        filteredCapabilityIds.has(mappedCap.id)
-      );
-    });
-    
-    // Only use fallback logic when no filters are active
-    // If filters are active and no tools match, show empty results (respect the filters)
-    if (toolsWithMatchingCapabilities.length === 0 && !hasActiveFilters && allTools.length > 0) {
-      console.log('No tools found with matching capabilities and no filters active. Showing all tools as fallback.');
-      return allTools;
-    }
-    
-    return toolsWithMatchingCapabilities;
-  }, [allTools, filteredCapabilities, selectedCategories, selectedRoles, selectedPainPoints, selectedGoals])
 
   const handleExportPDF = () => window.print()
 
@@ -600,12 +690,12 @@ function ReportPageClient({ reportId }: { reportId: number }) {
                           strokeWidth="12"
                           strokeLinecap="round"
                           strokeDasharray="251.2"
-                          strokeDashoffset={251.2 - (251.2 * ((reportDetails?.aiAdoptionScoreDetails as AIAdoptionScoreProps['aiAdoptionScoreDetails'])?.score || 0) / 100)}
+                          strokeDashoffset={251.2 - (251.2 * ((reportDetails?.aiAdoptionScoreDetails as any)?.overallScore || 0) / 100)}
                           transform="rotate(-90 50 50)"
                         />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold">
-                        {(reportDetails?.aiAdoptionScoreDetails as AIAdoptionScoreProps['aiAdoptionScoreDetails'])?.score || 0}
+                        {Math.round((reportDetails?.aiAdoptionScoreDetails as any)?.overallScore || 0)}
                       </div>
                     </div>
                     <p className="text-sm text-center mt-2 text-muted-foreground">

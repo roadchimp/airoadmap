@@ -7,7 +7,19 @@ import { z } from 'zod';
 const organizationSchema = z.object({
   name: z.string().min(1),
   industry: z.string().min(1),
-  size: z.enum(['Small', 'Medium', 'Large']),
+  size: z.enum([
+    'Small', 'Medium', 'Large', 'Enterprise',
+    'Small (1-50 employees)', 'Medium (51-500 employees)', 
+    'Large (501-5000 employees)', 'Enterprise (5000+ employees)'
+  ]).transform((value) => {
+    // Normalize detailed values to simple values for storage
+    if (value.includes('(1-50 employees)')) return 'Small';
+    if (value.includes('(51-500 employees)')) return 'Medium';
+    if (value.includes('(501-5000 employees)')) return 'Large';
+    if (value.includes('(5000+ employees)')) return 'Enterprise';
+    // Return as-is for simple values
+    return value;
+  }),
   description: z.string().optional(),
   website: z.string().url().optional(),
   metadata: z.record(z.any()).optional()

@@ -56,11 +56,18 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
     strategicFocus: ["Growth Focused", "Product / R&D Focused"]
   }
 }) => {
-  // Check if we're using the default values or have actual data
-  const isUsingDefaultData = !aiAdoptionScoreDetails?.score || 
-                            !roiDetails?.annualRoi || 
-                            !aiAdoptionScoreDetails?.components ||
-                            Object.keys(aiAdoptionScoreDetails?.components || {}).length === 0;
+  // Fix: Check for actual data instead of default values
+  const hasActualData = aiAdoptionScoreDetails && typeof aiAdoptionScoreDetails === 'object' && 
+    ((aiAdoptionScoreDetails as any).overallScore !== undefined || 
+     aiAdoptionScoreDetails.score !== undefined ||
+     (aiAdoptionScoreDetails.components && Object.keys(aiAdoptionScoreDetails.components).length > 0));
+  
+  // Handle both possible data structures from the API
+  const actualScore = (aiAdoptionScoreDetails as any)?.overallScore || aiAdoptionScoreDetails?.score || 0;
+  
+  console.log("AI Adoption Score Details:", aiAdoptionScoreDetails);
+  console.log("Has actual data:", hasActualData);
+  console.log("Actual score:", actualScore);
   
   // Ensure all required objects and properties exist to prevent errors
   const scoreDetails = aiAdoptionScoreDetails || {
@@ -121,7 +128,7 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
   };
 
   // If we're using default data, show a message about no data being available
-  if (isUsingDefaultData) {
+  if (!hasActualData) {
     return (
       <div className="space-y-6">
         <Card>
@@ -211,12 +218,12 @@ export const AIAdoptionScoreTab: React.FC<AIAdoptionScoreProps> = ({
                     strokeWidth="12"
                     strokeLinecap="round"
                     strokeDasharray="251.2"
-                    strokeDashoffset={251.2 - (251.2 * (scoreDetails.score || 0) / 100)}
+                    strokeDashoffset={251.2 - (251.2 * (actualScore) / 100)}
                     transform="rotate(-90 50 50)"
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-5xl font-bold">{scoreDetails.score}</span>
+                  <span className="text-5xl font-bold">{actualScore}</span>
                 </div>
               </div>
               <p className="mt-4 text-sm text-gray-600">Overall AI Adoption Score</p>

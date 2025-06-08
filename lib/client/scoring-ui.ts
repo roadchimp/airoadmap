@@ -1,4 +1,4 @@
-import { type QualitativeRating } from '../shared/scoring';
+import { type QualitativeRating } from '../../shared/scoring';
 
 export const RATING_COLORS: Record<QualitativeRating, string> = {
   Excellent: 'text-green-600 dark:text-green-400',

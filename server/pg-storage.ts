@@ -438,6 +438,26 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async updateCapabilityFilters(id: number, update: { role?: string | null; painPoint?: string | null; goal?: string | null }): Promise<BaseAICapability> {
+    await this.ensureInitialized();
+    
+    const updateValues: any = {};
+    if (update.role !== undefined) updateValues.role = update.role;
+    if (update.painPoint !== undefined) updateValues.painPoint = update.painPoint;
+    if (update.goal !== undefined) updateValues.goal = update.goal;
+    
+    const result = await this.db.update(aiCapabilitiesTable)
+      .set(updateValues)
+      .where(eq(aiCapabilitiesTable.id, id))
+      .returning();
+    
+    if (!result || result.length === 0) {
+      throw new Error(`Capability with ID ${id} not found`);
+    }
+    
+    return result[0];
+  }
+
   /**
    * Find an existing AI capability by name and category or create a new one if it doesn't exist
    */
@@ -1606,6 +1626,32 @@ export class PgStorage implements IStorage {
         jobRoleId: jobRoleId 
       })
       .onConflictDoNothing({ target: [capabilityJobRoles.capabilityId, capabilityJobRoles.jobRoleId] });
+  }
+
+  async mapCapabilityToJobRoleWithImpact(capabilityId: number, jobRoleId: number, impactScore: number): Promise<void> {
+    await this.ensureInitialized();
+    
+    // Insert or update capability-job role mapping
+    await this.db
+      .insert(capabilityJobRoles)
+      .values({ 
+        capabilityId: capabilityId, 
+        jobRoleId: jobRoleId 
+      })
+      .onConflictDoNothing({ target: [capabilityJobRoles.capabilityId, capabilityJobRoles.jobRoleId] });
+      
+    // Insert or update the impact score
+    await this.db
+      .insert(capabilityRoleImpacts)
+      .values({
+        capabilityId: capabilityId,
+        jobRoleId: jobRoleId,
+        impactScore: impactScore.toString() // Convert to string for numeric field
+      })
+      .onConflictDoUpdate({
+        target: [capabilityRoleImpacts.capabilityId, capabilityRoleImpacts.jobRoleId],
+        set: { impactScore: impactScore.toString() }
+      });
   }
 
   async unmapCapabilityFromJobRole(capabilityId: number, jobRoleId: number): Promise<void> {

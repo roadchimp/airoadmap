@@ -1,5 +1,5 @@
 import { JobDescription, ProcessedJobContent } from '@shared/schema';
-import { storage } from '../storage';
+import { storage } from '../../storage';
 import OpenAI from 'openai';
 
 // Initialize OpenAI client

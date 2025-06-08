@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { storage } from "@/server/storage";
-import { calculateAiAdoptionScore } from "@/server/lib/aiAdoptionScoreEngine";
+import { calculateAiAdoptionScore } from "@/server/lib/engines/aiAdoptionScoreEngine";
 import { AiAdoptionScoreInputComponents } from "@shared/schema";
 
 // GET handler retrieves the AI Adoption Score for an assessment

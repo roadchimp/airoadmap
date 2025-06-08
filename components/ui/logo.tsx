@@ -1,5 +1,5 @@
 'use client';
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/session/utils";
 import { Mountains } from "@phosphor-icons/react";
 
 

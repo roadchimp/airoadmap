@@ -1,4 +1,4 @@
-import { apiRequest } from "./queryClient";
+import { apiRequest } from "./client/queryClient";
 import { Department } from "@shared/schema";
 
 export async function getDepartments(): Promise<Department[]> {

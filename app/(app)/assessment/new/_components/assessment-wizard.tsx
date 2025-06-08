@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from 'next/navigation'; 
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient"; 
-import { queryClient } from "@/lib/queryClient"; 
+import { apiRequest } from "@/lib/client/queryClient"; 
+import { queryClient } from "@/lib/client/queryClient"; 
 import { useToast } from "@/hooks/use-toast"; 
 import WizardLayout from "@/components/wizard/WizardLayout"; 
 import QuestionCard, { QuestionOption } from "@/components/wizard/QuestionCard"; 
@@ -939,14 +939,16 @@ export default function AssessmentWizard({ initialAssessmentData }: AssessmentWi
     }
     // Clear validation errors on valid submission
     setValidationError(null);
-    // On submit, send the full wizard data to the backend
+    
+    // IMMEDIATE FIX: Set generating state immediately when user clicks submit
     setIsGeneratingReport(true);
+    
+    toast({
+      title: "Processing",
+      description: "Preparing to submit assessment..."
+    });
+    
     try {
-      toast({
-        title: "Processing",
-        description: "Preparing to submit assessment..."
-      });
-      
       // IMPORTANT: Merge all step data from both form and assessment state to ensure we have everything
       const formData = form.getValues();
       const combinedStepData = {

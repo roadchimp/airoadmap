@@ -1,0 +1,31 @@
+id,assessment_id,ai_capability_id,value_score,feasibility_score,impact_score,ease_score,priority,rank,implementation_effort,business_value,assessment_notes,created_at,updated_at
+1,60,1,85,75,80,,High,1,,,,2025-05-21 16:15:20.921144,2025-05-21 16:15:20.921144
+2,60,2,70,90,75,,Medium,2,,,,2025-05-21 16:15:20.921144,2025-05-21 16:15:20.921144
+3,60,3,95,65,85,,High,3,,,,2025-05-21 16:15:20.921144,2025-05-21 16:15:20.921144
+4,60,4,60,95,70,,Medium,4,,,,2025-05-21 16:15:20.921144,2025-05-21 16:15:20.921144
+5,60,5,80,80,80,,High,5,,,,2025-05-21 16:15:20.921144,2025-05-21 16:15:20.921144
+6,61,179,70,65,60,60,Medium,1,Medium,High,"Significant potential to reduce manual workload for Sales (e.g., Regional Sales Manager) in Sales. (Fallback Data)",2025-05-22 22:17:43.330819,2025-05-22 22:17:43.330819
+7,61,180,80,55,75,50,High,2,High,Very High,"Could enhance strategic decision-making for Sales (e.g., Regional Sales Manager) by leveraging data analytics. (Fallback Data)",2025-05-22 22:17:43.33743,2025-05-22 22:17:43.33743
+8,61,181,70,65,60,60,Medium,1,Medium,High,Significant potential to reduce manual workload for Marketing in Marketing. (Fallback Data),2025-05-22 22:17:43.342572,2025-05-22 22:17:43.342572
+9,61,182,80,55,75,50,High,2,High,Very High,Could enhance strategic decision-making for Marketing by leveraging data analytics. (Fallback Data),2025-05-22 22:17:43.346659,2025-05-22 22:17:43.346659
+10,62,183,70,65,60,60,Medium,1,Medium,High,Significant potential to reduce manual workload for Sales Engineer / Solutions Engineer (SE) in Sales. (Fallback Data),2025-05-22 22:24:39.468358,2025-05-22 22:24:39.468358
+12,62,179,70,65,60,60,Medium,1,Medium,High,"Significant potential to reduce manual workload for Sales (e.g., Regional Sales Manager) in Sales. (Fallback Data)",2025-05-22 22:24:39.477344,2025-05-22 22:24:39.477344
+11,62,180,80,55,75,50,High,2,High,Very High,"Could enhance strategic decision-making for Sales (e.g., Regional Sales Manager) by leveraging data analytics. (Fallback Data)",2025-05-22 22:24:39.473637,2025-05-23 03:24:39.48
+13,62,184,70,65,60,60,Medium,1,Medium,High,Significant potential to reduce manual workload for Systems / IT / Infrastructure in IT. (Fallback Data),2025-05-22 22:24:39.486855,2025-05-22 22:24:39.486855
+14,62,185,80,55,75,50,High,2,High,Very High,Could enhance strategic decision-making for Systems / IT / Infrastructure by leveraging data analytics. (Fallback Data),2025-05-22 22:24:39.490788,2025-05-22 22:24:39.490788
+15,63,183,70,65,60,60,Medium,1,Medium,High,Significant potential to reduce manual workload for Sales Engineer / Solutions Engineer (SE) in Sales. (Fallback Data),2025-05-23 07:13:30.53739,2025-05-23 07:13:30.53739
+17,63,179,70,65,60,60,Medium,1,Medium,High,"Significant potential to reduce manual workload for Sales (e.g., Regional Sales Manager) in Sales. (Fallback Data)",2025-05-23 07:13:30.553821,2025-05-23 07:13:30.553821
+16,63,180,80,55,75,50,High,2,High,Very High,"Could enhance strategic decision-making for Sales (e.g., Regional Sales Manager) by leveraging data analytics. (Fallback Data)",2025-05-23 07:13:30.548044,2025-05-23 12:13:30.556
+18,63,184,70,65,60,60,Medium,1,Medium,High,Significant potential to reduce manual workload for Systems / IT / Infrastructure in IT. (Fallback Data),2025-05-23 07:13:30.563521,2025-05-23 07:13:30.563521
+19,63,185,80,55,75,50,High,2,High,Very High,Could enhance strategic decision-making for Systems / IT / Infrastructure by leveraging data analytics. (Fallback Data),2025-05-23 07:13:30.566731,2025-05-23 07:13:30.566731
+20,64,179,70,65,60,60,Medium,1,Medium,High,"Significant potential to reduce manual workload for Sales (e.g., Regional Sales Manager) in Sales. (Fallback Data)",2025-05-23 07:16:05.076425,2025-05-23 07:16:05.076425
+21,64,180,80,55,75,50,High,2,High,Very High,"Could enhance strategic decision-making for Sales (e.g., Regional Sales Manager) by leveraging data analytics. (Fallback Data)",2025-05-23 07:16:05.084114,2025-05-23 07:16:05.084114
+22,64,181,70,65,60,60,Medium,1,Medium,High,Significant potential to reduce manual workload for Marketing in Marketing. (Fallback Data),2025-05-23 07:16:05.087276,2025-05-23 07:16:05.087276
+23,64,182,80,55,75,50,High,2,High,Very High,Could enhance strategic decision-making for Marketing by leveraging data analytics. (Fallback Data),2025-05-23 07:16:05.091535,2025-05-23 07:16:05.091535
+24,69,212,90,80,85,60,High,1,Medium,High,"Significantly reduces response times and offloads routine inquiries from human CS agents, improving overall customer satisfaction.",2025-05-27 04:59:47.326777,2025-05-27 04:59:47.326777
+25,69,213,90,80,85,70,High,1,Medium,High,"Enables precise targeting in marketing campaigns, improving conversion rates and customer engagement.",2025-05-27 04:59:47.347856,2025-05-27 04:59:47.347856
+26,69,214,88,65,90,60,High,2,Medium,High,"Directly addresses the need for engaging and relevant marketing content, significantly impacting customer satisfaction and retention.",2025-05-27 04:59:47.356544,2025-05-27 04:59:47.356544
+27,69,215,82,85,70,80,Medium,3,Low,Medium,Provides actionable insights for refining marketing strategies and understanding customer preferences.,2025-05-27 04:59:47.361099,2025-05-27 04:59:47.361099
+28,69,216,95,75,88,65,High,4,Medium,Very High,Enhances efficiency and effectiveness of marketing and sales teams by focusing efforts on high-potential leads.,2025-05-27 04:59:47.367667,2025-05-27 04:59:47.367667
+29,72,217,90,80,85,70,High,1,Medium,High,"Automating data entry can significantly reduce manual errors and free up staff time for more strategic tasks, directly addressing operational efficiency.",2025-05-30 20:37:46.83205,2025-05-30 20:37:46.83205
+30,72,214,90,80,85,60,High,1,Medium,High,"Enables highly targeted marketing campaigns by personalizing content for different segments, directly addressing the need to improve engagement and conversion rates.",2025-05-30 20:37:46.837789,2025-05-30 20:37:46.837789

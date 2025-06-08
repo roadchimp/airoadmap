@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query"; // Import mutation hook
-import { apiRequest } from "@/lib/queryClient"; // Corrected import path
-import { queryClient } from "@/lib/queryClient"; // Import queryClient
+import { apiRequest } from "@/lib/client/queryClient"; // Corrected import path
+import { queryClient } from "@/lib/client/queryClient"; // Import queryClient
 import { useToast } from "@/hooks/use-toast"; // Use our custom hook
 import {
   ColumnDef,

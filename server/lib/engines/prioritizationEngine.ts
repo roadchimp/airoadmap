@@ -1,5 +1,5 @@
 import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department, InsertAICapability, InsertAssessmentAICapability } from "@shared/schema";
-import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "./aiService";
+import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "../../../server/lib/services/aiService";
 import { storage } from '@/server/storage';
 
 /**
@@ -34,6 +34,14 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
   const selectedRoleIds = stepData.roles?.selectedRoles || [];
   const roleRankings = stepData.roles?.prioritizedRoles || selectedRoleIds;
   const painPoints = stepData.painPoints?.roleSpecificPainPoints || {};
+  
+  // Extract role IDs from selected roles for capability mapping
+  const assessmentRoleIds: number[] = (stepData.roles?.selectedRoles || [])
+    .map(role => role.id)
+    .filter((id): id is number => id !== undefined);
+  
+  console.log(`Assessment has ${assessmentRoleIds.length} selected roles for capability mapping:`, 
+    stepData.roles?.selectedRoles?.map(r => `${r.title} (ID: ${r.id})`));
   
   // Calculate data quality score based on available data sources
   // Default to medium (3) if not specified
@@ -239,6 +247,23 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
               tags: rec.tags || []
             }
           );
+          
+          // Step 1.5: Map this capability to all selected roles from the assessment
+          // This creates the missing relationship data that enables role-based filtering
+          for (const roleId of assessmentRoleIds) {
+            try {
+              // Get the impact score from the recommendation, default to a reasonable value
+              const impactScore = typeof rec.impactScore === 'number' ? rec.impactScore : 
+                                (typeof rec.impactScore === 'string' ? parseFloat(rec.impactScore) || 50 : 50); // Default to medium impact (50/100)
+              
+              // Use the enhanced mapping method that stores both the relationship and impact score
+              await storage.mapCapabilityToJobRoleWithImpact(globalCapability.id, roleId, impactScore);
+              console.log(`Mapped capability "${globalCapability.name}" (ID: ${globalCapability.id}) to role ID ${roleId} with impact score ${impactScore}`);
+            } catch (mappingError) {
+              console.warn(`Failed to map capability ${globalCapability.id} to role ${roleId}:`, mappingError);
+              // Continue with other mappings even if one fails
+            }
+          }
           
           // Step 2: Create the assessment-specific capability link
           const assessmentCapability: InsertAssessmentAICapability = {

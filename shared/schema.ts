@@ -44,7 +44,7 @@ export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   industry: text("industry").notNull(),
-  size: text("size").notNull(), // Small, Medium, Large, Enterprise
+  size: text("size").notNull(), // Small, Medium, Large, Enterprise (API accepts both simple and detailed formats)
   description: text("description"),
   created_at: timestamp('created_at').defaultNow().notNull(),
 });

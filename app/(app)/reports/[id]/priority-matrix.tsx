@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { FullAICapability } from '@/server/storage'; // Adjust path as needed if server/storage.ts is not aliased to @/server
 import { CapabilityDetailModal } from './CapabilityDetailModal'; // Import the actual modal
-import { calculateBubbleSize, getValueBasedColor } from '@/lib/color-utils';
+import { calculateBubbleSize, getValueBasedColor } from '@/lib/client/color-utils';
 // import { CapabilityDetailModal } from './CapabilityDetailModal'; // Will be created later
 
 // --- Utility Functions (potentially move to lib/report-utils.ts or lib/color-utils.ts) ---
@@ -133,18 +133,75 @@ interface PriorityMatrixProps {
 }
 
 export function PriorityMatrix({ capabilities }: PriorityMatrixProps) {
+  // ALL HOOKS MUST BE AT THE TOP - NO EXCEPTIONS
   const [selectedCapability, setSelectedCapability] = useState<FullAICapability | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // State for filters
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedPainPoints, setSelectedPainPoints] = useState<string[]>([]);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
+  // All useMemo hooks MUST be here, before any conditional returns
+  const roles = useMemo(() => {
+    if (!capabilities || capabilities.length === 0) return [];
+    const roleSet = new Set<string>();
+    capabilities.forEach(cap => {
+      if (cap.role) roleSet.add(cap.role);
+    });
+    return Array.from(roleSet).sort();
+  }, [capabilities]);
+  
+  const painPoints = useMemo(() => {
+    if (!capabilities || capabilities.length === 0) return [];
+    const painPointSet = new Set<string>();
+    capabilities.forEach(cap => {
+      if (cap.painPoint) painPointSet.add(cap.painPoint);
+    });
+    return Array.from(painPointSet).sort();
+  }, [capabilities]);
+  
+  const goals = useMemo(() => {
+    if (!capabilities || capabilities.length === 0) return [];
+    const goalSet = new Set<string>();
+    capabilities.forEach(cap => {
+      if (cap.goal) goalSet.add(cap.goal);
+    });
+    return Array.from(goalSet).sort();
+  }, [capabilities]);
+  
+  const filteredCapabilities = useMemo(() => {
+    if (!capabilities || capabilities.length === 0) return [];
+    return capabilities.filter(cap => {
+      // Apply role filter - only exclude if role field has value AND it's not in selected roles
+      if (selectedRoles.length > 0 && cap.role && !selectedRoles.includes(cap.role)) {
+        return false;
+      }
+      // Apply pain point filter - only exclude if painPoint field has value AND it's not in selected pain points
+      if (selectedPainPoints.length > 0 && cap.painPoint && !selectedPainPoints.includes(cap.painPoint)) {
+        return false;
+      }
+      // Apply goal filter - only exclude if goal field has value AND it's not in selected goals
+      if (selectedGoals.length > 0 && cap.goal && !selectedGoals.includes(cap.goal)) {
+        return false;
+      }
+      return true;
+    });
+  }, [capabilities, selectedRoles, selectedPainPoints, selectedGoals]);
+  
+  const plottableCapabilities = useMemo(() => {
+    if (!filteredCapabilities || filteredCapabilities.length === 0) return [];
+    return filteredCapabilities.filter(cap => {
+      const valueScore = Number(cap.valueScore ?? cap.default_value_score ?? 50);
+      const feasibilityScore = Number(cap.feasibilityScore ?? cap.default_feasibility_score ?? 50);
+      const hasValidValueScore = !isNaN(valueScore) && valueScore >= 0 && valueScore <= 100;
+      const hasValidFeasibilityScore = !isNaN(feasibilityScore) && feasibilityScore >= 0 && feasibilityScore <= 100;
+      return hasValidValueScore && hasValidFeasibilityScore;
+    });
+  }, [filteredCapabilities]);
+
+  // Handler functions
   const handleCapabilityClick = (capability: FullAICapability) => {
     setSelectedCapability(capability);
     setIsModalOpen(true);
-    // console.log("Selected capability:", capability); // For debugging
   };
 
   const closeModal = () => {
@@ -152,10 +209,15 @@ export function PriorityMatrix({ capabilities }: PriorityMatrixProps) {
     setSelectedCapability(null);
   };
 
+  // NOW we can do conditional returns - AFTER all hooks
   if (!capabilities || capabilities.length === 0) {
     return <div className="p-4 text-center text-gray-500">No capabilities data available for the matrix.</div>;
   }
-  
+
+  if (plottableCapabilities.length === 0) {
+    return <div className="p-4 text-center text-gray-500">No capabilities have the required scores for plotting.</div>;
+  }
+
   // Debug: Log sample data for capabilities
   console.log('Sample capability data:', capabilities.slice(0, 3).map(c => ({
     name: c.name,
@@ -169,95 +231,6 @@ export function PriorityMatrix({ capabilities }: PriorityMatrixProps) {
     hasFeasibilityScore: c.feasibilityScore !== null && c.feasibilityScore !== undefined || 
                         c.default_feasibility_score !== null && c.default_feasibility_score !== undefined
   })));
-  
-  // Extract unique roles, pain points, and goals
-  const roles = useMemo(() => {
-    const roleSet = new Set<string>();
-    capabilities.forEach(cap => {
-      if (cap.role) roleSet.add(cap.role);
-    });
-    return Array.from(roleSet).sort();
-  }, [capabilities]);
-  
-  const painPoints = useMemo(() => {
-    const painPointSet = new Set<string>();
-    capabilities.forEach(cap => {
-      if (cap.painPoint) painPointSet.add(cap.painPoint);
-    });
-    return Array.from(painPointSet).sort();
-  }, [capabilities]);
-  
-  const goals = useMemo(() => {
-    const goalSet = new Set<string>();
-    capabilities.forEach(cap => {
-      if (cap.goal) goalSet.add(cap.goal);
-    });
-    return Array.from(goalSet).sort();
-  }, [capabilities]);
-  
-  // Filter capabilities based on selected filters
-  const filteredCapabilities = useMemo(() => {
-    return capabilities.filter(cap => {
-      // Apply role filter
-      if (selectedRoles.length > 0 && (!cap.role || !selectedRoles.includes(cap.role))) {
-        return false;
-      }
-      
-      // Apply pain point filter
-      if (selectedPainPoints.length > 0 && (!cap.painPoint || !selectedPainPoints.includes(cap.painPoint))) {
-        return false;
-      }
-      
-      // Apply goal filter
-      if (selectedGoals.length > 0 && (!cap.goal || !selectedGoals.includes(cap.goal))) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [capabilities, selectedRoles, selectedPainPoints, selectedGoals]);
-  
-  // Filter out capabilities that don't have scores needed for plotting
-  const plottableCapabilities = filteredCapabilities.filter(
-    cap => {
-      // Get the actual values we'll use for plotting, with fallbacks
-      const valueScore = Number(cap.valueScore ?? cap.default_value_score ?? 50);
-      const feasibilityScore = Number(cap.feasibilityScore ?? cap.default_feasibility_score ?? 50);
-      
-      // Check if we have valid numeric values
-      const hasValidValueScore = !isNaN(valueScore) && valueScore >= 0 && valueScore <= 100;
-      const hasValidFeasibilityScore = !isNaN(feasibilityScore) && feasibilityScore >= 0 && feasibilityScore <= 100;
-      
-      const result = hasValidValueScore && hasValidFeasibilityScore;
-      
-      // Enhanced debugging
-      console.log(`Capability "${cap.name}":`, {
-        originalValueScore: cap.valueScore,
-        originalFeasibilityScore: cap.feasibilityScore,
-        defaultValueScore: cap.default_value_score,
-        defaultFeasibilityScore: cap.default_feasibility_score,
-        finalValueScore: valueScore,
-        finalFeasibilityScore: feasibilityScore,
-        hasValidValueScore,
-        hasValidFeasibilityScore,
-        willInclude: result
-      });
-      
-      if (!result) {
-        console.log(`⚠️ Filtering out capability "${cap.name}" - invalid scores after fallbacks`);
-      } else {
-        console.log(`✅ Including capability "${cap.name}" for plotting`);
-      }
-      
-      return result;
-    }
-  );
-  
-  console.log(`Found ${plottableCapabilities.length} capabilities with valid scores out of ${capabilities.length} total`);
-
-  if (plottableCapabilities.length === 0) {
-    return <div className="p-4 text-center text-gray-500">No capabilities have the required scores for plotting.</div>;
-  }
 
   return (
     <div className="w-full">
@@ -346,6 +319,45 @@ export function PriorityMatrix({ capabilities }: PriorityMatrixProps) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Legend */}
+      <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4 flex flex-col md:flex-row justify-between">
+        <div className="mb-4 md:mb-0">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Value Level (Color)</h4>
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-green-600 mr-2"></div>
+              <span className="text-sm">High Value (75-100)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-yellow-500 mr-2"></div>
+              <span className="text-sm">Medium Value (40-74)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
+              <span className="text-sm">Low Value (0-39)</span>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Impact Level (Size)</h4>
+          <div className="flex flex-col space-y-2">
+            <div className="flex items-center">
+              <div className="w-6 h-6 rounded-full border-2 border-gray-400 mr-2"></div>
+              <span className="text-sm">High Impact (75-100)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-5 h-5 rounded-full border-2 border-gray-400 mr-2"></div>
+              <span className="text-sm">Medium Impact (40-74)</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded-full border-2 border-gray-400 mr-2"></div>
+              <span className="text-sm">Low Impact (0-39)</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="relative h-[500px] md:h-[600px] w-full bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-4 md:p-6">

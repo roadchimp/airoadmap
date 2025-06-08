@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Download, Printer, Share2, FileSpreadsheet, FileText, Pencil, Check, X, Settings2Icon as SettingsIconLucide, Edit3Icon, Mail } from "lucide-react"
+import { Download, Printer, Share2, FileSpreadsheet, FileText, Pencil, Check, X, Settings2Icon as SettingsIconLucide, Edit3Icon, Mail, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -578,6 +578,32 @@ function ReportPageClient({ params }: { params: Promise<{ id: string }> }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Regenerate Report Button (Temporary) */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={async () => {
+                  try {
+                    const response = await fetch(`/api/reports/assessment/${reportDetails.assessment?.id}`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    });
+                    if (response.ok) {
+                      window.location.reload();
+                    } else {
+                      console.error('Failed to regenerate report');
+                    }
+                  } catch (error) {
+                    console.error('Error regenerating report:', error);
+                  }
+                }}
+                className="text-gray-700 hover:bg-gray-100"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" /> Regenerate Report
+              </Button>
 
               {/* Share Button */}
               <Button 

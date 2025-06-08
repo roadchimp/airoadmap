@@ -46,11 +46,33 @@ async function submitAssessment(request: Request, context: any) {
     const readinessStep = getStepData('readiness') as any;
     const roiStep = getStepData('roiTargets') as any;
 
+    // Get or create organization
+    let organizationId = userProfile.organization_id;
+    if (!organizationId) {
+      // Create a default organization for the user
+      const organization = await storage.createOrganization({
+        name: organizationStep.basics?.name || 'Unknown Organization',
+        industry: organizationStep.basics?.industry || 'Unknown',
+        size: organizationStep.basics?.size || 'Unknown',
+        description: `Organization for ${user.email}`,
+      });
+      organizationId = organization.id;
+      
+      // Note: For now, we'll use the organization but not update the user profile
+      // This can be implemented later if needed
+    }
+
     // Transform session data to assessment format
     const assessmentData = {
       userId: userProfile.id,
+      organizationId: organizationId,
       title: organizationStep.basics?.reportName || 'AI Transformation Assessment',
       status: 'completed' as const,
+      // Add required fields from step data
+      industry: organizationStep.basics?.industry || 'Unknown',
+      industryMaturity: organizationStep.basics?.industryMaturity || 'Immature',
+      companyStage: organizationStep.basics?.companyStage || 'Startup',
+      strategicFocus: organizationStep.basics?.strategicFocus || [],
       stepData: {
         basics: {
           companyName: organizationStep.basics?.name || '',

@@ -80,10 +80,14 @@ async function createReportForAssessment(
     let aiAdoptionScoreDetails = undefined;
     let roiDetails = undefined;
     
-    if (assessment.aiAdoptionScoreInputs) {
+    // Check for AI adoption score inputs in stepData or root level
+    const aiAdoptionInputs = assessment.aiAdoptionScoreInputs || stepData.aiAdoptionScoreInputs;
+    
+    if (aiAdoptionInputs) {
       try {
+        console.log('Found AI adoption inputs:', JSON.stringify(aiAdoptionInputs, null, 2));
         const aiAdoptionScore = await calculateAiAdoptionScore(
-          assessment.aiAdoptionScoreInputs,
+          aiAdoptionInputs,
           assessment.industry || 'Other',
           assessment.companyStage || 'Startup',
           assessment.industryMaturity || 'Immature',
@@ -92,7 +96,7 @@ async function createReportForAssessment(
         
         aiAdoptionScoreDetails = aiAdoptionScore;
         roiDetails = {
-          inputs: assessment.aiAdoptionScoreInputs,
+          inputs: aiAdoptionInputs,
           calculatedScore: aiAdoptionScore.overallScore,
           breakdown: aiAdoptionScore
         };

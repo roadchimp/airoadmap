@@ -19,7 +19,14 @@ export const AssessmentWizard: React.FC<AssessmentWizardProps> = ({
 
   // Scroll to top when step changes
   useEffect(() => {
+    // Scroll to the top of the page smoothly
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Also scroll any overflow containers to top
+    const containers = document.querySelectorAll('[data-scroll-container]');
+    containers.forEach(container => {
+      container.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   }, [currentStepIndex]);
 
   // Load initial assessment data into session when editing

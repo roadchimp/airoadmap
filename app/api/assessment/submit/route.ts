@@ -132,12 +132,18 @@ async function submitAssessment(request: Request, context: any) {
     try {
       console.log('Triggering AI report generation...');
       const baseUrl = getBaseUrl();
+      const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+
+      if (!bypassSecret) {
+        console.error('CRITICAL: VERCEL_AUTOMATION_BYPASS_SECRET is not set in environment variables. Report generation will likely fail.');
+      }
+
       const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-          'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '',
+          'x-vercel-protection-bypass': bypassSecret || '',
         },
         body: JSON.stringify({ assessmentId: assessment.id }),
       });

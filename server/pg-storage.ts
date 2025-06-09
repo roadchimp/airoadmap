@@ -316,7 +316,18 @@ export class PgStorage implements IStorage {
     }
     // Now that the view is guaranteed to exist and be fresh, query it.
     const result = await this.db.execute(sql`SELECT * FROM mv_department_role_summary;`);
-    return result.rows;
+    
+    const rows = result.rows || result; // neon http returns array directly, node-pg returns object with rows
+
+    // The 'roles' column can be returned as a JSON string, so we need to parse it.
+    if (Array.isArray(rows)) {
+        return rows.map((row: any) => ({
+            ...row,
+            roles: typeof row.roles === 'string' ? JSON.parse(row.roles) : row.roles,
+        }));
+    }
+
+    return []; // Return empty array if no data
   }
 
   // AICapability methods

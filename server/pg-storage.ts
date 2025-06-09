@@ -265,8 +265,56 @@ export class PgStorage implements IStorage {
 
   async getDepartmentRoleSummary(): Promise<DepartmentRoleSummary[]> {
     await this.ensureInitialized();
-    // It's often better to refresh the view before querying it
-    await this.db.execute(sql`REFRESH MATERIALIZED VIEW mv_department_role_summary;`);
+    try {
+      // First, try to refresh the view. This is the fast path if the view exists.
+      await this.db.execute(sql`REFRESH MATERIALIZED VIEW mv_department_role_summary;`);
+    } catch (error: any) {
+      // If the refresh fails because the view doesn't exist (code 42P01), create it.
+      if (error.code === '42P01') {
+        console.log("Materialized view 'mv_department_role_summary' not found. Creating it now.");
+        await this.db.execute(sql`
+          CREATE MATERIALIZED VIEW mv_department_role_summary AS
+          SELECT
+              d.id AS department_id,
+              d.name AS department_name,
+              d.description AS department_description,
+              COALESCE(
+                  json_agg(
+                      json_build_object(
+                          'id', jr.id,
+                          'title', jr.title,
+                          'departmentId', jr.department_id,
+                          'level', jr.level,
+                          'skills', jr.skills,
+                          'description', jr.description,
+                          'keyResponsibilities', jr.key_responsibilities,
+                          'aiPotential', jr.ai_potential,
+                          'is_active', jr.is_active,
+                          'created_at', jr.created_at,
+                          'updated_at', jr.updated_at
+                      )
+                  ) FILTER (WHERE jr.id IS NOT NULL),
+                  '[]'::json
+              ) AS roles
+          FROM
+              departments d
+          LEFT JOIN
+              job_roles jr ON d.id = jr.department_id
+          GROUP BY
+              d.id, d.name, d.description
+          ORDER BY
+              d.name;
+        `);
+        // Also create the index for future refreshes
+        await this.db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_department_role_summary_department_id ON mv_department_role_summary (department_id);`);
+        console.log("Successfully created materialized view and index.");
+      } else {
+        // For any other error, re-throw it.
+        console.error("Error refreshing materialized view:", error);
+        throw error;
+      }
+    }
+    // Now that the view is guaranteed to exist and be fresh, query it.
     const result = await this.db.execute(sql`SELECT * FROM mv_department_role_summary;`);
     return result.rows;
   }

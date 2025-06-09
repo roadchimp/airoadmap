@@ -136,7 +136,8 @@ async function submitAssessment(request: Request, context: any) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': request.headers.get('Authorization') || '',
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '',
         },
         body: JSON.stringify({ assessmentId: assessment.id }),
       });

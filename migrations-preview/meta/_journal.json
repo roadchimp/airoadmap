@@ -8,6 +8,13 @@
       "when": 1748324988775,
       "tag": "0000_yielding_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1749397052468,
+      "tag": "0001_lively_black_queen",
+      "breakpoints": true
     }
   ]
 }

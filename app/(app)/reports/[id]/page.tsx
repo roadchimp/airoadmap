@@ -584,20 +584,54 @@ function ReportPageClient({ params }: { params: Promise<{ id: string }> }) {
                 variant="outline" 
                 size="sm" 
                 onClick={async () => {
+                  if (!reportDetails.assessment?.id) {
+                    toast({
+                      title: "Error",
+                      description: "Assessment ID not found. Cannot regenerate report.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
                   try {
-                    const response = await fetch(`/api/reports/assessment/${reportDetails.assessment?.id}`, {
+                    toast({
+                      title: "Regenerating Report",
+                      description: "Please wait while we recalculate the AI Adoption Score...",
+                    });
+
+                    const response = await fetch(`/api/reports/assessment/${reportDetails.assessment.id}`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
                       },
                     });
+                    
                     if (response.ok) {
-                      window.location.reload();
+                      const result = await response.json();
+                      console.log('Report regenerated successfully:', result);
+                      toast({
+                        title: "Success!",
+                        description: "Report regenerated with updated AI Adoption Score.",
+                      });
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 1000);
                     } else {
-                      console.error('Failed to regenerate report');
+                      const errorText = await response.text();
+                      console.error('Failed to regenerate report:', response.status, errorText);
+                      toast({
+                        title: "Error",
+                        description: `Failed to regenerate report: ${response.status} ${response.statusText}`,
+                        variant: "destructive",
+                      });
                     }
                   } catch (error) {
                     console.error('Error regenerating report:', error);
+                    toast({
+                      title: "Network Error",
+                      description: `Could not connect to server. Please check if you're on the correct port (dev server might be on :3001).`,
+                      variant: "destructive",
+                    });
                   }
                 }}
                 className="text-gray-700 hover:bg-gray-100"

@@ -272,6 +272,10 @@ export class PgStorage implements IStorage {
       // If the refresh fails because the view doesn't exist (code 42P01), create it.
       if (error.code === '42P01') {
         console.log("Materialized view 'mv_department_role_summary' not found. Creating it now.");
+        
+        // Drop the view if it exists in a broken state
+        await this.db.execute(sql`DROP MATERIALIZED VIEW IF EXISTS mv_department_role_summary;`);
+
         await this.db.execute(sql`
           CREATE MATERIALIZED VIEW mv_department_role_summary AS
           SELECT
@@ -284,14 +288,15 @@ export class PgStorage implements IStorage {
                           'id', jr.id,
                           'title', jr.title,
                           'departmentId', jr.department_id,
-                          'level', jr.level,
-                          'skills', jr.skills,
                           'description', jr.description,
-                          'keyResponsibilities', jr.key_responsibilities,
-                          'aiPotential', jr.ai_potential,
                           'is_active', jr.is_active,
                           'created_at', jr.created_at,
-                          'updated_at', jr.updated_at
+                          'updated_at', jr.updated_at,
+                          'keyResponsibilities', to_jsonb(jr.key_responsibilities),
+                          'skills', to_jsonb(jr.skills)
+                          -- Conditionally add columns if they exist.
+                          -- 'level', (SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='job_roles' AND column_name='level') THEN jr.level ELSE NULL END),
+                          -- 'aiPotential', (SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='job_roles' AND column_name='ai_potential') THEN jr.ai_potential ELSE NULL END)
                       )
                   ) FILTER (WHERE jr.id IS NOT NULL),
                   '[]'::json

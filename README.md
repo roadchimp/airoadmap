@@ -333,4 +333,4 @@ For weekly maintenance and updates:
 6. Submit to OpenAI and download results
 7. Run `process-tools` with the response file
 
-The system automatically tracks processed items to ensure incremental processing, only handling new entries unless forced to reprocess all. 
+The system automatically tracks processed items to ensure incremental processing, only handling new entries unless forced to reprocess all..

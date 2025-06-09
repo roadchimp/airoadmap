@@ -4,6 +4,7 @@ import { storage } from '@/server/storage';
 import { insertAssessmentSchema } from '@shared/schema';
 import { withAuthAndSecurity } from '../../middleware/AuthMiddleware';
 import { z } from 'zod';
+import { getBaseUrl } from '@/lib/utils/getBaseUrl';
 
 async function submitAssessment(request: Request, context: any) {
   try {
@@ -130,7 +131,8 @@ async function submitAssessment(request: Request, context: any) {
     let reportId = null;
     try {
       console.log('Triggering AI report generation...');
-      const reportResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/prioritize`, {
+      const baseUrl = getBaseUrl();
+      const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

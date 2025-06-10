@@ -132,17 +132,11 @@ async function submitAssessment(request: Request, context: any) {
     try {
       console.log('Triggering AI report generation...');
       const baseUrl = getBaseUrl();
-      const automationToken = process.env.VERCEL_AUTOMATION_TOKEN;
-
-      if (!automationToken) {
-        console.error('CRITICAL: VERCEL_AUTOMATION_TOKEN is not set in environment variables. Report generation will likely fail.');
-      }
-
+      
       const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${automationToken}`,
         },
         body: JSON.stringify({ assessmentId: assessment.id }),
       });

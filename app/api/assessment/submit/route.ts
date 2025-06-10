@@ -138,24 +138,33 @@ async function submitAssessment(request: Request, context: any) {
         console.error('CRITICAL: VERCEL_AUTOMATION_TOKEN is not set. Report generation will fail.');
       }
       
-      const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
+      // --- TEMPORARY DEBUGGING ---
+      // We are calling a simple health-check endpoint to isolate the auth issue.
+      console.log('Attempting to call /api/health-check...');
+      const reportResponse = await fetch(`${baseUrl}/api/health-check`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${automationToken}`,
         },
-        body: JSON.stringify({ assessmentId: assessment.id }),
+        body: JSON.stringify({ message: 'health check' }),
       });
+      // --- END TEMPORARY DEBUGGING ---
 
       if (reportResponse.ok) {
         const reportData = await reportResponse.json();
-        reportId = reportData.id;
-        console.log(`Report generated with ID: ${reportData.id}`);
+        console.log('Health check response:', reportData);
+        // This part will fail since we are not getting a reportId, but that's expected for this test.
+        if (reportData.report && reportData.report.id) {
+          reportId = reportData.report.id;
+        }
       } else {
-        console.error('Failed to generate report:', await reportResponse.text());
+        const errorText = await reportResponse.text();
+        console.error(`Failed to trigger health check. Status: ${reportResponse.status}`);
+        throw new Error(`Failed to trigger health check: ${errorText}`);
       }
-    } catch (reportError) {
-      console.error('Error triggering report generation:', reportError);
+    } catch (error: any) {
+      console.error('Error triggering report generation:', error);
       // Don't fail the assessment submission if report generation fails
     }
 

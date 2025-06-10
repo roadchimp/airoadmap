@@ -138,45 +138,36 @@ async function submitAssessment(request: Request, context: any) {
         console.error('CRITICAL: VERCEL_AUTOMATION_TOKEN is not set. Report generation will fail.');
       }
       
-      // --- TEMPORARY DEBUGGING ---
-      // We are calling a simple health-check endpoint to isolate the auth issue.
-      console.log('Attempting to call /api/health-check...');
-      const reportResponse = await fetch(`${baseUrl}/api/health-check`, {
+      const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${automationToken}`,
         },
-        body: JSON.stringify({ message: 'health check' }),
+        body: JSON.stringify({ assessmentId: assessment.id }),
       });
-      // --- END TEMPORARY DEBUGGING ---
 
       if (reportResponse.ok) {
         const reportData = await reportResponse.json();
-        console.log('Health check response:', reportData);
-        // This part will fail since we are not getting a reportId, but that's expected for this test.
-        if (reportData.report && reportData.report.id) {
-          reportId = reportData.report.id;
-        }
+        reportId = reportData.id;
+        console.log(`Report generated with ID: ${reportData.id}`);
       } else {
-        const errorText = await reportResponse.text();
-        console.error(`Failed to trigger health check. Status: ${reportResponse.status}`);
-        throw new Error(`Failed to trigger health check: ${errorText}`);
+        console.error('Failed to generate report:', await reportResponse.text());
       }
-    } catch (error: any) {
-      console.error('Error triggering report generation:', error);
+    } catch (reportError) {
+      console.error('Error triggering report generation:', reportError);
       // Don't fail the assessment submission if report generation fails
     }
 
-    return NextResponse.json(
-      { 
-        message: 'Assessment submitted successfully.', 
-        assessmentId: assessment.id,
-        reportId: reportId,
-        success: true
-      },
-      { status: 201 }
-    );
+    // Prepare the final response
+    const finalResponse = {
+      message: 'Assessment submitted successfully.', 
+      assessmentId: assessment.id,
+      reportId: reportId,
+      success: true
+    };
+
+    return NextResponse.json(finalResponse, { status: 201 });
   } catch (error) {
     console.error('Error submitting assessment:', error);
     if (error instanceof z.ZodError) {

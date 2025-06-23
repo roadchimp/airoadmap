@@ -126,6 +126,7 @@ async function submitAssessment(request: Request, context: any) {
     const assessment = await storage.createAssessment(validatedData);
     console.log(`Assessment created with ID: ${assessment.id}`);
 
+<<<<<<< Updated upstream
     // Trigger AI processing/report generation
     let reportId = null;
     try {
@@ -138,19 +139,45 @@ async function submitAssessment(request: Request, context: any) {
         },
         body: JSON.stringify({ assessmentId: assessment.id }),
       });
+=======
+    // Trigger AI processing/report generation ASYNCHRONOUSLY
+    // Don't wait for completion to avoid timeouts
+    const triggerReportGeneration = async () => {
+      try {
+        console.log('Triggering AI report generation asynchronously...');
+        const baseUrl = getBaseUrl();
+        const automationToken = process.env.VERCEL_AUTOMATION_TOKEN;
 
-      if (reportResponse.ok) {
-        const reportData = await reportResponse.json();
-        reportId = reportData.id;
-        console.log(`Report generated with ID: ${reportData.id}`);
-      } else {
-        console.error('Failed to generate report:', await reportResponse.text());
+        if (!automationToken) {
+          console.error('CRITICAL: VERCEL_AUTOMATION_TOKEN is not set. Report generation will fail.');
+          return;
+        }
+        
+        const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${automationToken}`,
+          },
+          body: JSON.stringify({ assessmentId: assessment.id }),
+        });
+
+        if (reportResponse.ok) {
+          const reportData = await reportResponse.json();
+          console.log(`Report generated with ID: ${reportData.id}`);
+        } else {
+          console.error('Failed to generate report:', await reportResponse.text());
+        }
+      } catch (reportError) {
+        console.error('Error triggering report generation:', reportError);
       }
-    } catch (reportError) {
-      console.error('Error triggering report generation:', reportError);
-      // Don't fail the assessment submission if report generation fails
-    }
+    };
+>>>>>>> Stashed changes
 
+    // Fire and forget - don't await this
+    triggerReportGeneration();
+
+<<<<<<< Updated upstream
     return NextResponse.json(
       { 
         message: 'Assessment submitted successfully.', 
@@ -160,6 +187,18 @@ async function submitAssessment(request: Request, context: any) {
       },
       { status: 201 }
     );
+=======
+    // Prepare the final response immediately
+    const finalResponse = {
+      message: 'Assessment submitted successfully. Report generation started in background.', 
+      assessmentId: assessment.id,
+      reportId: null, // Will be available later
+      success: true,
+      reportGenerating: true
+    };
+
+    return NextResponse.json(finalResponse, { status: 201 });
+>>>>>>> Stashed changes
   } catch (error) {
     console.error('Error submitting assessment:', error);
     if (error instanceof z.ZodError) {

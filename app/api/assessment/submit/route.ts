@@ -5,6 +5,17 @@ import { insertAssessmentSchema } from '@shared/schema';
 import { withAuthAndSecurity } from '../../middleware/AuthMiddleware';
 import { z } from 'zod';
 
+// Helper function to get base URL
+function getBaseUrl(): string {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  return 'http://localhost:3000';
+}
+
 async function submitAssessment(request: Request, context: any) {
   try {
     const sessionData: AssessmentSession = await request.json();
@@ -126,20 +137,6 @@ async function submitAssessment(request: Request, context: any) {
     const assessment = await storage.createAssessment(validatedData);
     console.log(`Assessment created with ID: ${assessment.id}`);
 
-<<<<<<< Updated upstream
-    // Trigger AI processing/report generation
-    let reportId = null;
-    try {
-      console.log('Triggering AI report generation...');
-      const reportResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/prioritize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': request.headers.get('Authorization') || '',
-        },
-        body: JSON.stringify({ assessmentId: assessment.id }),
-      });
-=======
     // Trigger AI processing/report generation ASYNCHRONOUSLY
     // Don't wait for completion to avoid timeouts
     const triggerReportGeneration = async () => {
@@ -172,22 +169,10 @@ async function submitAssessment(request: Request, context: any) {
         console.error('Error triggering report generation:', reportError);
       }
     };
->>>>>>> Stashed changes
 
     // Fire and forget - don't await this
     triggerReportGeneration();
 
-<<<<<<< Updated upstream
-    return NextResponse.json(
-      { 
-        message: 'Assessment submitted successfully.', 
-        assessmentId: assessment.id,
-        reportId: reportId,
-        success: true
-      },
-      { status: 201 }
-    );
-=======
     // Prepare the final response immediately
     const finalResponse = {
       message: 'Assessment submitted successfully. Report generation started in background.', 
@@ -198,7 +183,6 @@ async function submitAssessment(request: Request, context: any) {
     };
 
     return NextResponse.json(finalResponse, { status: 201 });
->>>>>>> Stashed changes
   } catch (error) {
     console.error('Error submitting assessment:', error);
     if (error instanceof z.ZodError) {

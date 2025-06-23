@@ -36,7 +36,7 @@ const ReviewSubmitStep = () => {
           setReportStatus(status.status);
           
           if (status.status === 'completed') {
-            setSubmissionResult(prev => ({ ...prev, reportId: status.reportId }));
+            setSubmissionResult((prev: any) => ({ ...prev, reportId: status.reportId }));
             toast({
               title: "Report Ready!",
               description: "Your AI transformation report has been generated successfully.",

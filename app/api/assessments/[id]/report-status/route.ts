@@ -17,8 +17,7 @@ async function getReportStatus(request: Request, { params }: { params: { id: str
     }
 
     // Check if report exists for this assessment
-    const reports = await storage.listReports(assessmentId);
-    const report = reports.length > 0 ? reports[0] : null;
+    const report = await storage.getReportByAssessment(assessmentId);
 
     if (report) {
       return NextResponse.json({

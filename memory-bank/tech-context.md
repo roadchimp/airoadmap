@@ -120,4 +120,27 @@ The application uses Next.js App Router with a clear separation between Server a
 *   Maintain consistency with existing styling and component usage patterns.
 *   Ensure all database access goes through the defined storage layer (`server/storage.ts`).
 *   Use the client-server component pattern to prevent "Refs cannot be used in Server Components" errors.
-*   Keep RSC benefits for data loading where possible, only opt into Client Components when necessary. 
+*   Keep RSC benefits for data loading where possible, only opt into Client Components when necessary.
+
+## Database Migrations
+
+The project uses a multi-environment migration strategy with Drizzle Kit. **Do not use `npm run db:push`**. The correct workflow is to generate a migration script and then apply it.
+
+### Environments
+The project has three distinct migration directories for different environments:
+-   `migrations-local/`: For local development.
+-   `migrations-preview/`: For Vercel preview deployments (branches).
+-   `migrations-vercel/`: For the Vercel production deployment.
+
+### Workflow
+1.  **Generate Migration:** Create a new SQL migration file by running the `generate` command. You must target the correct `drizzle.config.ts` file for the environment you are working on.
+    ```bash
+    # Example for the 'preview' environment
+    DATABASE_URL="<your_preview_database_url>" npx drizzle-kit generate --config drizzle.config.ts
+    ```
+2.  **Apply Migration:** Run the migration against the database.
+    ```bash
+    # Example for the 'preview' environment
+    DATABASE_URL="<your_preview_database_url>" npx drizzle-kit migrate --config drizzle.config.ts
+    ```
+This ensures that schema changes are tracked, versioned, and applied consistently across different environments. 

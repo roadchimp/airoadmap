@@ -177,6 +177,18 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async updateUserProfile(id: number, profile: Partial<InsertUserProfile>): Promise<UserProfile> {
+    await this.ensureInitialized();
+    const result = await this.db.update(userProfiles)
+      .set({ ...profile, updatedAt: new Date() })
+      .where(eq(userProfiles.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new Error(`User profile with ID ${id} not found.`);
+    }
+    return result[0];
+  }
+
   // Organization methods
   async getOrganization(id: number, authId?: string): Promise<Organization | undefined> {
     await this.ensureInitialized();
@@ -1848,6 +1860,27 @@ export class PgStorage implements IStorage {
       // Return empty array on error to avoid blocking the batch processor
       return [];
     }
+  }
+
+  async listAssessmentsForUser(userProfile: UserProfile): Promise<Assessment[]> {
+    await this.ensureInitialized();
+    const isAdmin = userProfile.id === 1; // samsena@gmail.com
+
+    if (isAdmin) {
+      // Admin sees all assessments
+      return await this.db.select().from(assessments).orderBy(sql`${assessments.updatedAt} desc`);
+    }
+
+    if (!userProfile.organization_id) {
+      // User is not associated with any organization, return empty array
+      return [];
+    }
+
+    // Regular user sees assessments for their organization
+    return await this.db.select()
+      .from(assessments)
+      .where(eq(assessments.organizationId, userProfile.organization_id))
+      .orderBy(sql`${assessments.updatedAt} desc`);
   }
 }
 

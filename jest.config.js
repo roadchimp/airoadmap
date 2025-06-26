@@ -13,5 +13,5 @@ export default {
   extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   testMatch: ['**/tests/**/*.test.ts'],
-  setupFiles: ['<rootDir>/server/tests/setup.ts'],
+  setupFiles: ['<rootDir>/tests/setup.ts'],
 }; 

@@ -69,8 +69,10 @@ async function submitAssessment(request: Request, context: any) {
       });
       organizationId = organization.id;
       
-      // Note: For now, we'll use the organization but not update the user profile
-      // This can be implemented later if needed
+      // Update the user's profile with the new organization ID
+      await storage.updateUserProfile(userProfile.id, {
+        organization_id: organizationId,
+      });
     }
 
     // Transform session data to assessment format

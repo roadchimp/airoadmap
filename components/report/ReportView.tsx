@@ -33,6 +33,8 @@ const ITEMS_PER_PAGE = 10
 
 interface ReportViewProps {
   report: ReportWithMetricsAndRules | null
+  onUpdateCommentary?: (commentary: string) => void; // Optional prop
+  isEditable?: boolean;
 }
 
 export default function ReportView({ report: initialReport }: ReportViewProps) {
@@ -294,13 +296,13 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
       setIsSharing(false)
     }
   }
-
+  
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="bg-white shadow-sm print:shadow-none">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
+        <div>
               <h1 className="text-3xl font-bold leading-tight text-gray-900 print:text-2xl">
                 <ReportHeader 
                   initialReportTitle={reportTitle}
@@ -311,13 +313,13 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
               <p className="mt-1 text-sm text-gray-500 print:text-xs">
                 Generated on {new Date(reportDetails.generatedAt).toLocaleString()}
               </p>
-            </div>
+        </div>
             <div className="flex space-x-3 print:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Download className="mr-2 h-4 w-4" /> Export
-                  </Button>
+          </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={handleExportPDF}>
@@ -386,7 +388,7 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                 className="text-gray-700 hover:bg-gray-100"
               >
                 <RefreshCw className="mr-2 h-4 w-4" /> Regenerate Report
-              </Button>
+          </Button>
 
               <Button 
                 variant="default" 
@@ -395,9 +397,9 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                 className="bg-[#e84c2b] hover:bg-[#d63916] text-white"
               >
                 <Share2 className="mr-2 h-4 w-4" /> Share
-              </Button>
-            </div>
-          </div>
+          </Button>
+        </div>
+      </div>
         </div>
       </header>
 
@@ -441,7 +443,7 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
               >
                 AI Tool Recommendations
               </TabsTrigger>
-            </TabsList>
+        </TabsList>
           </div>
 
           <TabsContent value="executive-summary" className="space-y-6">
@@ -669,8 +671,8 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                       allCategories={allUniqueCategories}
                       selectedCategories={selectedCategories}
                       onChange={handleCategoryChange}
-                    />
-                  </div>
+              />
+            </div>
                   
                   <div className="flex-1 min-w-[200px]">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Role:</label>
@@ -790,15 +792,15 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                       </Button>
                     </div>
                   )}
-                </div>
+          </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="performance-metrics" className="space-y-6">
             <PerformanceMetricsTable />
-          </TabsContent>
-          
+        </TabsContent>
+
           <TabsContent value="ai-adoption-score" className="space-y-6">
             <AIAdoptionScoreTab 
               aiAdoptionScoreDetails={
@@ -817,8 +819,8 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                 companyStage: reportDetails?.assessment?.companyStage,
                 strategicFocus: Array.isArray(reportDetails?.assessment?.strategicFocus) ? reportDetails?.assessment.strategicFocus : undefined
               }}
-            />
-          </TabsContent>
+          />
+        </TabsContent>
 
           <TabsContent value="ai-tools" className="space-y-6">
             <Card>
@@ -933,8 +935,8 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
+        </TabsContent>
+      </Tabs>
       </div>
 
       {selectedCapability && (

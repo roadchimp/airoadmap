@@ -1,20 +1,50 @@
+'use client';
 import React from 'react';
-import { storage } from '@/server/storage';
+import { useParams } from 'next/navigation';
 import ReportView from '@/components/report/ReportView';
 import { notFound } from 'next/navigation';
 
-export default async function ReportPage({ params }: { params: { id: string } }) {
+export default function ReportPage() {
+  const params = useParams<{ id: string }>();
+  const [report, setReport] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  
   const reportId = parseInt(params.id, 10);
 
+  React.useEffect(() => {
+    if (isNaN(reportId)) {
+      setIsLoading(false);
+      return;
+    }
+    
+    async function fetchData() {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/reports/${reportId}`);
+        if (!response.ok) throw new Error('Failed to fetch report');
+        const data = await response.json();
+        setReport(data.report);
+      } catch (error) {
+        console.error(error);
+        setReport(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+  }, [reportId]);
+
   if (isNaN(reportId)) {
-    notFound();
+    return notFound();
   }
 
-  const report = await storage.getReport(reportId);
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (!report) {
-    notFound();
+    return notFound();
   }
 
   return <ReportView report={report} />;
-} 
+}

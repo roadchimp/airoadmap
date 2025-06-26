@@ -39,7 +39,8 @@ export async function POST(request: Request) {
       prioritizationData: results.prioritizationData,
       aiSuggestions: results.aiSuggestions,
       performanceImpact: results.performanceImpact,
-      consultantCommentary: "" // Default empty commentary
+      consultantCommentary: "", // Default empty commentary
+      aiAdoptionScoreDetails: results.aiAdoptionScoreDetails,
     });
 
     // Update assessment status to completed

@@ -11,7 +11,7 @@ import { DepartmentRoleSummary } from './storage';
 
 // Import Drizzle schema tables and schemas (values)
 import { 
-  assessments, departments, organizations, users, reports, 
+  assessments, departments, organizations, reports, 
   aiCapabilitiesTable,
   assessmentAICapabilitiesTable, // Add this import
   jobRoles, jobDescriptions, jobScraperConfigs,
@@ -38,7 +38,6 @@ import {
 
 // Import types that are explicitly exported from shared/schema.ts
 import type {
-  User, InsertUser,
   Organization, InsertOrganization,
   Department, InsertDepartment,
   JobRole as BaseJobRole, // Renamed to avoid potential conflicts if we enrich it
@@ -146,22 +145,6 @@ export class PgStorage implements IStorage {
       console.log('Standard PostgreSQL database connection closed');
     }
     this.isInitialized = false;
-  }
-
-  // User methods
-  async getUser(id: number): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.id, id));
-    return result[0];
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.username, username));
-    return result[0];
-  }
-
-  async createUser(user: InsertUser): Promise<User> {
-    const result = await this.db.insert(users).values(user).returning();
-    return result[0];
   }
 
   // User Profile methods
@@ -1085,12 +1068,16 @@ export class PgStorage implements IStorage {
       metricRulesList = []; // Default to empty array on error
     }
 
+    // 6. Fetch AI Capabilities for the assessment
+    const capabilities = await this.getAssessmentAICapabilities(assessmentId);
+
     // 5. Construct and return the composite object
     return {
       ...reportWithAssessmentAndDetails,
       selectedRoles: selectedRoles,
       performanceMetrics: fetchedPerformanceMetrics, // Use the renamed variable
       metricRules: metricRulesList, // Use the renamed variable
+      capabilities: capabilities,
     };
   }
 

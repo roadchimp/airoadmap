@@ -1,5 +1,5 @@
 import React from 'react';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/../../utils/supabase/server';
 import CurrentAssessmentsTable, { AssessmentWithReportId } from '@/components/assessment/CurrentAssessmentsTable';
 import { storage } from '@/server/storage';
 import { UserProfile } from '@shared/schema';

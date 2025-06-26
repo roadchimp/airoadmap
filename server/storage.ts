@@ -94,6 +94,7 @@ export interface ReportWithMetricsAndRules extends ReportWithAssessmentDetails {
   selectedRoles?: BaseJobRole[];
   performanceMetrics?: PerformanceMetrics[];
   metricRules?: MetricRules[];
+  capabilities?: FullAICapability[];
 }
 
 // Define the enriched AICapability type with assessment-specific fields

@@ -302,6 +302,7 @@ export const updateAssessmentSchema = insertAssessmentSchema.partial().extend({
 export const reports = pgTable("reports", {
   id: serial("id").primaryKey(),
   assessmentId: integer("assessment_id").notNull().references(() => assessments.id),
+  userId: integer("user_id").references(() => userProfiles.id),
   generatedAt: timestamp("generated_at").defaultNow().notNull(),
   executiveSummary: text("executive_summary"),
   prioritizationData: jsonb("prioritization_data"), // Heatmap and prioritization list data
@@ -316,6 +317,7 @@ export const reports = pgTable("reports", {
 
 export const insertReportSchema = createInsertSchema(reports).pick({
   assessmentId: true,
+  userId: true,
   executiveSummary: true,
   prioritizationData: true,
   aiSuggestions: true,

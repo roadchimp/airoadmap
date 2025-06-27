@@ -1,42 +1,36 @@
 import React from 'react';
 import { storage } from '@/server/storage';
-import { Report, Assessment } from '@shared/schema';
+import { Report, Assessment, UserProfile } from '@shared/schema';
 import ReportsTable from './ReportsTable';
 import { unstable_noStore } from 'next/cache';
+import { createClient } from '@/../../utils/supabase/server';
 
 // Server-side data fetching function
-async function getReportsAndAssessments(): Promise<{ reports: Report[], assessments: Assessment[] }> {
+async function getReportsAndAssessmentsForUser(): Promise<{ reports: Report[], assessments: Assessment[] }> {
   // Disable caching to ensure fresh data on each request
   unstable_noStore();
   
-  // Initialize with empty arrays
-  let reports: Report[] = [];
-  let assessments: Assessment[] = [];
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.warn("No user found, returning empty reports and assessments.");
+    return { reports: [], assessments: [] };
+  }
   
   try {
-    // Try to fetch reports
-    try {
-      const fetchedReports = await storage.listReports();
-      if (Array.isArray(fetchedReports)) {
-        reports = fetchedReports;
-      } else {
-        console.error("listReports did not return an array:", fetchedReports);
-      }
-    } catch (reportsError) {
-      console.error("Error fetching reports:", reportsError);
+    const userProfile: UserProfile | undefined = await storage.getUserProfileByAuthId(user.id);
+
+    if (!userProfile) {
+      console.warn(`No user profile found for auth id ${user.id}`);
+      return { reports: [], assessments: [] };
     }
+
+    // Try to fetch reports for the user
+    const reports = await storage.listReportsForUser(userProfile);
     
-    // Try to fetch assessments
-    try {
-      const fetchedAssessments = await storage.listAssessments();
-      if (Array.isArray(fetchedAssessments)) {
-        assessments = fetchedAssessments;
-      } else {
-        console.error("listAssessments did not return an array:", fetchedAssessments);
-      }
-    } catch (assessmentsError) {
-      console.error("Error fetching assessments:", assessmentsError);
-    }
+    // Try to fetch assessments for the user
+    const assessments = await storage.listAssessmentsForUser(userProfile);
     
     // Sort reports by generatedAt timestamp (most recent first)
     const sortedReports = [...reports].sort((a, b) => 
@@ -48,14 +42,14 @@ async function getReportsAndAssessments(): Promise<{ reports: Report[], assessme
       assessments: assessments
     };
   } catch (error) {
-    console.error("Error in getReportsAndAssessments:", error);
+    console.error("Error in getReportsAndAssessmentsForUser:", error);
     return { reports: [], assessments: [] };
   }
 }
 
 // Server Component that fetches data and passes it to the Client Component
 export default async function ReportsPage() {
-  const { reports, assessments } = await getReportsAndAssessments();
+  const { reports, assessments } = await getReportsAndAssessmentsForUser();
 
   return (
     <div className="container mx-auto py-8">

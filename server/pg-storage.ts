@@ -1084,44 +1084,49 @@ export class PgStorage implements IStorage {
   async listReports(): Promise<Report[]> {
     await this.ensureInitialized();
     try {
-      // Try to use Drizzle ORM first
-      return await this.db.select().from(reports);
+      // Use Drizzle ORM to fetch reports
+      const reportsList = await this.db.select().from(reports);
+      return reportsList;
     } catch (error) {
-      console.error('Error fetching reports with Drizzle:', error);
-      const errorMessage = error instanceof Error ? error.message : '';
-      
-      // If the error is related to missing columns, try a direct SQL query
-      if (errorMessage.includes('column') || errorMessage.includes('does not exist')) {
-        try {
-          console.log('Using fallback SQL query for reports');
-          const result = await this.db.execute(sql`
-            SELECT 
-              id, 
-              assessment_id as "assessmentId", 
-              generated_at as "generatedAt", 
-              executive_summary as "executiveSummary", 
-              prioritization_data as "prioritizationData", 
-              ai_suggestions as "aiSuggestions", 
-              performance_impact as "performanceImpact", 
-              consultant_commentary as "consultantCommentary"
-            FROM reports
-          `);
-          
-          return result;
-        } catch (fallbackError) {
-          console.error('Fallback SQL query failed:', fallbackError);
-          return [];
-        }
-      }
-      
-      // If not a column error, rethrow
-      throw error;
+      console.error('Error fetching reports with Drizzle, falling back to raw SQL:', error);
+      // Fallback to raw SQL if ORM fails
+      const result = await this.db.execute(sql`SELECT * FROM reports`);
+      // The raw SQL query result might have a different structure, ensure it's mapped correctly
+      // This mapping depends on the raw result format, which could be result.rows, result, etc.
+      // Adjust this part based on how your DB driver returns raw query results.
+      return result.rows || result;
     }
+  }
+
+  async listReportsForUser(userProfile: UserProfile): Promise<Report[]> {
+    await this.ensureInitialized();
+    if (!userProfile?.id) {
+        console.warn("listReportsForUser called without a user profile id.");
+        return [];
+    }
+    return await this.db.select().from(reports).where(eq(reports.userId, userProfile.id));
   }
 
   async createReport(report: InsertReport): Promise<Report> {
     await this.ensureInitialized();
-    const result = await this.db.insert(reports).values(report).returning();
+
+    if (!report.assessmentId) {
+      throw new Error('assessmentId is required to create a report');
+    }
+
+    // Fetch the assessment to get the userId
+    const relatedAssessment = await this.db.select({ userId: assessments.userId }).from(assessments).where(eq(assessments.id, report.assessmentId));
+    if (!relatedAssessment || relatedAssessment.length === 0) {
+      throw new Error(`Assessment with ID ${report.assessmentId} not found.`);
+    }
+    const userId = relatedAssessment[0].userId;
+
+    const reportToInsert = {
+      ...report,
+      userId: userId,
+    };
+
+    const result = await this.db.insert(reports).values(reportToInsert).returning();
     return result[0];
   }
 

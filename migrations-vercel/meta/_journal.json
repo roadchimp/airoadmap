@@ -57,6 +57,13 @@
       "when": 1751008821931,
       "tag": "0007_plain_true_believers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1751040313599,
+      "tag": "0008_little_power_man",
+      "breakpoints": true
     }
   ]
 }

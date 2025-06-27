@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { Report, Assessment } from '@shared/schema';
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -24,74 +22,33 @@ import {
   SortingState,
   getSortedRowModel,
 } from "@tanstack/react-table";
-import { ArrowUpDown, RefreshCcw } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 
 interface ReportsTableProps {
   reports: Report[];
   assessments: Assessment[];
 }
 
-export default function ReportsTable({ reports, assessments }: ReportsTableProps) {
-  const [reportsData, setReportsData] = useState<Report[]>(reports);
-  const [assessmentsData, setAssessmentsData] = useState<Assessment[]>(assessments);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [status, setStatus] = useState<"loading" | "error" | "success">(
-    reports.length > 0 || assessments.length > 0 ? "success" : "loading"
-  );
-
-      const fetchData = async () => {
-    setIsRefreshing(true);
-        setStatus("loading");
-        try {
-      // Add a cache-busting timestamp to prevent cached responses
-      const timestamp = new Date().getTime();
-      
-          // Try to fetch both reports and assessments from the public endpoints
-          const [reportsResponse, assessmentsResponse] = await Promise.all([
-        fetch(`/api/public/reports?t=${timestamp}`),
-        fetch(`/api/public/assessments?t=${timestamp}`)
-          ]);
-
-          // Check if responses are ok
-          if (!reportsResponse.ok || !assessmentsResponse.ok) {
-            throw new Error("Failed to fetch data");
-          }
-
-          // Parse response data
-          const fetchedReports = await reportsResponse.json();
-          const fetchedAssessments = await assessmentsResponse.json();
-
-          // Update state
-          setReportsData(Array.isArray(fetchedReports) ? fetchedReports : []);
-          setAssessmentsData(Array.isArray(fetchedAssessments) ? fetchedAssessments : []);
-          setStatus("success");
-        } catch (error) {
-          console.error("Error fetching data:", error);
-          setStatus("error");
-    } finally {
-      setIsRefreshing(false);
-        }
-      };
-
-  // If no reports or assessments were provided, try to fetch them from the public API
-  useEffect(() => {
-    if (reports.length === 0 && assessments.length === 0) {
-      fetchData();
-    }
-  }, [reports.length, assessments.length]);
-
+export default function ReportsTable({ reports: initialReports, assessments: initialAssessments }: ReportsTableProps) {
+  const [reports, setReports] = useState<Report[]>(initialReports);
+  const [assessments, setAssessments] = useState<Assessment[]>(initialAssessments);
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: "generatedAt",
       desc: true,
     },
   ]);
-
+  
   const router = useRouter();
+
+  useEffect(() => {
+    setReports(initialReports);
+    setAssessments(initialAssessments);
+  }, [initialReports, initialAssessments]);
 
   // Find assessment title by assessmentId
   const getAssessmentTitle = (assessmentId: number) => {
-    const assessment = assessmentsData.find((a) => a.id === assessmentId);
+    const assessment = assessments.find((a) => a.id === assessmentId);
     return assessment?.title || "Unknown Assessment";
   };
 
@@ -118,9 +75,8 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
         </Button>
       ),
       cell: ({ row }) => {
-        // Format date string
         const date = new Date(row.original.generatedAt);
-        return format(date, "PPp"); // e.g., "Apr 29, 2025, 7:47 PM"
+        return format(date, "PPp");
       },
     },
     {
@@ -140,7 +96,7 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
   ];
 
   const table = useReactTable({
-    data: reportsData,
+    data: reports,
     columns,
     state: {
       sorting,
@@ -151,30 +107,13 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
     getSortedRowModel: getSortedRowModel(),
   });
 
-  if (status === "loading") {
+  if (!reports) {
     return <div className="py-8 text-center">Loading reports...</div>;
-  }
-
-  if (status === "error") {
-    return <div className="py-8 text-center text-red-500">Error loading reports data.</div>;
   }
 
     return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={fetchData}
-          disabled={isRefreshing}
-          className="flex items-center gap-2"
-        >
-          <RefreshCcw className="h-4 w-4" />
-          {isRefreshing ? "Refreshing..." : "Refresh Reports"}
-        </Button>
-      </div>
-      
-      {reportsData.length === 0 ? (
+      {reports.length === 0 ? (
       <div className="py-8 text-center">
         <p className="mb-2">No reports found.</p>
         <p className="text-muted-foreground">A list of your assessment reports.</p>
@@ -249,7 +188,7 @@ export default function ReportsTable({ reports, assessments }: ReportsTableProps
           Next
         </Button>
       </div>
-        </>
+      </>
       )}
     </div>
   );

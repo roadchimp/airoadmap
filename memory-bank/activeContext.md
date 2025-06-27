@@ -1,6 +1,69 @@
 # Active Context
 
-## Current Focus: API Security Hardening and Authentication UX (December 2024)
+## Current Focus: Asynchronous Report Generation and Timeout Prevention (January 2025)
+
+### Critical Issue Resolution: Assessment Submission Timeouts
+
+**Problem Identified:**
+- Assessment submission was failing with JSON parsing errors: "Unexpected token 'A', "An error o"... is not valid JSON"
+- Root cause: Synchronous report generation in `/api/assessment/submit` calling `/api/prioritize` with 7 concurrent OpenAI API calls
+- Total timeout: 5-10 minutes for AI processing (executive summary + 3 capability recommendations + 3 performance impact calculations)
+- Additional issue: Missing `/api/departments` endpoint causing 404 errors
+
+**Solution Implemented:**
+1. **Asynchronous Report Generation:**
+   - Modified `/api/assessment/submit` to trigger report generation asynchronously (fire-and-forget pattern)
+   - Assessment submission now returns immediately with `reportGenerating: true` flag
+   - Created new `/api/assessments/[id]/report-status` endpoint for polling report status
+
+2. **API Endpoint Fixes:**
+   - Created `/api/departments/route.ts` as backward-compatible wrapper for `/api/roles-departments`
+   - Fixed 404 errors in client-side department fetching
+
+3. **Enhanced Frontend UX:**
+   - Added automatic status polling every 30 seconds for up to 15 minutes
+   - Real-time UI updates when report generation completes
+   - Loading states with animated spinners and progress messaging
+   - Graceful fallback if report generation takes longer than expected
+
+**Technical Implementation:**
+```typescript
+// Asynchronous report generation pattern
+const triggerReportGeneration = async () => {
+  // Fire and forget - don't await
+  const reportResponse = await fetch('/api/prioritize', { ... });
+};
+triggerReportGeneration(); // No await here
+
+// Polling pattern for status updates
+const pollForReportStatus = async (assessmentId: number) => {
+  const poll = async () => {
+    const response = await fetch(`/api/assessments/${assessmentId}/report-status`);
+    const status = await response.json();
+    if (status.status === 'completed') {
+      // Update UI with completed report
+    } else {
+      setTimeout(poll, 30000); // Poll every 30 seconds
+    }
+  };
+  setTimeout(poll, 5000); // Start after 5 seconds
+};
+```
+
+**User Experience Improvements:**
+- Immediate feedback: "Assessment submitted successfully. Report generation started in background."
+- Automatic status checking with visual progress indicators
+- Clear messaging about expected completion time (5-10 minutes)
+- Smooth transition from "generating" to "completed" state
+- Graceful error handling for long-running processes
+
+**Impact:**
+- Eliminates timeout errors during assessment submission
+- Maintains all existing functionality without schema changes
+- Improves perceived performance and user confidence
+- Provides better error handling and user communication
+
+## Previous Focus: API Security Hardening and Authentication UX (December 2024)
 
 ### Recent Security Architecture Overhaul
 

@@ -11,7 +11,7 @@ import { DepartmentRoleSummary } from './storage';
 
 // Import Drizzle schema tables and schemas (values)
 import { 
-  assessments, departments, organizations, users, reports, 
+  assessments, departments, organizations, reports, 
   aiCapabilitiesTable,
   assessmentAICapabilitiesTable, // Add this import
   jobRoles, jobDescriptions, jobScraperConfigs,
@@ -38,7 +38,6 @@ import {
 
 // Import types that are explicitly exported from shared/schema.ts
 import type {
-  User, InsertUser,
   Organization, InsertOrganization,
   Department, InsertDepartment,
   JobRole as BaseJobRole, // Renamed to avoid potential conflicts if we enrich it
@@ -148,22 +147,6 @@ export class PgStorage implements IStorage {
     this.isInitialized = false;
   }
 
-  // User methods
-  async getUser(id: number): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.id, id));
-    return result[0];
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await this.db.select().from(users).where(eq(users.username, username));
-    return result[0];
-  }
-
-  async createUser(user: InsertUser): Promise<User> {
-    const result = await this.db.insert(users).values(user).returning();
-    return result[0];
-  }
-
   // User Profile methods
   async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
     await this.ensureInitialized();
@@ -174,6 +157,18 @@ export class PgStorage implements IStorage {
   async getUserProfileByAuthId(authId: string): Promise<UserProfile | undefined> {
     await this.ensureInitialized();
     const result = await this.db.select().from(userProfiles).where(eq(userProfiles.auth_id, authId));
+    return result[0];
+  }
+
+  async updateUserProfile(id: number, profile: Partial<InsertUserProfile>): Promise<UserProfile> {
+    await this.ensureInitialized();
+    const result = await this.db.update(userProfiles)
+      .set({ ...profile, updatedAt: new Date() })
+      .where(eq(userProfiles.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new Error(`User profile with ID ${id} not found.`);
+    }
     return result[0];
   }
 
@@ -1073,12 +1068,16 @@ export class PgStorage implements IStorage {
       metricRulesList = []; // Default to empty array on error
     }
 
+    // 6. Fetch AI Capabilities for the assessment
+    const capabilities = await this.getAssessmentAICapabilities(assessmentId);
+
     // 5. Construct and return the composite object
     return {
       ...reportWithAssessmentAndDetails,
       selectedRoles: selectedRoles,
       performanceMetrics: fetchedPerformanceMetrics, // Use the renamed variable
       metricRules: metricRulesList, // Use the renamed variable
+      capabilities: capabilities,
     };
   }
 
@@ -1848,6 +1847,27 @@ export class PgStorage implements IStorage {
       // Return empty array on error to avoid blocking the batch processor
       return [];
     }
+  }
+
+  async listAssessmentsForUser(userProfile: UserProfile): Promise<Assessment[]> {
+    await this.ensureInitialized();
+    const isAdmin = userProfile.id === 1; // samsena@gmail.com
+
+    if (isAdmin) {
+      // Admin sees all assessments
+      return await this.db.select().from(assessments).orderBy(sql`${assessments.updatedAt} desc`);
+    }
+
+    if (!userProfile.organization_id) {
+      // User is not associated with any organization, return empty array
+      return [];
+    }
+
+    // Regular user sees assessments for their organization
+    return await this.db.select()
+      .from(assessments)
+      .where(eq(assessments.organizationId, userProfile.organization_id))
+      .orderBy(sql`${assessments.updatedAt} desc`);
   }
 }
 

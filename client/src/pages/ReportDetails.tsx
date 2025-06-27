@@ -97,6 +97,7 @@ const ReportDetails: React.FC = () => {
   
   // Prepare report data for the ReportView component
   const reportData = {
+    ...report,
     title: assessment?.title || `AI Transformation Report #${report.id}`,
     generatedAt: new Date(report.generatedAt),
     executiveSummary: report.executiveSummary || "",
@@ -109,7 +110,7 @@ const ReportDetails: React.FC = () => {
   return (
     <>
       <ReportView
-        {...reportData}
+        report={reportData}
         onUpdateCommentary={handleUpdateCommentary}
         isEditable={true}
       />

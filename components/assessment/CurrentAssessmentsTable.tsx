@@ -1,7 +1,7 @@
 // src/components/assessment/CurrentAssessmentsTable.tsx
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
@@ -38,67 +38,10 @@ interface CurrentAssessmentsTableProps {
 
 export default function CurrentAssessmentsTable({ initialAssessments }: CurrentAssessmentsTableProps) {
   const [assessments, setAssessments] = useState<AssessmentWithReportId[]>(initialAssessments);
-  const [status, setStatus] = useState<"loading" | "error" | "success">(
-    initialAssessments.length > 0 ? "success" : "loading"
-  );
   const [sorting, setSorting] = useState<SortingState>([]);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const { toast } = useToast();
   const router = useRouter();
-
-  // If no initial assessments were provided, try to fetch them from the public API
-  useEffect(() => {
-    if (initialAssessments.length === 0) {
-      const fetchData = async () => {
-        setStatus("loading");
-        try {
-          // Try to fetch from public endpoints
-          const [assessmentsResponse, reportsResponse] = await Promise.all([
-            fetch('/api/public/assessments'),
-            fetch('/api/public/reports')
-          ]);
-
-          if (!assessmentsResponse.ok || !reportsResponse.ok) {
-            throw new Error("Failed to fetch data");
-          }
-
-          const fetchedAssessments = await assessmentsResponse.json();
-          const fetchedReports = await reportsResponse.json();
-
-          // Create a map of assessment IDs to report IDs
-          const assessmentToReportMap = new Map();
-          if (Array.isArray(fetchedReports)) {
-            fetchedReports.forEach(report => {
-              if (report.assessmentId) {
-                assessmentToReportMap.set(report.assessmentId, report.id);
-              }
-            });
-          }
-
-          // Combine assessments with their report IDs
-          const assessmentsWithReports = Array.isArray(fetchedAssessments) 
-            ? fetchedAssessments.map(assessment => ({
-                ...assessment,
-                reportId: assessmentToReportMap.get(assessment.id) || null
-              }))
-            : [];
-
-          // Sort by updated date
-          const sortedAssessments = [...assessmentsWithReports].sort(
-            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          );
-
-          setAssessments(sortedAssessments);
-          setStatus("success");
-        } catch (error) {
-          console.error("Error fetching assessments:", error);
-          setStatus("error");
-        }
-      };
-
-      fetchData();
-    }
-  }, [initialAssessments]);
 
   const handleDelete = async (id: number) => {
     try {
@@ -261,15 +204,7 @@ export default function CurrentAssessmentsTable({ initialAssessments }: CurrentA
     },
   });
 
-  if (status === "loading") {
-    return <div className="py-8 text-center">Loading assessments...</div>;
-  }
-
-  if (status === "error") {
-    return <div className="py-8 text-center text-red-500">Error loading assessments.</div>;
-  }
-
-  if (assessments.length === 0) {
+  if (initialAssessments.length === 0) {
     return (
       <div className="py-8 text-center">
         <p className="mb-2">No assessments found.</p>

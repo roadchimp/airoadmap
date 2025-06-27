@@ -1,6 +1,7 @@
-import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department, InsertAICapability, InsertAssessmentAICapability } from "@shared/schema";
+import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, AISuggestion, PerformanceImpact, JobRole, Department, InsertAICapability, InsertAssessmentAICapability, AiAdoptionScoreInputComponents } from "@shared/schema";
 import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "../../../server/lib/services/aiService";
 import { storage } from '@/server/storage';
+import { calculateAiAdoptionScore, CalculatedAiAdoptionScore } from "./aiAdoptionScoreEngine";
 
 /**
  * Calculates the prioritization results based on wizard step data
@@ -335,6 +336,18 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
     estimatedRoi: totalRoi
   };
   
+  // Calculate AI Adoption Score
+  const assessmentRecord = await storage.getAssessment(assessmentId);
+  const aiAdoptionScoreInputs = stepData.aiAdoptionScoreInputs || {} as AiAdoptionScoreInputComponents;
+
+  const aiAdoptionScore: CalculatedAiAdoptionScore = await calculateAiAdoptionScore(
+    aiAdoptionScoreInputs,
+    assessmentRecord?.industry || 'Other',
+    assessmentRecord?.companyStage || 'Startup',
+    assessmentRecord?.industryMaturity || 'Immature',
+    assessmentRecord?.organizationId
+  );
+  
   return {
     executiveSummary,
     prioritizationData: {
@@ -342,6 +355,7 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
       prioritizedItems
     },
     aiSuggestions,
-    performanceImpact
+    performanceImpact,
+    aiAdoptionScoreDetails: aiAdoptionScore
   };
 }

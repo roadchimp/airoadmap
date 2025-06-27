@@ -1,6 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
 import { 
-  User, InsertUser, 
   Organization, InsertOrganization,
   Department, InsertDepartment,
   JobRole as BaseJobRole,
@@ -29,7 +28,6 @@ import {
   insertPerformanceMetricSchema,
   insertMetricRuleSchema,
   insertJobRolePerformanceMetricSchema,
-  users,
   organizations,
   departments,
   jobRoles as jobRolesTable,
@@ -96,6 +94,7 @@ export interface ReportWithMetricsAndRules extends ReportWithAssessmentDetails {
   selectedRoles?: BaseJobRole[];
   performanceMetrics?: PerformanceMetrics[];
   metricRules?: MetricRules[];
+  capabilities?: FullAICapability[];
 }
 
 // Define the enriched AICapability type with assessment-specific fields
@@ -131,14 +130,10 @@ export type ToolWithMappedCapabilities = BaseAiTool & {
 // modify the interface with any CRUD methods
 // you might need
 export interface IStorage {
-  // User methods
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
   // User Profile methods
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   getUserProfileByAuthId(authId: string): Promise<UserProfile | undefined>;
+  updateUserProfile(id: number, profile: Partial<InsertUserProfile>): Promise<UserProfile>;
   
   // Organization methods
   getOrganization(id: number, authId?: string): Promise<Organization | undefined>;
@@ -185,11 +180,13 @@ export interface IStorage {
   getAssessmentAICapabilities(assessmentId: number): Promise<FullAICapability[]>;
   
   // Assessment methods
-  getAssessment(id: number): Promise<Assessment | undefined>;
+  getAssessment(id: number, userId?: number): Promise<Assessment | undefined>;
+  getAssessmentRaw(id: number, userId: number): Promise<Assessment | undefined>;
   listAssessments(): Promise<Assessment[]>;
   listAssessmentsByUser(userId: number): Promise<Assessment[]>;
-  createAssessment(assessment: InsertAssessment): Promise<Assessment>;
-  updateAssessmentStep(id: number, stepData: Partial<WizardStepData>, strategicFocus?: string[]): Promise<Assessment>;
+  listAssessmentsForUser(userProfile: UserProfile): Promise<Assessment[]>;
+  createAssessment(assessmentInput: InsertAssessment): Promise<Assessment>;
+  updateAssessmentStep(id: number, partialStepData: Partial<WizardStepData>, strategicFocus?: string[]): Promise<Assessment>;
   updateAssessmentStatus(id: number, status: string): Promise<Assessment>;
   updateAssessmentUserID(id: number, userId: number): Promise<Assessment>;
   deleteAssessment(id: number): Promise<void>;

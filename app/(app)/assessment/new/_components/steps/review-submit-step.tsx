@@ -21,6 +21,47 @@ const ReviewSubmitStep = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<any>(null);
+  const [reportStatus, setReportStatus] = useState<'generating' | 'completed' | null>(null);
+
+  // Function to poll report status
+  const pollForReportStatus = async (assessmentId: number) => {
+    const maxAttempts = 30; // Poll for up to 15 minutes (30 * 30s)
+    let attempts = 0;
+    
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/assessments/${assessmentId}/report-status`);
+        if (response.ok) {
+          const status = await response.json();
+          setReportStatus(status.status);
+          
+          if (status.status === 'completed') {
+            setSubmissionResult((prev: any) => ({ ...prev, reportId: status.reportId }));
+            toast({
+              title: "Report Ready!",
+              description: "Your AI transformation report has been generated successfully.",
+            });
+            return;
+          }
+        }
+        
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 30000); // Poll every 30 seconds
+        } else {
+          toast({
+            title: "Report Generation Taking Longer",
+            description: "Report generation is taking longer than expected. Please check your assessments dashboard.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Error polling report status:', error);
+      }
+    };
+    
+    setTimeout(poll, 5000); // Start polling after 5 seconds
+  };
 
   const basicsData = session.steps[WizardStep.ORGANIZATION_INFO]?.data.basics || {};
   const roleSelectionData = session.steps[WizardStep.ROLE_SELECTION]?.data.roleSelection || {};
@@ -86,9 +127,17 @@ const ReviewSubmitStep = () => {
       const result = await response.json();
       setSubmissionResult(result);
       setSuccess(true);
+      
+      // Start polling for report status if report generation is in progress
+      if (result.reportGenerating) {
+        pollForReportStatus(result.assessmentId);
+      }
+      
       toast({
         title: "Success!",
-        description: `Assessment submitted successfully. ${result.reportId ? 'Report is being generated.' : 'Processing your assessment.'}`,
+        description: result.reportGenerating 
+          ? 'Assessment submitted successfully. Report generation started in background.' 
+          : 'Assessment submitted successfully.',
       });
       
     } catch (err: any) {
@@ -120,25 +169,44 @@ const ReviewSubmitStep = () => {
             <p className="mt-2 text-gray-700">Your assessment has been submitted successfully.</p>
           </div>
 
-          {hasReport ? (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          {reportStatus === 'completed' || hasReport ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
               <div className="flex items-center justify-center space-x-2 mb-4">
-                <Clock className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-800 font-medium">Report Generation in Progress</span>
+                <FileText className="h-5 w-5 text-green-600" />
+                <span className="text-green-800 font-medium">Report Ready!</span>
               </div>
-              <p className="text-blue-700 text-sm mb-4">
-                Your AI transformation report is being generated. This process typically takes 5-10 minutes.
-              </p>
-              <p className="text-blue-600 text-sm mb-4">
-                You'll receive an email notification once your report is ready, or you can check your assessments dashboard.
+              <p className="text-green-700 text-sm mb-4">
+                Your AI transformation report has been generated successfully.
               </p>
               <div className="space-y-3">
                 <Button 
                   onClick={() => window.location.href = `/reports/${submissionResult.reportId}`}
                   className="w-full"
                 >
-                  View Report (Processing) <ArrowRight className="ml-2 h-4 w-4" />
+                  View Report <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.href = '/assessment'}
+                  className="w-full"
+                >
+                  Return to Assessments
+                </Button>
+              </div>
+            </div>
+          ) : submissionResult?.reportGenerating ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <div className="flex items-center justify-center space-x-2 mb-4">
+                <Clock className="h-5 w-5 text-blue-600 animate-spin" />
+                <span className="text-blue-800 font-medium">Report Generation in Progress</span>
+              </div>
+              <p className="text-blue-700 text-sm mb-4">
+                Your AI transformation report is being generated. This process typically takes 5-10 minutes.
+              </p>
+              <p className="text-blue-600 text-sm mb-4">
+                We're checking the status automatically. You'll be notified once your report is ready.
+              </p>
+              <div className="space-y-3">
                 <Button 
                   variant="outline" 
                   onClick={() => window.location.href = '/assessment'}

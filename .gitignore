@@ -7,6 +7,8 @@ node_modules/
 
 # Testing
 coverage/
+tests/
+test-results/
 
 # Production
 build/

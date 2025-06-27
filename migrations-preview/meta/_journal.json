@@ -15,6 +15,27 @@
       "when": 1749397052468,
       "tag": "0001_lively_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750915007980,
+      "tag": "0002_puzzling_fenris",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1750916684194,
+      "tag": "0003_chunky_giant_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1750917729366,
+      "tag": "0004_good_cobalt_man",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,17 @@ import { storage } from '@/server/storage';
 import { insertAssessmentSchema } from '@shared/schema';
 import { withAuthAndSecurity } from '../../middleware/AuthMiddleware';
 import { z } from 'zod';
-import { getBaseUrl } from '@/lib/utils/getBaseUrl';
+
+// Helper function to get base URL
+function getBaseUrl(): string {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  return 'http://localhost:3000';
+}
 
 async function submitAssessment(request: Request, context: any) {
   try {
@@ -59,8 +69,10 @@ async function submitAssessment(request: Request, context: any) {
       });
       organizationId = organization.id;
       
-      // Note: For now, we'll use the organization but not update the user profile
-      // This can be implemented later if needed
+      // Update the user's profile with the new organization ID
+      await storage.updateUserProfile(userProfile.id, {
+        organization_id: organizationId,
+      });
     }
 
     // Transform session data to assessment format
@@ -127,44 +139,49 @@ async function submitAssessment(request: Request, context: any) {
     const assessment = await storage.createAssessment(validatedData);
     console.log(`Assessment created with ID: ${assessment.id}`);
 
-    // Trigger AI processing/report generation
-    let reportId = null;
-    try {
-      console.log('Triggering AI report generation...');
-      const baseUrl = getBaseUrl();
-      const automationToken = process.env.VERCEL_AUTOMATION_TOKEN;
+    // Trigger AI processing/report generation ASYNCHRONOUSLY
+    // Don't wait for completion to avoid timeouts
+    const triggerReportGeneration = async () => {
+      try {
+        console.log('Triggering AI report generation asynchronously...');
+        const baseUrl = getBaseUrl();
+        const automationToken = process.env.VERCEL_AUTOMATION_TOKEN;
 
-      if (!automationToken) {
-        console.error('CRITICAL: VERCEL_AUTOMATION_TOKEN is not set. Report generation will fail.');
+        if (!automationToken) {
+          console.error('CRITICAL: VERCEL_AUTOMATION_TOKEN is not set. Report generation will fail.');
+          return;
+        }
+        
+        const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${automationToken}`,
+          },
+          body: JSON.stringify({ assessmentId: assessment.id }),
+        });
+
+        if (reportResponse.ok) {
+          const reportData = await reportResponse.json();
+          console.log(`Report generated with ID: ${reportData.id}`);
+        } else {
+          console.error('Failed to generate report:', await reportResponse.text());
+        }
+      } catch (reportError) {
+        console.error('Error triggering report generation:', reportError);
       }
-      
-      const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${automationToken}`,
-        },
-        body: JSON.stringify({ assessmentId: assessment.id }),
-      });
+    };
 
-      if (reportResponse.ok) {
-        const reportData = await reportResponse.json();
-        reportId = reportData.id;
-        console.log(`Report generated with ID: ${reportData.id}`);
-      } else {
-        console.error('Failed to generate report:', await reportResponse.text());
-      }
-    } catch (reportError) {
-      console.error('Error triggering report generation:', reportError);
-      // Don't fail the assessment submission if report generation fails
-    }
+    // Fire and forget - don't await this
+    triggerReportGeneration();
 
-    // Prepare the final response
+    // Prepare the final response immediately
     const finalResponse = {
-      message: 'Assessment submitted successfully.', 
+      message: 'Assessment submitted successfully. Report generation started in background.', 
       assessmentId: assessment.id,
-      reportId: reportId,
-      success: true
+      reportId: null, // Will be available later
+      success: true,
+      reportGenerating: true
     };
 
     return NextResponse.json(finalResponse, { status: 201 });

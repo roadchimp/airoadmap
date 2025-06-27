@@ -4,16 +4,6 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 
-// User model for authentication (minimal for v1)
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  fullName: text("full_name").notNull(),
-  email: text("email").notNull(),
-  role: text("role").default("consultant").notNull(),
-});
-
 // Users table (for additional user data beyond Supabase Auth)
 export const userProfiles = pgTable('user_profiles', {
   id: serial('id').primaryKey(),
@@ -22,14 +12,7 @@ export const userProfiles = pgTable('user_profiles', {
   full_name: text('full_name'),
   avatar_url: text('avatar_url'),
   created_at: timestamp('created_at').defaultNow().notNull(),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  fullName: true,
-  email: true,
-  role: true,
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
 
 export const insertUserProfileSchema = createInsertSchema(userProfiles).pick({
@@ -285,7 +268,7 @@ export const assessments = pgTable("assessments", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => userProfiles.id),
   status: assessmentStatusEnum("status").default("draft").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -502,9 +485,6 @@ export const valueLevels = ["high", "medium", "low"] as const;
 export type ValueLevel = typeof valueLevels[number];
 
 // Types
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 
@@ -675,7 +655,7 @@ export type ProcessedJobContent = {
 export const assessmentResponses = pgTable("assessment_responses", {
   responseId: serial("response_id").primaryKey(),
   assessmentId: integer("assessment_id").notNull().references(() => assessments.id, { onDelete: 'cascade' }),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: integer("user_id").notNull().references(() => userProfiles.id, { onDelete: 'cascade' }),
   questionIdentifier: text("question_identifier").notNull(), // Could be a path like "painPoints.roleX.severity" or a specific question ID
   responseText: text("response_text"),
   responseNumeric: numeric("response_numeric"),

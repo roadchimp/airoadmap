@@ -63,6 +63,24 @@ const pollForReportStatus = async (assessmentId: number) => {
 - Improves perceived performance and user confidence
 - Provides better error handling and user communication
 
+## Completed: User-Specific Report and Assessment Viewing (January 2025)
+
+**Feature:** Users can now only see the assessments and reports that they have created. This enhances data privacy and provides a more focused user experience.
+
+**Implementation Details:**
+*   **Database:** A `user_id` column was added to the `reports` table to create a direct link between a report and its author.
+*   **Backend:**
+    *   The `createReport` method was updated to automatically populate the `user_id` from the parent assessment.
+    *   New data access methods, `listReportsForUser` and `listAssessmentsForUser`, were created in the storage layer.
+*   **Frontend:**
+    *   The main pages for reports (`app/(app)/reports/page.tsx`) and current assessments (`app/(app)/assessment/current/page.tsx`) were refactored to perform all data fetching on the server.
+    *   These pages now use the new user-specific methods to retrieve data for the authenticated user only.
+    *   Client components like `ReportsTable.tsx` were simplified to only handle UI rendering, receiving their data as props.
+
+**Impact:**
+*   **Security & Privacy:** Enforces that users can only access their own data.
+*   **Code Quality:** Aligns with the project's architecture pattern of fetching data in Server Components and passing it to Client Components, which resolved several client-side errors.
+
 ## Previous Focus: API Security Hardening and Authentication UX (December 2024)
 
 ### Recent Security Architecture Overhaul

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useSession } from '../../../../../lib/session/SessionContext';
-import { wizardStepMap } from '../../../../../lib/session/wizardStepMap';
+import { useSession } from '@/lib/session/SessionContext';
+import { wizardStepMap } from '@/lib/session/wizardStepMap';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { Assessment } from '@shared/schema';
@@ -39,8 +39,7 @@ export const AssessmentWizard: React.FC<AssessmentWizardProps> = ({
         setStepData(0, { basics: stepData.basics }, true, undefined, undefined);
       }
       if (stepData.roles) {
-        // Convert role IDs back to role objects if needed
-        setStepData(1, { roleSelection: { selectedRoles: [] } }, true, undefined, undefined);
+        setStepData(1, { roleSelection: stepData.roles }, true, undefined, undefined);
       }
       if (stepData.painPoints) {
         setStepData(2, { areasForImprovement: stepData.painPoints }, true, undefined, undefined);

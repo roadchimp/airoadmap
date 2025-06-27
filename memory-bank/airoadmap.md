@@ -58,10 +58,10 @@ Report-Related Routes
 
 Data Flow
 The reports data flow follows this pattern:
-  *   Server Component (page.tsx) uses storage.listReports() to fetch reports
-  *   API Routes also use the same storage interface for data operations
-  *   Both rely on the PostgreSQL implementation in pg-storage.ts
-  *   listReports() implementation has a fallback mechanism that uses raw SQL if the ORM query fails
+  *   The server component `app/(app)/reports/page.tsx` fetches reports and assessments for the current authenticated user by calling `storage.listReportsForUser()` and `storage.listAssessmentsForUser()`.
+  *   It then passes this data as props to the client component `ReportsTable.tsx`, which is responsible for rendering the UI.
+  *   The `storage.createReport()` method in `pg-storage.ts` has been updated to automatically fetch the `user_id` from the associated assessment, ensuring all new reports are correctly linked to a user.
+  *   The `api/public/*` endpoints are no longer used for the reports page.
 
 *** Generating Report using OpenAI API Calls ***
 
@@ -123,6 +123,22 @@ headers: {
     *   **Validation:** Added debug testing that confirms calculations now work correctly (example: 72.3 score for high component values)
     *   **User Impact:** Users need to regenerate existing reports to see corrected AI Adoption Scores
     *   **Files Modified:** `server/lib/aiAdoptionScoreEngine.ts` (lines ~346-347)
+
+*   **User-Specific Report Access (December 2024):**
+    *   **Feature:** Implemented a feature to ensure users can only view reports they have created.
+    *   **Database:** Added a `user_id` column to the `reports` table, referencing `user_profiles.id`.
+    *   **Backend:**
+        *   Created a new `listReportsForUser` method in the storage layer to fetch reports for a specific user.
+        *   Modified `createReport` to automatically populate the `user_id` from the parent assessment.
+    *   **Frontend:**
+        *   Refactored `app/(app)/reports/page.tsx` to fetch data on the server for the authenticated user.
+        *   Simplified `app/(app)/reports/ReportsTable.tsx` to be a presentational component that receives data via props, removing its internal data-fetching logic.
+    *   **Files Modified:**
+        *   `shared/schema.ts`
+        *   `server/storage.ts`
+        *   `server/pg-storage.ts`
+        *   `app/(app)/reports/page.tsx`
+        *   `app/(app)/reports/ReportsTable.tsx`
 
 *   **Comprehensive Report System Improvements (November 2024):**
     *   Implemented 8 major UI improvements including header consolidation and role-based filtering
@@ -298,11 +314,10 @@ CREATE TABLE ai_capabilities (
 CREATE TABLE assessments (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,
-  organization_id INTEGER NOT NULL, -- REFERENCES organizations(id)
-  user_id INTEGER NOT NULL, -- REFERENCES users(id)
-  status TEXT NOT NULL DEFAULT 'draft', -- e.g., draft, completed
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(), -- Added for sorting current assessments
+  organization_id INTEGER NOT NULL REFERENCES organizations(id),
+  user_id INTEGER NOT NULL REFERENCES user_profiles(id),
+  status TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   step_data JSONB -- Stores wizard step data
 );
 ```
@@ -348,8 +363,9 @@ CREATE TABLE assessment_scores (
 ```sql
 CREATE TABLE reports (
   id SERIAL PRIMARY KEY,
-  assessment_id INTEGER NOT NULL UNIQUE REFERENCES assessments(id) ON DELETE CASCADE,
-  generated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  assessment_id INTEGER NOT NULL REFERENCES assessments(id),
+  user_id INTEGER NOT NULL REFERENCES user_profiles(id), -- Added to link report to a user
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   executive_summary TEXT,
   prioritization_data JSONB, -- Stores heatmap and prioritized items
   ai_suggestions JSONB, -- Stores AI solution recommendations

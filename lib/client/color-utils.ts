@@ -1,8 +1,8 @@
 export function getValueBasedColor(valueScore: number | undefined | null): string {
   if (typeof valueScore !== 'number') return '#d1d5db'; // Default gray for undefined/null value
-  if (valueScore > 75) return '#e84c2b'; // Primary - high value
-  if (valueScore >= 50) return '#f8a97a'; // Secondary - medium value
-  return '#d1d5db'; // Gray - low value
+  if (valueScore >= 75) return '#22c55e'; // Green for High Value (75-100)
+  if (valueScore >= 40) return '#f59e0b'; // Yellow for Medium Value (40-74)
+  return '#ef4444'; // Red for Low Value (0-39)
 }
 
 export function getRoleColor(roleIdOrName: string): string {

@@ -24,7 +24,7 @@ export default function ReportPage() {
         if (!response.ok) throw new Error('Failed to fetch report');
         const data = await response.json();
         setReport(data.report);
-      } catch (error) {
+    } catch (error) {
         console.error(error);
         setReport(null);
       } finally {

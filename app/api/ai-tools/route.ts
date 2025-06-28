@@ -17,12 +17,19 @@ const aiToolSchema = z.object({
 async function getAiTools(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const assessmentId = searchParams.get('assessmentId');
+
+    if (assessmentId) {
+      const tools = await storage.getTools({ assessmentId });
+      return NextResponse.json(tools);
+    }
+
     const search = searchParams.get('search') || undefined;
     const category = searchParams.get('category') || undefined;
     const licenseType = searchParams.get('licenseType') || undefined;
 
     const tools = await storage.listAITools(search, category, licenseType);
-    return NextResponse.json({ success: true, data: tools });
+    return NextResponse.json(tools);
   } catch (error) {
     console.error('Error fetching AI tools:', error);
     return NextResponse.json(
@@ -56,5 +63,5 @@ async function createAiTool(request: Request) {
 }
 
 // Export the handlers wrapped with auth and security middleware
-export const GET = withAuthAndSecurity(getAiTools);
+export const GET = getAiTools;
 export const POST = withAuthAndSecurity(createAiTool); 

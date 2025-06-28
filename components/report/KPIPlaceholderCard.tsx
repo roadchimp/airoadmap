@@ -19,20 +19,22 @@ const KPIPlaceholderCard: React.FC<KPIPlaceholderCardProps> = ({ performanceImpa
           {performanceImpact.roleImpacts.map((impact, index) => (
             <div key={index}>
               <h4 className="text-sm font-medium mb-1">{impact.roleTitle}</h4>
-              {impact.metrics.map((metric, metricIndex) => (
-                <div key={metricIndex}>
-                  <div className="flex justify-between items-center">
-                    <div className="text-xs text-neutral-500">{metric.name}</div>
-                    <div className="text-sm font-medium text-secondary-500">-{metric.improvement}%</div>
+              {Array.isArray(impact.metrics) &&
+                impact.metrics.map((metric: any, metricIndex: number) => (
+                  <div key={metricIndex}>
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs text-neutral-500">{metric.name}</div>
+                      <div className="text-sm font-medium text-secondary-500">-{metric.improvement}%</div>
+                    </div>
+                    <div className="mt-1 h-2 w-full bg-neutral-200 rounded-full">
+                      <div 
+                        className="h-full bg-secondary-500 rounded-full" 
+                        style={{ width: `${metric.improvement}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="mt-1 h-2 w-full bg-neutral-200 rounded-full">
-                    <div 
-                      className="h-full bg-secondary-500 rounded-full" 
-                      style={{ width: `${metric.improvement}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+                ))
+              }
             </div>
           ))}
           

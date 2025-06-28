@@ -199,7 +199,7 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
           <X className="h-4 w-4" />
         </Button>
         <CardHeader className="pb-2">
-          <CardTitle>{selectedItem.title} - Detailed View</CardTitle>
+          <CardTitle>{selectedItem.name} - Detailed View</CardTitle>
           <CardDescription>{selectedItem.department}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -485,7 +485,7 @@ const OpportunitiesTab: React.FC<OpportunitiesTabProps> = ({
                   data-state={selectedItem?.id === item.id ? "selected" : undefined}
                 >
                   <TableCell className="font-medium">{index + 1}</TableCell>
-                  <TableCell className="font-medium">{item.title}</TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell className="text-neutral-600">{item.department}</TableCell>
                   <TableCell>
                     <div className="flex items-center">

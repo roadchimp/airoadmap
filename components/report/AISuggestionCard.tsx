@@ -1,7 +1,23 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AISuggestion } from "@shared/schema";
 import { ExternalLink } from "lucide-react";
+
+// Define component-specific types locally
+interface RecommendedTool {
+  name: string;
+  websiteUrl?: string;
+}
+
+interface CapabilitySuggestion {
+  name: string;
+  description: string;
+  recommendedTools?: RecommendedTool[];
+}
+
+interface AISuggestion {
+  roleTitle: string;
+  capabilities: CapabilitySuggestion[];
+}
 
 interface AISuggestionCardProps {
   aiSuggestions: AISuggestion[];

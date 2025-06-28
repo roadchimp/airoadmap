@@ -52,7 +52,7 @@ const PrioritizationList: React.FC<PrioritizationListProps> = ({
               {prioritizedItems.map((item, index) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{index + 1}</TableCell>
-                  <TableCell className="font-medium">{item.title}</TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell className="text-neutral-600">{item.department}</TableCell>
                   <TableCell>{item.valueScore}/5</TableCell>
                   <TableCell>{item.effortScore}/5</TableCell>

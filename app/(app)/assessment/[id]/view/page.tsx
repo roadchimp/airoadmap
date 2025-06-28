@@ -1,68 +1,63 @@
-import { notFound } from 'next/navigation';
-import { storage } from "@/server/storage";
-import { Assessment } from '@shared/schema';
-import AssessmentViewer from "../../_components/assessment-viewer"; // We'll create this component
+import AssessmentViewClient from "./_components/assessment-view-client";
+import { PgStorage } from "@/server/pg-storage";
+import { notFound } from "next/navigation";
+import { IStorage } from "@/server/storage";
+import { Assessment, AssessmentResponse } from "@shared/schema";
 
-interface AssessmentViewPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
+// Define params as a Promise
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
 
-// Fetch data for a specific assessment on the server
-async function getAssessmentData(id: number): Promise<Assessment | null> {
-  try {
-    const assessment = await storage.getAssessment(id);
-    // Explicitly return null if assessment is undefined
-    return assessment ?? null; 
-  } catch (error) {
-    console.error(`Error fetching assessment ${id}:`, error);
-    return null; // Return null on error
-  }
-}
-
-// Fetch assessment responses
-async function getAssessmentResponses(id: number) {
-  try {
-    const responses = await storage.getAssessmentResponsesByAssessment(id);
-    return responses;
-  } catch (error) {
-    console.error(`Error fetching assessment responses for ${id}:`, error);
-    return [];
-  }
-}
-
-export default async function ViewAssessmentPage({ params }: AssessmentViewPageProps) {
+export default async function AssessmentViewPage({ params }: PageProps) {
+  // Await the params to resolve the Promise
   const { id } = await params;
-  const assessmentId = parseInt(id);
+  const assessmentId = parseInt(id, 10);
 
   if (isNaN(assessmentId)) {
-    notFound(); // If ID is not a number, show 404
+    notFound();
   }
 
-  const initialAssessmentData = await getAssessmentData(assessmentId);
-  const assessmentResponses = await getAssessmentResponses(assessmentId);
+  const storage: IStorage = new PgStorage();
+  let initialAssessmentData: Assessment;
+  let assessmentResponses: AssessmentResponse[];
 
-  if (!initialAssessmentData) {
-    notFound(); // If assessment not found or error fetching, show 404
+  try {
+    const [assessment, responses] = await Promise.all([
+      storage.getAssessment(assessmentId),
+      storage.getAssessmentResponsesByAssessment(assessmentId)
+    ]);
+
+    if (!assessment) throw new Error("Assessment not found");
+    
+    initialAssessmentData = assessment;
+    assessmentResponses = responses;
+  } catch (error) {
+    console.error("Failed to fetch assessment data:", error);
+    notFound();
   }
 
-  // Pass the fetched assessment data to the viewer component
+  const report = await storage.getReportByAssessmentId(assessmentId);
+
   return (
-    <AssessmentViewer 
+    <AssessmentViewClient 
       assessment={initialAssessmentData} 
-      responses={assessmentResponses} 
+      reportId={report?.id}
     />
   );
 }
 
-// Add metadata generation based on assessment title
-export async function generateMetadata({ params }: AssessmentViewPageProps) {
+// Update generateMetadata to handle Promise
+export async function generateMetadata({ params }: PageProps) {
+  // Await the params here too
   const { id } = await params;
-  const assessmentId = parseInt(id);
+  const assessmentId = parseInt(id, 10);
+  
   if (isNaN(assessmentId)) return { title: 'Assessment Not Found' };
   
-  const assessment = await getAssessmentData(assessmentId);
+  const storage: IStorage = new PgStorage();
+  const assessment = await storage.getAssessment(assessmentId);
+  
   return {
     title: assessment ? `View Assessment: ${assessment.title}` : 'Assessment Not Found',
   };

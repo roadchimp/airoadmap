@@ -111,7 +111,8 @@ function convertResponsesToStepData(
           break;
         case 'scores':
           stepData['scores'] = {
-            assessmentScores: { roleScores: {}, timestamp: new Date().toISOString() }
+            assessmentScores: { roleScores: {}, timestamp: new Date().toISOString()
+           }
           };
           break;
         default:

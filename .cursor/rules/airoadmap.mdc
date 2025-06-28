@@ -13,3 +13,5 @@ alwaysApply: true
 # Document the project folder structure in airoadmap.md
 # Document the entire database schema in airoadmap.md
 # For new migrations, make sure to add them to the same file
+
+#Always ask me clarifying questions before you proceed to develop new functions or pages etc.

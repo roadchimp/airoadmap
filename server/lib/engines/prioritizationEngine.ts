@@ -32,17 +32,30 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
   };
   
   // Get roles data
-  const selectedRoleIds = stepData.roles?.selectedRoles || [];
-  const roleRankings = stepData.roles?.prioritizedRoles || selectedRoleIds;
+  const selectedRoles = stepData.roles?.selectedRoles || [];
+  const roleRankings = stepData.roles?.prioritizedRoles || [];
   const painPoints = stepData.painPoints?.roleSpecificPainPoints || {};
   
+  // Create a map of role IDs to role objects for easy lookup
+  const roleMap = new Map<number, { id: number; title: string; department: string }>();
+  selectedRoles.forEach(role => {
+    if (role.id) {
+      roleMap.set(role.id, {
+        id: role.id,
+        title: role.title,
+        department: `Department ${role.departmentId}`, 
+      });
+    }
+  });
+
+  // If roleRankings is empty, populate it with all selected roles
+  const finalRoleRankings = roleRankings.length > 0 ? roleRankings : selectedRoles.map(r => r.id).filter(id => id !== undefined);
+  
   // Extract role IDs from selected roles for capability mapping
-  const assessmentRoleIds: number[] = (stepData.roles?.selectedRoles || [])
-    .map(role => role.id)
-    .filter((id): id is number => id !== undefined);
+  const assessmentRoleIds: number[] = selectedRoles.map(role => role.id).filter((id): id is number => id !== undefined);
   
   console.log(`Assessment has ${assessmentRoleIds.length} selected roles for capability mapping:`, 
-    stepData.roles?.selectedRoles?.map(r => `${r.title} (ID: ${r.id})`));
+    selectedRoles.map(r => `${r.title} (ID: ${r.id})`));
   
   // Calculate data quality score based on available data sources
   // Default to medium (3) if not specified
@@ -67,15 +80,18 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
   }
   
   // Process each selected role in priority order
-  for (let i = 0; i < roleRankings.length; i++) {
-    const roleRankingItem = roleRankings[i] as { id?: number, title?: string, department?: string }; // Type assertion
+  for (let i = 0; i < finalRoleRankings.length; i++) {
+    const roleId = finalRoleRankings[i] as number;
+    const roleData = roleMap.get(roleId);
+
+    if (!roleData) {
+      console.warn(`Could not find role data for prioritized role ID: ${roleId}. Skipping.`);
+      continue;
+    }
     
-    // Ensure roleId has a fallback if id is somehow missing, though it shouldn't be
-    const roleId = roleRankingItem.id || (typeof roleRankingItem === 'number' ? roleRankingItem : i + 1);
-    
-    // Use actual role data from roleRankingItem if available, otherwise placeholder
-    const roleTitle = roleRankingItem.title || `Role ${roleId}`;
-    const roleDepartment = roleRankingItem.department || "General";
+    // Use actual role data from the map
+    const roleTitle = roleData.title;
+    const roleDepartment = roleData.department;
     
     // Get pain point data for this role
     const rolePainPoints = painPoints[roleId.toString()] || {};
@@ -108,14 +124,15 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
     
     // Create prioritized item
     const prioritizedItem: PrioritizedItem = {
-      id: roleId,
-      title: roleTitle,
+      id: roleId.toString(),
+      name: roleTitle,
       department: roleDepartment,
       valueScore: Math.round(valueScore * 10) / 10,
       effortScore: Math.round(effortScore * 10) / 10,
       priority,
       valueLevel,
-      effortLevel
+      effortLevel,
+      aiAdoptionScore: 0
     };
     
     // Add to prioritized items list
@@ -153,8 +170,8 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
   const aiSuggestionsPromises = topRoles.map(item => {
     // Create role and department objects
     const role: JobRole = {
-      id: item.id,
-      title: item.title,
+      id: parseInt(item.id),
+      title: item.name,
       departmentId: 1,
       description: '',
       keyResponsibilities: [],
@@ -185,8 +202,8 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
   // Generate performance impact estimates (in parallel)
   const performanceImpactPromises = topRoles.map(item => {
     const role: JobRole = {
-      id: item.id,
-      title: item.title,
+      id: parseInt(item.id),
+      title: item.name,
       departmentId: 1,
       description: '',
       keyResponsibilities: [],
@@ -314,8 +331,8 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
       }
     }
      allSavedCapabilities.push({
-      roleId: topRoles[i].id,
-      roleTitle: topRoles[i].title,
+      roleId: parseInt(topRoles[i].id),
+      roleTitle: topRoles[i].name,
       capabilities: roleAISuggestions
     });
   }
@@ -325,7 +342,7 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
   
   // Format performance impact
   const roleImpacts = topRoles.map((item, index) => ({
-    roleTitle: item.title,
+    roleTitle: item.name,
     metrics: performanceResults[index].metrics
   }));
   

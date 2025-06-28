@@ -193,6 +193,7 @@ export interface IStorage {
   
   // Report methods
   getReport(id: number): Promise<ReportWithMetricsAndRules | undefined>;
+  getReportByAssessmentId(assessmentId: number): Promise<DBReport | undefined>;
   getReportByAssessment(assessmentId: number): Promise<ReportWithMetricsAndRules | undefined>;
   listReports(): Promise<DBReport[]>;
   listReportsForUser(userProfile: UserProfile): Promise<DBReport[]>;

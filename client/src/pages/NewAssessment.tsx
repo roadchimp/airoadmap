@@ -66,6 +66,12 @@ interface AssessmentData {
         suitability?: number;
       }>;
     };
+    roiTargets?: {
+      primaryGoals?: string[];
+      expectedROI?: string;
+      timeToValue?: string;
+      keyMetrics?: { name: string }[];
+    };
     scores?: any;
     aiAdoptionScoreInputs?: {
       adoptionRateForecast?: number;

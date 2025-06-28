@@ -65,6 +65,7 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareEmail, setShareEmail] = useState("")
   const [isSharing, setIsSharing] = useState(false)
+  const [tools, setTools] = useState<ToolWithMappedCapabilities[]>([]);
 
   const [currentPageCapabilities, setCurrentPageCapabilities] = useState(1)
   
@@ -107,6 +108,27 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
   useEffect(() => {
     addPrintStyles()
   }, [])
+
+  useEffect(() => {
+    if (reportDetails?.assessmentId) {
+      const fetchTools = async () => {
+        try {
+          const response = await fetch(`/api/ai-tools?assessmentId=${reportDetails.assessmentId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setTools(data);
+          } else {
+            console.error("Failed to fetch tools");
+            setTools([]);
+          }
+        } catch (error) {
+          console.error("Error fetching tools:", error);
+          setTools([]);
+        }
+      };
+      fetchTools();
+    }
+  }, [reportDetails?.assessmentId]);
 
   useEffect(() => {
     if (initialReport) {
@@ -671,8 +693,8 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                       allCategories={allUniqueCategories}
                       selectedCategories={selectedCategories}
                       onChange={handleCategoryChange}
-              />
-            </div>
+                    />
+                  </div>
                   
                   <div className="flex-1 min-w-[200px]">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Role:</label>
@@ -792,14 +814,14 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                       </Button>
                     </div>
                   )}
-          </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="performance-metrics" className="space-y-6">
             <PerformanceMetricsTable />
-        </TabsContent>
+          </TabsContent>
 
           <TabsContent value="ai-adoption-score" className="space-y-6">
             <AIAdoptionScoreTab 
@@ -819,8 +841,8 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                 companyStage: reportDetails?.assessment?.companyStage,
                 strategicFocus: Array.isArray(reportDetails?.assessment?.strategicFocus) ? reportDetails?.assessment.strategicFocus : undefined
               }}
-          />
-        </TabsContent>
+            />
+          </TabsContent>
 
           <TabsContent value="ai-tools" className="space-y-6">
             <Card>
@@ -830,113 +852,103 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                   AI tools that can implement the capabilities relevant to your organization, with their mapped AI capabilities.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="w-full flex flex-wrap gap-4">
-                  <div className="flex-1 min-w-[200px]">
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  {allUniqueCategories.length > 0 && (
                     <CategoryFilter 
-                      allCategories={allUniqueCategories}
-                      selectedCategories={selectedCategories}
-                      onChange={handleCategoryChange}
+                      allCategories={allUniqueCategories} 
+                      selectedCategories={selectedCategories} 
+                      onChange={handleCategoryChange} 
                     />
-                  </div>
-                  
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Role:</label>
-                    <select 
-                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
-                      multiple
-                      value={selectedRoles}
-                      onChange={(e) => {
-                        const options = Array.from(e.target.selectedOptions, option => option.value);
-                        setSelectedRoles(options);
-                      }}
-                    >
-                      {roles.map(role => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
-                    {selectedRoles.length > 0 && (
-                      <button 
-                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
-                        onClick={() => setSelectedRoles([])}
+                  )}
+                  {roles.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Filter by Role:</h4>
+                      <select 
+                        className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                        multiple
+                        value={selectedRoles}
+                        onChange={(e) => {
+                          const options = Array.from(e.target.selectedOptions, option => option.value);
+                          setSelectedRoles(options);
+                        }}
                       >
-                        Clear selection
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Pain Point:</label>
-                    <select 
-                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
-                      multiple
-                      value={selectedPainPoints}
-                      onChange={(e) => {
-                        const options = Array.from(e.target.selectedOptions, option => option.value);
-                        setSelectedPainPoints(options);
-                      }}
-                    >
-                      {painPoints.map(painPoint => (
-                        <option key={painPoint} value={painPoint}>{painPoint}</option>
-                      ))}
-                    </select>
-                    {selectedPainPoints.length > 0 && (
-                      <button 
-                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
-                        onClick={() => setSelectedPainPoints([])}
+                        {roles.map(role => (
+                          <option key={role} value={role}>{role}</option>
+                        ))}
+                      </select>
+                      {selectedRoles.length > 0 && (
+                        <button 
+                          className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                          onClick={() => setSelectedRoles([])}
+                        >
+                          Clear selection
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {painPoints.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Filter by Pain Point:</h4>
+                      <select 
+                        className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                        multiple
+                        value={selectedPainPoints}
+                        onChange={(e) => {
+                          const options = Array.from(e.target.selectedOptions, option => option.value);
+                          setSelectedPainPoints(options);
+                        }}
                       >
-                        Clear selection
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Goal:</label>
-                    <select 
-                      className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
-                      multiple
-                      value={selectedGoals}
-                      onChange={(e) => {
-                        const options = Array.from(e.target.selectedOptions, option => option.value);
-                        setSelectedGoals(options);
-                      }}
-                    >
-                      {goals.map(goal => (
-                        <option key={goal} value={goal}>{goal}</option>
-                      ))}
-                    </select>
-                    {selectedGoals.length > 0 && (
-                      <button 
-                        className="mt-1 text-xs text-[#e84c2b] hover:underline"
-                        onClick={() => setSelectedGoals([])}
+                        {painPoints.map(painPoint => (
+                          <option key={painPoint} value={painPoint}>{painPoint}</option>
+                        ))}
+                      </select>
+                      {selectedPainPoints.length > 0 && (
+                        <button 
+                          className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                          onClick={() => setSelectedPainPoints([])}
+                        >
+                          Clear selection
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {goals.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Filter by Goal:</h4>
+                      <select 
+                        className="w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 bg-white focus:outline-none focus:ring-2 focus:ring-[#e84c2b] focus:border-[#e84c2b]"
+                        multiple
+                        value={selectedGoals}
+                        onChange={(e) => {
+                          const options = Array.from(e.target.selectedOptions, option => option.value);
+                          setSelectedGoals(options);
+                        }}
                       >
-                        Clear selection
-                      </button>
-                    )}
-                  </div>
+                        {goals.map(goal => (
+                          <option key={goal} value={goal}>{goal}</option>
+                        ))}
+                      </select>
+                      {selectedGoals.length > 0 && (
+                        <button 
+                          className="mt-1 text-xs text-[#e84c2b] hover:underline"
+                          onClick={() => setSelectedGoals([])}
+                        >
+                          Clear selection
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-                
-                {(roles.length === 0 || painPoints.length === 0 || goals.length === 0) && (
-                  <div className="flex justify-center">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {}}
-                      className="flex items-center gap-2"
-                    >
-                      <span>Populate Filter Values</span>
-                    </Button>
-                  </div>
+                {reportDetails?.assessmentId ? (
+                  <AIToolsTable tools={tools} />
+                ) : (
+                  <p>No assessment linked to this report.</p>
                 )}
-                <div>
-                  <AIToolsTable 
-                    tools={filteredTools}
-                  />
-                </div>
               </CardContent>
             </Card>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {selectedCapability && (

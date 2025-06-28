@@ -790,12 +790,39 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async getReportByAssessmentId(assessmentId: number): Promise<Report | undefined> {
+    await this.ensureInitialized();
+    const result = await this.db.select().from(reports).where(eq(reports.assessmentId, assessmentId));
+    return result[0];
+  }
+
   async getAssessmentRaw(id: number, userId: number): Promise<Assessment | undefined> {
     const result = await this.db.execute(
       sql`SELECT * FROM assessments 
           WHERE id = ${id} AND user_id = ${userId}`
     );
-    return result.rows[0];
+    return result.rows[0] as Assessment | undefined;
+  }
+
+  async getAssessmentsForUser(userId: number, organizationId: number): Promise<Assessment[]> {
+    await this.ensureInitialized();
+    const isAdmin = userId === 1; // samsena@gmail.com
+
+    if (isAdmin) {
+      // Admin sees all assessments
+      return await this.db.select().from(assessments).orderBy(sql`${assessments.updatedAt} desc`);
+    }
+
+    if (!organizationId) {
+      // User is not associated with any organization, return empty array
+      return [];
+    }
+
+    // Regular user sees assessments for their organization
+    return await this.db.select()
+      .from(assessments)
+      .where(eq(assessments.organizationId, organizationId))
+      .orderBy(sql`${assessments.updatedAt} desc`);
   }
 
   async listAssessments(): Promise<Assessment[]> {
@@ -1688,7 +1715,7 @@ export class PgStorage implements IStorage {
       return [];
     }
     const toolIds = mappings.map((m: { toolId: number }) => m.toolId);
-    return this.db.select().from(aiToolsTable).where(inArray(aiToolsTable.tool_id, toolIds));
+    return this.db.select().from(aiToolsTable).where(inArray(aiToolsTable.tool_id, toolIds as number[]));
   }
 
   // New methods for capability-job role mapping
@@ -1783,35 +1810,74 @@ export class PgStorage implements IStorage {
 
   async getTools(options?: { assessmentId?: string; categoryFilter?: string[] }): Promise<ToolWithMappedCapabilities[]> {
     await this.ensureInitialized();
-    // Base query for tools
-    let query = this.db.select().from(aiToolsTable).$dynamic();
+    console.log("getTools: Received options", options);
 
-    // Apply filters if provided
-    const conditions = [];
-    if (options?.categoryFilter && options.categoryFilter.length > 0) {
-      conditions.push(inArray(aiToolsTable.primary_category, options.categoryFilter));
-    }
-    // TODO: Add assessmentId filtering if needed. This would require joining through capabilities 
-    // and then assessments, or having a direct link if that makes sense for your data model.
-    // For now, assessmentId filtering is not implemented here.
     if (options?.assessmentId) {
+      console.log(`getTools: Filtering by assessmentId: ${options.assessmentId}`);
+      
+      const assessmentIdNum = parseInt(options.assessmentId, 10);
+      if (isNaN(assessmentIdNum)) {
+        console.error("getTools: Invalid assessmentId provided");
+        return [];
+      }
+
+      // 1. Get all capability IDs for the given assessment
+      const assessmentCapabilities = await this.db
+        .select({ capabilityId: assessmentAICapabilitiesTable.aiCapabilityId })
+        .from(assessmentAICapabilitiesTable)
+        .where(eq(assessmentAICapabilitiesTable.assessmentId, assessmentIdNum));
+      
+      const capabilityIds = assessmentCapabilities.map((ac: {capabilityId: number | null}) => ac.capabilityId).filter((id: number | null): id is number => id !== null);
+
+      if (capabilityIds.length === 0) {
+        console.log(`getTools: No capabilities found for assessmentId: ${options.assessmentId}`);
+        return [];
+      }
+      console.log(`getTools: Found ${capabilityIds.length} capabilities for assessment.`);
+
+      // 2. Get all tool IDs linked to these capabilities
+      const toolMappings = await this.db
+        .select({ toolId: capabilityToolMapping.tool_id })
+        .from(capabilityToolMapping)
+        .where(inArray(capabilityToolMapping.capability_id, capabilityIds));
+
+      const toolIds = [...new Set(toolMappings.map((m: {toolId: number}) => m.toolId))];
+
+      if (toolIds.length === 0) {
+        console.log(`getTools: No tools found for the capabilities of assessmentId: ${options.assessmentId}`);
+        return [];
+      }
+      console.log(`getTools: Found ${toolIds.length} tools for assessment.`);
+      
+      // 3. Fetch the tools with the identified IDs
+      const tools = await this.db
+        .select()
+        .from(aiToolsTable)
+        .where(inArray(aiToolsTable.tool_id, toolIds as number[]));
+
+      // 4. For each tool, fetch its associated capabilities
+      const toolsWithCapabilities = await Promise.all(
+        tools.map(async (tool: any) => {
+          const capabilities = await this.getCapabilitiesForTool(tool.tool_id);
+          return { ...tool, capabilities };
+        })
+      );
+      return toolsWithCapabilities;
+
+    } else {
       console.warn("getTools: assessmentId filtering is not yet implemented.");
+      // Fallback to original implementation if no assessmentId
+      const tools = await this.db.select().from(aiToolsTable);
+      
+      // For each tool, fetch its associated capabilities
+      const toolsWithCapabilities = await Promise.all(
+        tools.map(async (tool: any) => {
+          const capabilities = await this.getCapabilitiesForTool(tool.tool_id);
+          return { ...tool, capabilities };
+        })
+      );
+      return toolsWithCapabilities;
     }
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-
-    const tools: BaseAiTool[] = await query;
-
-    // For each tool, fetch its mapped capabilities
-    const toolsWithCapabilities: ToolWithMappedCapabilities[] = await Promise.all(
-      tools.map(async (tool) => {
-        const capabilities = await this.getCapabilitiesForTool(tool.tool_id);
-        return { ...tool, mappedCapabilities: capabilities };
-      })
-    );
-    return toolsWithCapabilities;
   }
 
   // Helper method to set the auth context for RLS policies

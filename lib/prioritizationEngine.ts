@@ -180,14 +180,15 @@ export function generatePreviewAssessment(stepData: Partial<WizardStepData>, rol
     const priority = determinePriority(valueLevel, effortLevel);
     
     prioritizedItems.push({
-      id: role.id,
-      title: role.title,
-      department: `Department ${role.departmentId}`, // In a real app, get actual department name
+      id: role.id.toString(),
+      name: role.title,
+      department: `Department ${role.departmentId}`, 
       valueScore,
       effortScore,
       priority: priority as any,
       valueLevel,
-      effortLevel
+      effortLevel,
+      aiAdoptionScore: 0
     });
   });
   

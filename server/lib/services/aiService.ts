@@ -305,121 +305,69 @@ export async function generateAICapabilityRecommendations(
       return fallbackAICapabilities(role, department);
     }
 
-    const painPointDescription = painPoints
-      ? `Pain points include: Severity: ${painPoints.severity}/5, Frequency: ${painPoints.frequency}/5, Impact: ${painPoints.impact}/5. Description: ${painPoints.description || "Not provided"}`
-      : "No specific pain points provided for this role.";
-
-    console.log(`[AI Service] Pain points for ${role.title}: ${painPointDescription}`);
+    // Construct a more detailed prompt
+    const painPointsDescription = `Pain points include: Severity: ${painPoints.severity || 'N/A'}/5, Frequency: ${painPoints.frequency || 'N/A'}/5, Impact: ${painPoints.impact || 'N/A'}/5. Description: ${painPoints.description || 'Not specified'}`;
+    console.log(`[AI Service] Pain points for ${role.title}: ${painPointsDescription}`);
 
     const prompt = `
-Context:
-Role: ${role.title}
-Department: ${department.name}
-${painPointDescription}
+      For a ${role.title} in the ${department.name} department, who faces these challenges: ${painPointsDescription}.
+      
+      Identify the top 10 most impactful AI capabilities that could address these issues. For each capability:
+      1.  Provide a clear 'capabilityName' and 'capabilityCategory' (e.g., 'Content Generation', 'Data Analysis', 'Automation').
+      2.  Write a concise 'capabilityDescription' (1-2 sentences).
+      3.  Estimate the 'businessValue' (e.g., 'High', 'Medium', 'Low') and 'implementationEffort' (e.g., 'High', 'Medium', 'Low').
+      4.  Calculate a 'valueScore' (0-100) based on this formula: (Severity * 5 + Frequency * 4 + Impact * 6). This score MUST be based on the user's pain point input.
+      5.  Provide a 'feasibilityScore' (0-100) based on your expert assessment of how technically achievable this capability is for a typical company in this industry.
+      6.  Suggest 2-3 specific, real-world AI tools that can deliver this capability in the 'recommendedTools' field as an array of strings.
+      7.  Provide relevant 'tags' as an array of strings.
+      
+      Return the response as a JSON object with a single key "recommendations" that contains an array of these capability objects.
+      Example of a single object in the array:
+      {
+        "capabilityName": "Automated Content Briefs",
+        "capabilityCategory": "Content Generation",
+        "capabilityDescription": "Automatically generates detailed content briefs for writers, including keywords, topics, and structure.",
+        "businessValue": "High",
+        "implementationEffort": "Low",
+        "valueScore": "90",
+        "feasibilityScore": "80",
+        "assessmentNotes": "Directly addresses the time-consuming nature of content planning and ensures SEO alignment.",
+        "recommendedTools": ["SurferSEO", "Frase.io", "Clearscope"],
+        "tags": ["seo", "content marketing", "automation"]
+      }
+    `;
 
-Based on the provided context, identify and recommend 3-5 AI capabilities.
-For each AI capability, provide the following information in a JSON array format. Each object in the array should represent one AI capability:
-
-1.  "capabilityName": A concise name for the AI capability (e.g., "Automated Data Entry", "Predictive Maintenance Analytics").
-2.  "capabilityCategory": A general category for this capability (e.g., "Automation", "Analytics", "Content Generation", "Decision Support").
-3.  "capabilityDescription": (Optional) A brief general description of what this AI capability does.
-4.  "tags": (Optional) An array of 2-3 relevant global tags for this capability (e.g., ["data_processing", "efficiency", "nlp"]).
-
-5.  "default_business_value": (Optional) The general, typical business value this capability offers (e.g., "Low", "Medium", "High", "Very High").
-6.  "default_implementation_effort": (Optional) The general, typical effort to implement this capability (e.g., "Low", "Medium", "High").
-7.  "default_ease_score": (Optional) A general score (0-100) indicating how easy this capability is to implement typically.
-8.  "default_value_score": (Optional) A general score (0-100) indicating the typical value this capability provides.
-9.  "default_feasibility_score": (Optional) A general score (0-100) indicating the typical technical feasibility.
-10. "default_impact_score": (Optional) A general score (0-100) indicating the typical impact this capability can have.
-
-Now, for the *specific context of the Role (${role.title}) and Department (${department.name})*:
-11. "valueScore": A score (0-100) for the potential value this capability offers *to this specific role/department*.
-12. "feasibilityScore": A score (0-100) for the technical feasibility of implementing this capability *for this specific role/department*.
-13. "impactScore": (Optional) A score (0-100) for the potential impact this capability can have *on this specific role/department*.
-14. "easeScore": (Optional) A score (0-100) for how easy it would be to implement this capability *for this specific role/department*.
-15. "priority": The priority for implementing this capability *for this role/department* ("High", "Medium", or "Low").
-16. "rank": (Optional) A numerical rank (e.g., 1, 2, 3) for this capability recommendation *within this assessment context*.
-17. "implementationEffort": The estimated effort to implement this capability *for this specific role/department* (e.g., "Low", "Medium", "High").
-18. "businessValue": The estimated business value this capability would bring *to this specific role/department* (e.g., "Low", "Medium", "High", "Very High").
-19. "assessmentNotes": (Optional) Brief notes or justification for why this capability is recommended for *this specific role/department*, considering their pain points.
-
-Return ONLY a valid JSON array of these objects. Example of one object:
-{
-  "capabilityName": "AI-Powered Email Triage",
-  "capabilityCategory": "Productivity Automation",
-  "capabilityDescription": "Automatically categorizes and prioritizes incoming emails for faster response.",
-  "tags": ["email", "automation", "nlp"],
-  "default_business_value": "Medium",
-  "default_implementation_effort": "Medium",
-  "default_ease_score": "70",
-  "default_value_score": "75",
-  "default_feasibility_score": "80",
-  "default_impact_score": "60",
-  "valueScore": "85",
-  "feasibilityScore": "75",
-  "impactScore": "80",
-  "easeScore": "70",
-  "priority": "High",
-  "rank": 1,
-  "implementationEffort": "Medium",
-  "businessValue": "High",
-  "assessmentNotes": "Addresses significant time lost to manual email sorting, directly impacting ${role.title}'s efficiency in the ${department.name} department."
-}
-`;
+    const model = "gpt-4";
+    
+    // Check if we have a cached response
+    const cachedResponse = getCachedResponse(prompt, model);
+    if (cachedResponse) {
+      console.log('[AI Service] Using cached response for AI capability recommendations');
+      return cachedResponse;
+    }
 
     console.log('[AI Service] Making OpenAI API call for AI capability recommendations...');
 
     const response = await workingOpenAI.chat.completions.create({
       model: "gpt-4-turbo-preview", // Or your preferred model
       messages: [
-        { role: "system", content: "You are an expert AI strategy consultant. You provide detailed, structured AI capability recommendations in JSON format." },
+        { role: "system", content: "You are an AI transformation consultant providing specific, actionable capability recommendations." },
         { role: "user", content: prompt }
       ],
-      response_format: { type: "json_object" }, // Request JSON output
+      response_format: { type: "json_object" },
       temperature: 0.3,
     });
 
     console.log('[AI Service] OpenAI API call successful for AI capability recommendations');
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      console.error("[AI Service] OpenAI returned empty content for AI capabilities.");
-      return fallbackAICapabilities(role, department);
-    }
+    const content = JSON.parse(response.choices[0].message.content || '{ "recommendations": [] }');
+    const recommendations = content.recommendations || (Array.isArray(content) ? content : [content]);
+    
+    console.log(`[AI Service] Successfully parsed ${Array.isArray(recommendations) ? recommendations.length : 0} AI capability recommendations`);
 
-    console.log(`[AI Service] Received AI capabilities response (${content.length} characters)`);
-
-    try {
-      // The OpenAI response might be a single object instead of an array, or an array
-      const parsedResponse = JSON.parse(content);
-      let recommendationsArray: AIRecommendationResponse[];
-
-      // Check if the parsed response is directly an array
-      if (Array.isArray(parsedResponse)) {
-        recommendationsArray = parsedResponse;
-      } 
-      // Check if it's a single object (convert to array)
-      else if (parsedResponse && typeof parsedResponse === 'object' && parsedResponse.capabilityName) {
-        console.log('[AI Service] Single capability object received, converting to array');
-        recommendationsArray = [parsedResponse];
-      }
-      // Check if it's an object containing an array
-      else if (parsedResponse && typeof parsedResponse === 'object') {
-        const arrayValue = Object.values(parsedResponse).find(val => Array.isArray(val));
-        if (arrayValue) {
-          recommendationsArray = arrayValue as AIRecommendationResponse[];
-        } else {
-          console.error("[AI Service] Parsed OpenAI response is not in the expected format:", parsedResponse);
-          return fallbackAICapabilities(role, department);
-        }
-      } else {
-        console.error("[AI Service] Parsed OpenAI response is not in the expected format:", parsedResponse);
-        return fallbackAICapabilities(role, department);
-      }
-      
-      console.log(`[AI Service] Successfully parsed ${recommendationsArray.length} AI capability recommendations`);
-      
-      return recommendationsArray.map(rec => ({
+    // Ensure the output is always an array
+    if (Array.isArray(recommendations)) {
+      return recommendations.map(rec => ({
         // Global capability fields
         capabilityName: rec.capabilityName,
         capabilityCategory: rec.capabilityCategory,
@@ -442,9 +390,8 @@ Return ONLY a valid JSON array of these objects. Example of one object:
         businessValue: rec.businessValue,
         assessmentNotes: rec.assessmentNotes,
       }));
-    } catch (e) {
-      console.error("[AI Service] Error parsing OpenAI response JSON:", e);
-      console.error("[AI Service] Problematic AI response content:", content);
+    } else {
+      console.error("[AI Service] Parsed OpenAI response is not in the expected format:", recommendations);
       return fallbackAICapabilities(role, department);
     }
 

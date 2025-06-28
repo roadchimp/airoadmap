@@ -22,6 +22,31 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).pick({
   avatar_url: true,
 });
 
+export const rolesSchema = z.object({
+  selectedDepartments: z.array(z.object({
+    id: z.number(),
+    name: z.string(),
+    description: z.string().nullable().optional(),
+    is_active: z.boolean().optional(),
+    created_at: z.date().optional(),
+    updated_at: z.date().optional(),
+  })).optional(),
+  selectedRoles: z.array(z.object({
+    id: z.number(),
+    title: z.string(),
+    departmentId: z.number(),
+    description: z.string().nullable().optional(),
+    keyResponsibilities: z.array(z.string()).nullable().optional(),
+    aiPotential: z.enum(['Low', 'Medium', 'High']).nullable().optional(),
+    level: z.string().nullable().optional(),
+    skills: z.array(z.string()).nullable().optional(),
+    is_active: z.boolean().optional(),
+    created_at: z.date().optional(),
+    updated_at: z.date().optional(),
+  })).optional(),
+  prioritizedRoles: z.array(z.number()).optional(),
+});
+
 // Company/Organization model
 export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
@@ -380,79 +405,49 @@ export const aiAdoptionScoreInputComponentsSchema = z.object({
 });
 export type AiAdoptionScoreInputComponents = z.infer<typeof aiAdoptionScoreInputComponentsSchema>;
 
-// Now update the WizardStepData schema to include the aiAdoptionScoreInputs field
-export const wizardStepDataSchema = z.object({
-  basics: z.object({
-    companyName: z.string().min(1, "Company Name is required"),
-    reportName: z.string().min(1, "Report Name is required"),
-    industry: z.string().min(1, "Industry is required"),
-    size: z.string().min(1, "Company Size is required"),
-    goals: z.string().optional(),
-    stakeholders: z.array(z.string()).optional(),
-    industryMaturity: z.enum(industryMaturityEnum.enumValues, { 
-      required_error: "Industry Maturity is required",
-      invalid_type_error: "Please select a valid Industry Maturity",
-    }),
-    companyStage: z.enum(companyStageEnum.enumValues, {
-      required_error: "Company Stage is required",
-      invalid_type_error: "Please select a valid Company Stage",
-    }),
-  }).optional(),
-  
-  roles: z.object({
-    selectedDepartments: z.array(z.string()),
-    selectedRoles: z.array(z.object({
-      id: z.number().optional(),
-      title: z.string(),
-      department: z.string(),
-      description: z.string().optional(),
-      responsibilities: z.array(z.string()).optional(),
-    })),
-    prioritizedRoles: z.array(z.number()).optional(),
-    customDepartment: z.string().optional(),
-  }).optional(),
-  
-  painPoints: z.object({
-    roleSpecificPainPoints: z.record(z.string(), z.object({
-      description: z.string().optional(),
-      severity: z.number().optional(),
-      frequency: z.number().optional(),
-      impact: z.number().optional(),
-    })),
-    generalPainPoints: z.string().optional(),
-  }).optional(),
-  
-  workVolume: z.object({
+// Work volume schema with proper typing
+export const workVolumeSchema = z.object({
     roleWorkVolume: z.record(z.string(), z.object({
       volume: z.string().optional(),
       timeSpent: z.string().optional(),
       complexity: z.string().optional(),
       errorRisk: z.string().optional(),
       repetitiveness: z.number().optional(),
-      isDataDriven: z.boolean().optional(),
+    manualRework: z.string().optional(),
+    automationPotential: z.number().optional(),
       dataDescription: z.string().optional(),
-      hasPredictiveTasks: z.boolean().optional(),
-      predictiveTasksDescription: z.string().optional(),
-      needsContentGeneration: z.boolean().optional(),
-      contentGenerationDescription: z.string().optional(),
+    taskVariability: z.string().optional(),
       decisionComplexity: z.string().optional(),
     })),
-  }).optional(),
-  
-  techStack: z.object({
-    currentSystems: z.string().optional(),
+});
+
+// Tech stack schema with proper array handling
+export const dataSystemsSchema = z.object({
+  currentSystems: z.array(z.object({ 
+    name: z.string() 
+  })).optional(),
     dataAvailability: z.array(z.string()).optional(),
     existingAutomation: z.string().optional(),
     dataQuality: z.string().optional(),
     dataQualityIssues: z.string().optional(),
-    approvals: z.string().optional(),
-    dataAccessibility: z.string().optional(), // Add this
-    systemsIntegration: z.string().optional(), // Add this
-    relevantTools: z.string().optional(), // Add this
-    notes: z.string().optional(), // Add this
-  }).optional(),
-  
-  adoption: z.object({
+  integrationChallenges: z.string().optional(),
+  securityRequirements: z.string().optional(),
+  dataSecurity: z.string().optional(),
+  governance: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+// Success metrics schema
+export const successMetricSchema = z.object({
+  name: z.string(),
+});
+
+export const keyMetricSchema = z.object({
+  name: z.string(),
+});
+
+// Readiness expectations schema with proper typing
+const readinessExpectationsSchema = z.object({
     roleAdoption: z.record(z.string(), z.object({
       openness: z.string().optional(),
       skillsReadiness: z.string().optional(),
@@ -461,123 +456,78 @@ export const wizardStepDataSchema = z.object({
       risks: z.string().optional(),
       suitability: z.number().optional(),    
     })),
-    changeReadiness: z.string().optional(),
-    stakeholderAlignment: z.string().optional(),
-    expectedChallenges: z.string().optional(),
-    successMetrics: z.string().optional(),
+  timelineExpectation: z.string().optional(),
+  budgetRange: z.string().optional(),
+  riskTolerance: z.string().optional(),
+  successMetrics: z.array(successMetricSchema).optional(),
     trainingNeeds: z.string().optional(),  
-  }).optional(),
+});
 
-  scores: z.object({
-    assessmentScores: z.custom<AssessmentScores>(),
+// ROI targets schema with proper typing
+const roiTargetsSchema = z.object({
+  primaryGoals: z.array(z.string()).optional(),
+  expectedROI: z.string().optional(),
+  timeToValue: z.string().optional(),
+  keyMetrics: z.array(keyMetricSchema).optional(),
+});
+
+// Pain points schema with proper typing
+export const painPointsSchema = z.object({
+  roleSpecificPainPoints: z.record(z.string(), z.object({
+    description: z.string().optional(),
+    severity: z.number().optional(),
+    frequency: z.number().optional(),
+    impact: z.number().optional(),
+  })).optional(),
+  generalPainPoints: z.string().optional(),
+});
+
+// Updated wizard step data schema
+export const wizardStepDataSchema = z.object({
+  basics: z.object({
+    companyName: z.string().min(1, "Company Name is required"),
+    reportName: z.string().min(1, "Report Name is required"),
+    industry: z.string().min(1, "Industry is required"),
+    size: z.string().min(1, "Company Size is required"),
+    goals: z.string().optional(),
+    stakeholders: z.array(z.string()).optional(),
+    industryMaturity: z.enum(['Mature', 'Immature'], { 
+      required_error: "Industry Maturity is required",
+      invalid_type_error: "Please select a valid Industry Maturity",
+    }),
+    companyStage: z.enum(['Startup', 'Early Growth', 'Scaling', 'Mature'], {
+      required_error: "Company Stage is required",
+      invalid_type_error: "Please select a valid Company Stage",
+    }),
   }).optional(),
   
-  // Add the aiAdoptionScoreInputs field
-  aiAdoptionScoreInputs: aiAdoptionScoreInputComponentsSchema.optional(),
-}).strict();
+  roles: rolesSchema.optional(),
+  
+  painPoints: painPointsSchema.optional(),
+  
+  workVolume: workVolumeSchema.optional(),
+  
+  techStack: dataSystemsSchema.optional(),
+  
+  adoption: readinessExpectationsSchema.optional(),
+  
+  roiTargets: roiTargetsSchema.optional(),
+  
+  scores: z.object({
+    assessmentScores: z.any(), // You can define this more specifically based on your needs
+  }).optional(),
+  
+  aiAdoptionScoreInputs: z.any().optional(), // You can define this more specifically based on your needs
+});
 
-// Priority matrix types
-export const priorityLevels = ["high", "medium", "low", "not_recommended"] as const;
-export type PriorityLevel = typeof priorityLevels[number];
-
-export const effortLevels = ["low", "medium", "high"] as const;
-export type EffortLevel = typeof effortLevels[number];
-
-export const valueLevels = ["high", "medium", "low"] as const;
-export type ValueLevel = typeof valueLevels[number];
-
-// Types
-export type Organization = typeof organizations.$inferSelect;
-export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
-
-export type Department = typeof departments.$inferSelect;
-export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
-
-export type JobRole = InferSelectModel<typeof jobRoles>;
-export type InsertJobRole = InferInsertModel<typeof jobRoles>;
-
-export type Assessment = InferSelectModel<typeof assessments>;
-export type InsertAssessment = InferInsertModel<typeof assessments>;
-export type NewAssessment = typeof assessments.$inferInsert;
-
-export type Report = typeof reports.$inferSelect;
-export type InsertReport = z.infer<typeof insertReportSchema>;
-
-// New type for Report joined with Assessment details
-export type ReportWithAssessmentDetails = Report & Pick<
-  Assessment,
-  'industry' | 'industryMaturity' | 'companyStage' | 'strategicFocus' | 'title' // Added assessment title for context
-> & { 
-  organizationName?: string; // Optionally add organization name if needed
-  aiAdoptionScore?: number; // AI Adoption Score for display in overview
-};
-
+// Export the types
+export type RolesData = z.infer<typeof rolesSchema>;
+export type WorkVolumeData = z.infer<typeof workVolumeSchema>;
+export type DataSystemsData = z.infer<typeof dataSystemsSchema>;
+export type PainPointsData = z.infer<typeof painPointsSchema>;
+export type SuccessMetric = z.infer<typeof successMetricSchema>;
+export type KeyMetric = z.infer<typeof keyMetricSchema>;
 export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
-
-export type PrioritizedItem = {
-  id: number;
-  title: string;
-  department: string;
-  valueScore: number;
-  effortScore: number;
-  priority: PriorityLevel;
-  valueLevel: ValueLevel;
-  effortLevel: EffortLevel;
-  aiAdoptionScore?: number; // Optional AI Adoption Score
-  role?: string;
-  painPoint?: string;
-  goal?: string;
-  metrics?: Array<{  // Optional metrics for detailed view
-    name: string;
-    value: string;
-    improvement: number;
-  }>;
-};
-
-export type HeatmapData = {
-  matrix: {
-    [key in ValueLevel]: {
-      [key in EffortLevel]: {
-        priority: PriorityLevel;
-        items: Array<{
-          id: number;
-          title: string;
-          department: string;
-          role?: string;
-          painPoint?: string;
-          goal?: string;
-        }>;
-      };
-    };
-  };
-};
-
-export type AISuggestion = {
-  roleId: number;
-  roleTitle: string;
-  capabilities: Array<{
-    name: string;
-    description: string;
-    recommendedTools?: Array<{
-      id: number;
-      name: string;
-      description?: string;
-      websiteUrl?: string;
-      category?: string;
-    }>;
-  }>;
-};
-
-export type PerformanceImpact = {
-  roleImpacts: Array<{
-    roleTitle: string;
-    metrics: Array<{
-      name: string;
-      improvement: number;
-    }>;
-  }>;
-  estimatedRoi: number;
-};
 
 // Job Description models
 export const jobDescriptions = pgTable("job_descriptions", {
@@ -942,3 +892,84 @@ export type InsertCapabilityRoleImpact = typeof capabilityRoleImpacts.$inferInse
 // New types for the context table
 export type AssessmentCapabilityContext = typeof assessmentCapabilityContext.$inferSelect;
 export type InsertAssessmentCapabilityContext = typeof assessmentCapabilityContext.$inferInsert;
+
+// Types
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+
+export type Department = typeof departments.$inferSelect;
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
+
+export type JobRole = InferSelectModel<typeof jobRoles>;
+export type InsertJobRole = InferInsertModel<typeof jobRoles>;
+
+export type Assessment = InferSelectModel<typeof assessments>;
+export type InsertAssessment = InferInsertModel<typeof assessments>;
+export type NewAssessment = typeof assessments.$inferInsert;
+
+export type Report = typeof reports.$inferSelect;
+export type InsertReport = z.infer<typeof insertReportSchema>;
+
+// New type for Report joined with Assessment details
+export type ReportWithAssessmentDetails = Report & Partial<Pick<
+  Assessment,
+  'industry' | 'industryMaturity' | 'companyStage' | 'strategicFocus' | 'title' // Added assessment title for context
+>> & { 
+  organizationName?: string; // Optionally add organization name if needed
+  aiAdoptionScore?: number; // AI Adoption Score for display in overview
+};
+
+// --- AI Prioritization Types ---
+
+// Value and Effort levels for heatmap axes
+export type ValueLevel = 'high' | 'medium' | 'low';
+export type EffortLevel = 'high' | 'medium' | 'low';
+
+// Item in the prioritization list and heatmap
+export type PrioritizedItem = {
+  id: string;
+  name: string;
+  department: string;
+  valueScore: number;
+  effortScore: number;
+  priority: 'high' | 'medium' | 'low' | 'not_recommended';
+  valueLevel: ValueLevel;
+  effortLevel: EffortLevel;
+  aiAdoptionScore: number;
+  // Optional metadata for filtering
+  role?: string | null;
+  painPoint?: string | null;
+  goal?: string | null;
+};
+
+// Heatmap data structure
+export type HeatmapData = {
+  matrix: Record<ValueLevel, Record<EffortLevel, {
+    priority: 'high' | 'medium' | 'low' | 'not_recommended';
+    items: Array<{
+      id: string | number;
+      title: string;
+      department: string;
+      // Optional metadata for filtering
+      role?: string | null;
+      painPoint?: string | null;
+      goal?: string | null;
+    }>;
+  }>>;
+};
+
+// AI Suggestion for a role
+export type AISuggestion = {
+  roleId: number;
+  roleTitle: string;
+  capabilities: Array<{ name: string; description: string }>;
+};
+
+// Performance impact structure for report
+export type PerformanceImpact = {
+  roleImpacts: Array<{
+    roleTitle: string;
+    metrics: Record<string, number | string>;
+  }>;
+  estimatedRoi: number;
+};

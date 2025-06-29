@@ -21,7 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Assessment, WizardStepData, JobRole, Department } from "@shared/schema"
 
 interface AssessmentViewClientProps {
-  assessment: Assessment;
+  assessment: Assessment & { rolesDetailed?: JobRole[] };
   reportId?: number;
 }
 
@@ -73,8 +73,15 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
 
   const stepData = assessment.stepData as WizardStepData;
 
-  // Properly typed roles data
-  const rolesData = stepData.roles as RolesData | undefined;
+  // Properly typed roles data - check multiple possible locations
+  const rolesData = (stepData.roles || (stepData as any).roleSelection) as RolesData | undefined;
+  
+  // Debug logging to understand data structure
+  console.log('Assessment stepData:', stepData);
+  console.log('Roles data:', rolesData);
+  console.log('Selected roles:', rolesData?.selectedRoles);
+  console.log('Roles detailed:', assessment.rolesDetailed);
+  console.log('Full assessment object:', assessment);
 
   const getRoleName = (roleId: number | string | undefined): string => {
     if (roleId === undefined || roleId === null) {
@@ -86,8 +93,20 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
       return `Invalid Role: ${roleId}`;
     }
 
-    const role = rolesData?.selectedRoles?.find((r: JobRole) => r.id === roleIdNum);
-    return role?.title ?? `Role ID: ${roleId}`;
+    // Try to find the role in selectedRoles first
+    let role = rolesData?.selectedRoles?.find((r: JobRole) => r.id === roleIdNum);
+    if (role?.title) {
+      return role.title;
+    }
+    
+    // Fallback to rolesDetailed from the assessment
+    role = assessment.rolesDetailed?.find((r: JobRole) => r.id === roleIdNum);
+    if (role?.title) {
+      return role.title;
+    }
+    
+    // If we still can't find the role name, return a generic label
+    return `Role ${roleIdNum}`;
   };
 
   // Helper function to safely render arrays with proper keys
@@ -229,26 +248,29 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
             <h4 className="font-medium text-gray-800 mb-3">Role-Specific Pain Points</h4>
             <div className="space-y-4">
               {stepData.painPoints?.roleSpecificPainPoints && 
-                Object.entries(stepData.painPoints.roleSpecificPainPoints).map(([roleId, painPoint], index) => (
-                  <div key={roleId ? `pain-point-${roleId}` : `pain-point-fallback-${index}`} className="p-4 border border-gray-200 rounded-lg">
-                    <h5 className="font-medium text-gray-800 mb-2">{getRoleName(roleId)}</h5>
-                    <p className="text-gray-600 mb-3">{painPoint.description}</p>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <h6 className="font-medium text-gray-500">Severity</h6>
-                        <p className="text-gray-800 font-semibold">{painPoint.severity}</p>
-                      </div>
-                      <div>
-                        <h6 className="font-medium text-gray-500">Frequency</h6>
-                        <p className="text-gray-800 font-semibold">{painPoint.frequency}</p>
-                      </div>
-                      <div>
-                        <h6 className="font-medium text-gray-500">Impact</h6>
-                        <p className="text-gray-800 font-semibold">{painPoint.impact}</p>
+                Object.entries(stepData.painPoints.roleSpecificPainPoints).map(([roleId, painPoint], index) => {
+                  const roleName = getRoleName(roleId);
+                  return (
+                    <div key={roleName ? `pain-point-${roleName.replace(/\s+/g, '-').toLowerCase()}` : `pain-point-fallback-${index}`} className="p-4 border border-gray-200 rounded-lg">
+                      <h5 className="font-medium text-gray-800 mb-2">{roleName}</h5>
+                      <p className="text-gray-600 mb-3">{painPoint.description}</p>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <h6 className="font-medium text-gray-500">Severity</h6>
+                          <p className="text-gray-800 font-semibold">{painPoint.severity}</p>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-gray-500">Frequency</h6>
+                          <p className="text-gray-800 font-semibold">{painPoint.frequency}</p>
+                        </div>
+                        <div>
+                          <h6 className="font-medium text-gray-500">Impact</h6>
+                          <p className="text-gray-800 font-semibold">{painPoint.impact}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               }
             </div>
           </div>
@@ -263,9 +285,11 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
       content: (
         <div className="space-y-4">
           {stepData.workVolume?.roleWorkVolume && 
-            Object.entries(stepData.workVolume.roleWorkVolume).map(([roleId, item], index) => (
-              <div key={roleId ? `work-volume-${roleId}` : `work-volume-fallback-${index}`} className="p-4 border border-gray-200 rounded-lg">
-                <h5 className="font-medium text-gray-800 mb-3">{getRoleName(roleId)}</h5>
+            Object.entries(stepData.workVolume.roleWorkVolume).map(([roleId, item], index) => {
+              const roleName = getRoleName(roleId);
+              return (
+              <div key={roleName ? `work-volume-${roleName.replace(/\s+/g, '-').toLowerCase()}` : `work-volume-fallback-${index}`} className="p-4 border border-gray-200 rounded-lg">
+                <h5 className="font-medium text-gray-800 mb-3">{roleName}</h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
                     <h6 className="font-medium text-gray-500">Volume</h6>
@@ -285,7 +309,8 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
                   <p className="text-gray-600 text-sm mt-1">{item.dataDescription}</p>
                 </div>
               </div>
-            ))
+              );
+            })
           }
         </div>
       ),

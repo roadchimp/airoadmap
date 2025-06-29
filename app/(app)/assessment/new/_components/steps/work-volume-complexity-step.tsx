@@ -69,7 +69,7 @@ export const WorkVolumeComplexityStep = () => {
               const roleWorkVolume = data.roleWorkVolume?.[roleId] || {};
               
               return (
-                <Card key={role.id} className="border-l-4 border-l-green-500">
+                <Card key={role.id} className="border-l-4 border-l-green-500" data-role-name={role.title?.replace(/\s+/g, '-').toLowerCase()}>
                   <CardHeader>
                     <CardTitle className="text-base">{role.title}</CardTitle>
                     <CardDescription>
@@ -88,9 +88,9 @@ export const WorkVolumeComplexityStep = () => {
                             <SelectValue placeholder="Select volume..." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -104,9 +104,9 @@ export const WorkVolumeComplexityStep = () => {
                             <SelectValue placeholder="Select complexity..." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="Low">Low</SelectItem>
+                            <SelectItem value="Medium">Medium</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -125,14 +125,17 @@ export const WorkVolumeComplexityStep = () => {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor={`notes-${roleId}`}>Additional Notes (Optional)</Label>
+                      <Label htmlFor={`dataDescription-${roleId}`}>Data Description</Label>
                       <Textarea
-                        id={`notes-${roleId}`}
+                        id={`dataDescription-${roleId}`}
                         className="mt-1"
-                        value={roleWorkVolume.notes || ""}
-                        onChange={(e) => handleRoleWorkVolumeChange(roleId, 'notes', e.target.value)}
-                        placeholder="Any additional context about work patterns for this role..."
+                        value={roleWorkVolume.dataDescription || ""}
+                        onChange={(e) => handleRoleWorkVolumeChange(roleId, 'dataDescription', e.target.value)}
+                        placeholder="Describe the types of data this role works with (e.g., customer data, pricing information, sales forecasts)..."
                       />
+                      <p className="text-sm text-gray-600 mt-1">
+                        What types of data does this role typically work with?
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

@@ -110,13 +110,31 @@ async function submitAssessment(request: Request, context: any) {
           roleWorkVolume: workVolumeStep.workVolume?.roleWorkVolume || {},
         },
         techStack: {
-          currentSystems: dataSystemsStep.dataSystems?.systemsIntegration || '',
+          currentSystems: dataSystemsStep.dataSystems?.currentSystems || '',
+          relevantTools: dataSystemsStep.dataSystems?.relevantTools || '',
+          integrationChallenges: dataSystemsStep.dataSystems?.integrationChallenges || '',
+          securityRequirements: dataSystemsStep.dataSystems?.securityRequirements || '',
           dataAvailability: [dataSystemsStep.dataSystems?.dataAccessibility || ''],
           existingAutomation: dataSystemsStep.dataSystems?.systemsIntegration || '',
-          dataQuality: 5, // Default value, could be derived from data quality field
+          dataQuality: parseInt(dataSystemsStep.dataSystems?.dataQuality) || 5,
         },
         adoption: {
+          timelineExpectation: readinessStep.readiness?.timelineExpectation || '',
+          budgetRange: readinessStep.readiness?.budgetRange || '',
+          riskTolerance: readinessStep.readiness?.riskTolerance || '',
+          successMetrics: readinessStep.readiness?.successMetrics || [],
+          organizationalReadiness: readinessStep.readiness?.organizationalReadiness || '',
+          stakeholderAlignment: readinessStep.readiness?.stakeholderAlignment || '',
+          anticipatedTrainingNeeds: readinessStep.readiness?.anticipatedTrainingNeeds || '',
+          expectedAdoptionChallenges: readinessStep.readiness?.expectedAdoptionChallenges || '',
+          keySuccessMetrics: readinessStep.readiness?.keySuccessMetrics || '',
           roleAdoption: {}
+        },
+        roiTargets: {
+          expectedROI: roiStep.roiTargets?.expectedROI || '',
+          timeToValue: roiStep.roiTargets?.timeToValue || '',
+          primaryGoals: roiStep.roiTargets?.primaryGoals || [],
+          keyMetrics: roiStep.roiTargets?.keyMetrics || [],
         },
         scores: {},
         aiAdoptionScoreInputs: {

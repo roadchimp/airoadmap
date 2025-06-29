@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { storage } from '@/server/storage';
 import { withAuthAndSecurity } from '../../middleware/AuthMiddleware';
 import { z } from 'zod';
-import { wizardStepDataSchema } from '@shared/schema';
+import { wizardStepDataSchema, JobRoleWithDepartment } from '@shared/schema';
+
 
 // Input validation schema
 const assessmentUpdateSchema = wizardStepDataSchema.partial().extend({
@@ -12,10 +13,11 @@ const assessmentUpdateSchema = wizardStepDataSchema.partial().extend({
 // GET /api/assessments/[id]
 async function getAssessment(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const assessmentId = parseInt(params.id);
+    const resolvedParams = await params;
+    const assessmentId = parseInt(resolvedParams.id);
     if (isNaN(assessmentId)) {
       return NextResponse.json(
         { error: 'Invalid assessment ID' },
@@ -23,7 +25,7 @@ async function getAssessment(
       );
     }
 
-    const assessment = await storage.getAssessment(assessmentId);
+    const assessment = await storage.getAssessment(assessmentId, );
     if (!assessment) {
       return NextResponse.json(
         { error: 'Assessment not found' },
@@ -31,7 +33,51 @@ async function getAssessment(
       );
     }
 
-    return NextResponse.json({ success: true, data: assessment });
+    // Enrich roles: map selected/prioritized role IDs to full objects
+    let rolesDetailed: JobRoleWithDepartment[] = [];
+    const stepData = assessment.stepData && typeof assessment.stepData === 'object' ? assessment.stepData : {};
+    const roles = (stepData as any).roles;
+    
+    console.log('API Route - Raw roles data:', roles);
+    console.log('API Route - selectedRoles:', roles?.selectedRoles);
+    console.log('API Route - selectedRoles type:', typeof roles?.selectedRoles);
+    console.log('API Route - selectedRoles length:', roles?.selectedRoles?.length);
+    
+    if (roles && (roles.selectedRoles?.length || roles.prioritizedRoles?.length)) {
+      // Collect all unique role IDs referenced
+      const roleIds = [
+        ...(roles.selectedRoles || []),
+        ...(roles.prioritizedRoles || [])
+      ]
+        .map(r => typeof r === 'number' ? r : (typeof r === 'object' && r?.id ? r.id : null))
+        .filter((v, i, a) => v != null && a.indexOf(v) === i);
+      
+      console.log('API Route - Extracted roleIds:', roleIds);
+      
+      if (roleIds.length > 0) {
+        const allRoles = await storage.listJobRoles();
+        console.log('API Route - All roles from storage:', allRoles.map(r => ({ id: r.id, title: r.title })));
+        
+        rolesDetailed = allRoles.filter(r => roleIds.includes(r.id));
+        console.log('API Route - Filtered rolesDetailed:', rolesDetailed.map(r => ({ id: r.id, title: r.title })));
+        
+        // Replace selectedRoles with full role objects for frontend
+        if (roles.selectedRoles) {
+          roles.selectedRoles = rolesDetailed.filter(role => 
+            roles.selectedRoles.some((id: any) => 
+              typeof id === 'number' ? id === role.id : (typeof id === 'object' && id?.id === role.id)
+            )
+          );
+          console.log('API Route - Updated selectedRoles:', roles.selectedRoles.map((r: any) => ({ id: r.id, title: r.title })));
+        }
+      }
+    } else {
+      console.log('API Route - No roles found or roles array is empty');
+    }
+
+    console.log('API Route - Final rolesDetailed:', rolesDetailed.map(r => ({ id: r.id, title: r.title })));
+
+    return NextResponse.json({ success: true, data: { ...assessment, rolesDetailed } });
   } catch (error) {
     console.error('Error fetching assessment:', error);
     return NextResponse.json(
@@ -44,10 +90,11 @@ async function getAssessment(
 // PATCH /api/assessments/[id]
 async function updateAssessment(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const assessmentId = parseInt(params.id);
+    const resolvedParams = await params;
+    const assessmentId = parseInt(resolvedParams.id);
     if (isNaN(assessmentId)) {
       return NextResponse.json(
         { error: 'Invalid assessment ID' },
@@ -92,10 +139,11 @@ async function updateAssessment(
 // DELETE /api/assessments/[id]
 async function deleteAssessment(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const assessmentId = parseInt(params.id);
+    const resolvedParams = await params;
+    const assessmentId = parseInt(resolvedParams.id);
     if (isNaN(assessmentId)) {
       return NextResponse.json(
         { error: 'Invalid assessment ID' },

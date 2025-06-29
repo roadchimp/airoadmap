@@ -342,8 +342,9 @@ export class AssessmentResponseService {
     
     // Handle string fields
     const stringFields = [
-      'dataAccessibility', 'dataQuality', 'systemsIntegration', 
-      'relevantTools', 'notes'
+      'currentSystems', 'relevantTools', 'integrationChallenges', 
+      'securityRequirements', 'dataAccessibility', 'systemsIntegration',
+      'dataQuality', 'notes'
     ];
     
     for (const field of stringFields) {

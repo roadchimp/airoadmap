@@ -56,21 +56,35 @@ export interface WorkVolumeData {
     volume?: string;
     complexity?: string;
     repetitiveness?: number;
+    dataDescription?: string;
     notes?: string;
   }>;
 }
 
 export interface DataSystemsData {
-  // Updated data systems structure
+  // Current systems and infrastructure
+  currentSystems?: string;
+  integrationChallenges?: string;
+  securityRequirements?: string;
+  
+  // Assessment ratings
   dataAccessibility?: 'Easy (Well-documented, readily available)' | 'Moderate (Requires some effort/cleanup)' | 'Difficult (Siloed, requires significant effort)';
   dataQuality?: 'Good (Accurate, complete, consistent)' | 'Fair (Some inconsistencies or gaps)' | 'Poor (Inaccurate, incomplete, unreliable)';
   systemsIntegration?: 'Easy (APIs available, modern systems)' | 'Moderate (Some custom work needed)' | 'Difficult (Legacy systems, lack of APIs)';
+  
+  // Additional information
   relevantTools?: string;
   notes?: string;
 }
 
 export interface ReadinessData {
-  // Updated readiness structure
+  // Timeline and budget expectations
+  timelineExpectation?: string;
+  budgetRange?: string;
+  riskTolerance?: string;
+  successMetrics?: Array<{ name: string }>;
+  
+  // Organizational readiness assessment
   organizationalReadiness?: 'High (Proactive, adaptable culture)' | 'Medium (Some resistance, needs clear communication)' | 'Low (Resistant to change, requires significant effort)';
   stakeholderAlignment?: 'High (Clear consensus, shared vision)' | 'Medium (General agreement, some differing priorities)' | 'Low (Significant disagreement or lack of clarity)';
   anticipatedTrainingNeeds?: string;
@@ -79,7 +93,15 @@ export interface ReadinessData {
 }
 
 export interface RoiTargetsData {
-  // Updated ROI targets structure
+  // ROI expectations
+  expectedROI?: string;
+  timeToValue?: string;
+  
+  // Primary goals and metrics
+  primaryGoals?: string[];
+  keyMetrics?: Array<{ name: string }>;
+  
+  // AI adoption score inputs
   adoptionRateForecast?: number;
   timeSavings?: number;
   affectedUsers?: number;

@@ -61,13 +61,17 @@ const BasicInfoStep = () => {
 
   const { control, watch } = form;
 
+  // Use a ref to store the setStepData function to avoid dependency issues
+  const setStepDataRef = React.useRef(setStepData);
+  setStepDataRef.current = setStepData;
+
   React.useEffect(() => {
     const subscription = watch((value) => {
       const isValid = basicInfoSchema.safeParse(value).success;
-      setStepData(currentStepIndex, { basics: value as OrganizationBasics }, isValid);
+      setStepDataRef.current(currentStepIndex, { basics: value as OrganizationBasics }, isValid);
     });
     return () => subscription.unsubscribe();
-  }, [watch, setStepData, currentStepIndex]);
+  }, [watch, currentStepIndex]);
 
   const industryOptions = [
     'Software & Technology',

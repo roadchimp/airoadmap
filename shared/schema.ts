@@ -426,6 +426,7 @@ export const dataSystemsSchema = z.object({
   currentSystems: z.array(z.object({ 
     name: z.string() 
   })).optional(),
+  relevantTools: z.string().optional(),
     dataAvailability: z.array(z.string()).optional(),
     existingAutomation: z.string().optional(),
     dataQuality: z.string().optional(),

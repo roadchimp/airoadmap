@@ -29,32 +29,56 @@ export const AssessmentWizard: React.FC<AssessmentWizardProps> = ({
     });
   }, [currentStepIndex]);
 
+  // Use a ref to store the setStepData function to avoid dependency issues
+  const setStepDataRef = React.useRef(setStepData);
+  setStepDataRef.current = setStepData;
+
   // Load initial assessment data into session when editing
   useEffect(() => {
-    if (initialAssessmentData?.stepData) {
-      const stepData = initialAssessmentData.stepData as any;
+    if (initialAssessmentData) {
+      console.log('Loading initial assessment data:', initialAssessmentData);
       
-      // Map database stepData to session format
-      if (stepData.basics) {
-        setStepData(0, { basics: stepData.basics }, true, undefined, undefined);
-      }
-      if (stepData.roles) {
-        setStepData(1, { roleSelection: stepData.roles }, true, undefined, undefined);
-      }
-      if (stepData.painPoints) {
-        setStepData(2, { areasForImprovement: stepData.painPoints }, true, undefined, undefined);
-      }
-      if (stepData.workVolume) {
-        setStepData(3, { workVolume: stepData.workVolume }, true, undefined, undefined);
-      }
-      if (stepData.techStack) {
-        setStepData(4, { dataSystems: stepData.techStack }, true, undefined, undefined);
-      }
-      if (stepData.adoption) {
-        setStepData(5, { readiness: stepData.adoption }, true, undefined, undefined);
-      }
-      if (stepData.aiAdoptionScoreInputs) {
-        setStepData(6, { roiTargets: stepData.aiAdoptionScoreInputs }, true, undefined, undefined);
+      // Load basic assessment info from the assessment record itself
+      const basics = {
+        name: initialAssessmentData.title,
+        industry: initialAssessmentData.industry || 'Unknown',
+        size: 'Medium', // Default size since it's not stored in assessment
+        description: undefined, // Not stored in assessment
+        industryMaturity: initialAssessmentData.industryMaturity || 'Immature',
+        companyStage: initialAssessmentData.companyStage || 'Startup',
+        strategicFocus: initialAssessmentData.strategicFocus || [],
+        // Add other basic fields from the assessment
+      };
+      setStepDataRef.current(0, { basics }, true);
+
+      // Load step data if it exists
+      if (initialAssessmentData.stepData) {
+        const stepData = initialAssessmentData.stepData as any;
+        console.log('Step data found:', stepData);
+        
+        // Map database stepData to session format with proper validation
+        if (stepData.roles) {
+          setStepDataRef.current(1, { roleSelection: stepData.roles }, true);
+        }
+        if (stepData.painPoints) {
+          setStepDataRef.current(2, { areasForImprovement: stepData.painPoints }, true);
+        }
+        if (stepData.workVolume) {
+          setStepDataRef.current(3, { workVolume: stepData.workVolume }, true);
+        }
+        if (stepData.techStack) {
+          setStepDataRef.current(4, { dataSystems: stepData.techStack }, true);
+        }
+        if (stepData.adoption) {
+          setStepDataRef.current(5, { readiness: stepData.adoption }, true);
+        }
+        if (stepData.roiTargets || initialAssessmentData.aiAdoptionScoreInputs) {
+          const roiData = {
+            ...(stepData.roiTargets || {}),
+            ...(initialAssessmentData.aiAdoptionScoreInputs || {})
+          };
+          setStepDataRef.current(6, { roiTargets: roiData }, true);
+        }
       }
     }
   }, [initialAssessmentData?.id]); // Only run when assessment ID changes

@@ -1,0 +1,929 @@
+/* Executive PDF Layout Styles */
+
+/* Hide PDF layout by default, only show when printing */
+.executive-pdf-layout {
+  display: none;
+}
+
+@media print {
+  /* Hide everything except PDF layout when printing */
+  body * { 
+    visibility: hidden !important; 
+  }
+  
+  .executive-pdf-layout,
+  .executive-pdf-layout * { 
+    visibility: visible !important; 
+  }
+
+  .executive-pdf-layout {
+    display: block;
+    position: absolute;
+    left: 0; 
+    top: 0; 
+    width: 100%;
+    margin: 0; 
+    padding: 0; 
+    background: white;
+    color: #1a1a1a;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 11pt; 
+    line-height: 1.4;
+  }
+
+  /* PAGE RULES */
+  .pdf-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 25mm 20mm 30mm 20mm; 
+    margin: 0;
+    page-break-after: always; 
+    break-after: page;
+    page-break-inside: avoid; 
+    break-inside: avoid;
+    box-sizing: border-box;
+    border: 1pt solid #f0f0f0;
+    position: relative;
+    background: white;
+  }
+  
+  .pdf-page:last-child {
+    page-break-after: auto; 
+    break-after: auto;
+  }
+  
+  .pdf-page::before {
+    content: ""; 
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    height: 3pt;
+    background: linear-gradient(90deg, #e84c2b 0%, #f8a97a 100%);
+    z-index: 10;
+  }
+  
+  .pdf-page::after {
+    content: ""; 
+    position: absolute; 
+    bottom: 0; 
+    left: 0; 
+    right: 0; 
+    height: 2pt;
+    background: linear-gradient(90deg, #e84c2b 0%, #f8a97a 100%);
+    z-index: 10;
+  }
+
+  /* --- FRAGMENTATION CONTROL FOR LARGE BLOCKS --- */
+  .priority-matrix,
+  .matrix-container,
+  .matrix-grid,
+  .recommendations-table {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  
+  .priority-matrix {
+    margin-top: 30pt;
+    max-height: 170mm;
+    overflow: hidden;
+  }
+  
+  .matrix-container {
+    max-height: 170mm;
+    overflow: hidden;
+  }
+  
+  .matrix-grid {
+    max-height: 170mm;
+    overflow: hidden;
+  }
+  
+  .recommendations-table {
+    margin: 16pt 0;
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Keep titles with their sections */
+  .section-title, 
+  .subsection-title {
+    break-after: avoid;
+    page-break-after: avoid;
+    orphans: 2; 
+    widows: 2;
+  }
+
+  /* Executive Summary Full Page Styles */
+  .executive-summary-full-page {
+    margin-bottom: 24pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Key Metrics Dashboard */
+  .key-metrics {
+    margin-bottom: 24pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Company Profile */
+  .company-profile {
+    margin-bottom: 24pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Appendix */
+  .appendix {
+    margin-bottom: 24pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Typography */
+  .report-title {
+    font-size: 24pt;
+    font-weight: 700;
+    color: #e84c2b;
+    margin: 0 0 8pt 0;
+    letter-spacing: -0.02em;
+  }
+
+  .company-name {
+    font-size: 18pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 4pt 0;
+  }
+
+  .report-date {
+    font-size: 10pt;
+    color: #666;
+    margin: 0 0 24pt 0;
+  }
+
+  /* Title Page Styles */
+  .title-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .title-page-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    width: 100%;
+  }
+
+  .title-header {
+    margin-top: 80pt;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .main-title {
+    font-size: 28pt;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 20pt 0;
+    text-transform: uppercase;
+    letter-spacing: 1pt;
+    line-height: 1.2;
+  }
+
+  .organization-name {
+    font-size: 20pt;
+    font-weight: 600;
+    color: #e84c2b;
+    margin: 0 0 12pt 0;
+    line-height: 1.3;
+  }
+
+  .assessment-subtitle {
+    font-size: 14pt;
+    font-weight: 500;
+    color: #666;
+    margin: 0 0 40pt 0;
+    line-height: 1.4;
+  }
+
+  .title-page-footer {
+    margin-bottom: 40pt;
+  }
+
+  .generation-date {
+    font-size: 12pt;
+    color: #666;
+    margin: 0;
+  }
+
+  .summary-content-full {
+    background: #f8f9fa;
+    padding: 20pt;
+    border-left: 4pt solid #e84c2b;
+    border-top: 1pt solid #e5e7eb;
+    border-bottom: 1pt solid #e5e7eb;
+    border-radius: 4pt;
+    line-height: 1.6;
+  }
+
+  .summary-paragraph-full {
+    margin: 0 0 16pt 0;
+    text-align: justify;
+    line-height: 1.6;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .summary-paragraph-full:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-title {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 20pt 0 12pt 0;
+    border-bottom: 2pt solid #e84c2b;
+    padding-bottom: 4pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .section-subtitle {
+    font-size: 11pt;
+    color: #666;
+    margin: 0 0 16pt 0;
+    font-style: italic;
+  }
+
+  .subsection-title {
+    font-size: 13pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 16pt 0 8pt 0;
+  }
+
+  /* Executive Summary */
+  .executive-summary {
+    margin-bottom: 24pt;
+    page-break-inside: avoid;
+  }
+
+  .summary-content {
+    background: #f8f9fa;
+    padding: 16pt;
+    border-left: 4pt solid #e84c2b;
+    border-top: 1pt solid #e5e7eb;
+    border-bottom: 1pt solid #e5e7eb;
+    border-radius: 4pt;
+    page-break-inside: avoid;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .summary-paragraph {
+    margin: 0 0 12pt 0;
+    text-align: justify;
+    line-height: 1.5;
+  }
+
+  .summary-paragraph:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Key Metrics Grid */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 16pt;
+    margin-bottom: 24pt;
+  }
+
+  .metric-card {
+    background: white;
+    border: 1pt solid #e5e7eb;
+    border-radius: 6pt;
+    padding: 12pt;
+    text-align: center;
+  }
+
+  .primary-metric {
+    background: linear-gradient(135deg, #fef7f0 0%, #fff 100%);
+    border: 2pt solid #e84c2b;
+  }
+
+  .metric-header h3 {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 4pt 0;
+  }
+
+  .metric-subtitle {
+    font-size: 9pt;
+    color: #666;
+    display: block;
+  }
+
+  .metric-value {
+    margin: 12pt 0 8pt 0;
+  }
+
+  .metric-number-large {
+    font-size: 24pt;
+    font-weight: 700;
+    color: #e84c2b;
+    line-height: 1;
+  }
+
+  .metric-number-small {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #e84c2b;
+    line-height: 1;
+  }
+
+  .metric-unit {
+    font-size: 10pt;
+    color: #666;
+    margin-left: 4pt;
+  }
+
+  .progress-ring {
+    width: 50pt;
+    height: 50pt;
+    margin: 8pt auto 0;
+  }
+
+  .progress-ring svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Company Profile */
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16pt;
+    background: #f8f9fa;
+    padding: 16pt;
+    border-radius: 6pt;
+  }
+
+  .profile-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4pt;
+  }
+
+  .profile-label {
+    font-size: 10pt;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .profile-value {
+    font-size: 12pt;
+    font-weight: 500;
+    color: #1a1a1a;
+  }
+
+  .focus-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4pt;
+  }
+
+  .focus-tag {
+    background: #e84c2b;
+    color: white;
+    padding: 2pt 6pt;
+    border-radius: 3pt;
+    font-size: 9pt;
+    font-weight: 500;
+  }
+
+  /* Compact AI Adoption Score Section */
+  .score-breakdown.compact {
+    margin-bottom: 20pt;
+  }
+
+  .score-breakdown.compact-page3 {
+    margin-bottom: 16pt;
+  }
+
+  .score-breakdown.compact-page3 .score-components {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8pt;
+    margin-bottom: 12pt;
+  }
+
+  .score-breakdown.compact-page3 .score-component {
+    background: #f8f9fa;
+    padding: 8pt;
+    border-radius: 4pt;
+    border-left: 3pt solid #e84c2b;
+  }
+
+  .score-breakdown.compact-page3 .component-description {
+    font-size: 8pt;
+    color: #666;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  .score-components.compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12pt;
+    margin-bottom: 16pt;
+  }
+
+  .score-component.compact {
+    background: #f8f9fa;
+    padding: 10pt;
+    border-radius: 4pt;
+    border-left: 3pt solid #e84c2b;
+  }
+
+  .component-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6pt;
+  }
+
+  .component-label {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .component-score {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #e84c2b;
+  }
+
+  .component-bar {
+    height: 6pt;
+    background: #e5e7eb;
+    border-radius: 3pt;
+    overflow: hidden;
+    margin-bottom: 6pt;
+  }
+
+  .component-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e84c2b 0%, #f8a97a 100%);
+    border-radius: 3pt;
+  }
+
+  .component-description.compact {
+    font-size: 9pt;
+    color: #666;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  .roi-breakdown.compact {
+    margin-top: 16pt;
+  }
+
+  .roi-table.compact {
+    background: white;
+    border: 1pt solid #e5e7eb;
+    border-radius: 6pt;
+    padding: 12pt;
+  }
+
+  .roi-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6pt 0;
+    border-bottom: 1pt solid #f0f0f0;
+  }
+
+  .roi-row:last-child {
+    border-bottom: none;
+  }
+
+  .roi-label {
+    font-size: 11pt;
+    color: #666;
+  }
+
+  .roi-value {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .roi-value.primary {
+    font-size: 14pt;
+    color: #e84c2b;
+    font-weight: 700;
+  }
+
+  /* Priority Matrix - Enhanced for page breaks */
+  .matrix-container {
+    position: relative;
+    margin: 20pt 0;
+    padding: 20pt;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3pt;
+    height: 140pt;
+    border: 2pt solid #1a1a1a;
+    background: white;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .quadrant {
+    padding: 16pt;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1pt solid #e5e7eb;
+    position: relative;
+    z-index: 5;
+    min-height: 60pt;
+  }
+
+  .quadrant.strategic-investments {
+    background: linear-gradient(135deg, #fef7f0 0%, #fff5e6 100%);
+    border-color: #f8a97a;
+  }
+
+  .quadrant.quick-wins {
+    background: linear-gradient(135deg, #fff0f0 0%, #ffe6e6 100%);
+    border-color: #e84c2b;
+  }
+
+  .quadrant.deprioritize {
+    background: linear-gradient(135deg, #f9f9f9 0%, #f0f0f0 100%);
+    border-color: #d1d5db;
+  }
+
+  .quadrant.low-hanging-fruit {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e5e7eb 100%);
+    border-color: #9ca3af;
+  }
+
+  .quadrant-title {
+    font-size: 11pt;
+    font-weight: 600;
+    margin: 0 0 4pt 0;
+    color: #1a1a1a;
+  }
+
+  .quadrant-count {
+    font-size: 24pt;
+    font-weight: 700;
+    color: #e84c2b;
+    margin: 6pt 0;
+    background: white;
+    border: 2pt solid #e84c2b;
+    border-radius: 50%;
+    width: 40pt;
+    height: 40pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2pt 4pt rgba(0,0,0,0.1);
+  }
+
+  .quadrant-subtitle {
+    font-size: 9pt;
+    color: #666;
+    margin: 0;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .matrix-axes {
+    position: relative;
+    margin-top: 8pt;
+  }
+
+  .y-axis-label {
+    position: absolute;
+    left: -40pt;
+    top: 50%;
+    transform: rotate(-90deg) translateY(-50%);
+    font-size: 10pt;
+    font-weight: 600;
+    color: #666;
+    text-align: center;
+  }
+
+  .x-axis-label {
+    text-align: center;
+    font-size: 10pt;
+    font-weight: 600;
+    color: #666;
+    margin-top: 8pt;
+  }
+
+  /* Strategic Recommendations Table - Enhanced for page breaks */
+  .recommendations-table table {
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 10pt;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .recommendations-table th,
+  .recommendations-table td {
+    padding: 8pt;
+    text-align: left;
+    border-bottom: 1pt solid #e5e7eb;
+  }
+
+  .recommendations-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #374151;
+    font-size: 10pt;
+  }
+
+  .priority-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4pt;
+    align-items: center;
+  }
+
+  .priority-number {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+
+  .priority-badge {
+    padding: 2pt 6pt;
+    border-radius: 3pt;
+    font-size: 8pt;
+    font-weight: 600;
+    color: white;
+  }
+
+  .capability-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2pt;
+  }
+
+  .capability-name {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .capability-category {
+    font-size: 9pt;
+    color: #666;
+  }
+
+  .score-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4pt;
+    align-items: center;
+  }
+
+  .score-number {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #e84c2b;
+  }
+
+  .score-bar {
+    width: 40pt;
+    height: 4pt;
+    background: #e5e7eb;
+    border-radius: 2pt;
+    overflow: hidden;
+  }
+
+  .score-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e84c2b 0%, #f8a97a 100%);
+    border-radius: 2pt;
+  }
+
+  .timeline-badge {
+    background: #f3f4f6;
+    color: #374151;
+    padding: 4pt 8pt;
+    border-radius: 4pt;
+    font-size: 9pt;
+    font-weight: 500;
+  }
+
+  /* Condensed Roadmap */
+  .roadmap-condensed {
+    margin-top: 24pt;
+  }
+
+  .roadmap-phases-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12pt;
+    margin: 16pt 0;
+  }
+
+  .phase-card {
+    background: #f8f9fa;
+    border: 1pt solid #e5e7eb;
+    border-radius: 6pt;
+    padding: 12pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .phase-header {
+    margin-bottom: 8pt;
+    text-align: center;
+  }
+
+  .phase-title {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0 0 4pt 0;
+  }
+
+  .phase-timeline {
+    font-size: 9pt;
+    color: #e84c2b;
+    font-weight: 500;
+  }
+
+  .phase-items-compact {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .phase-item-compact {
+    font-size: 10pt;
+    color: #374151;
+    margin: 4pt 0;
+    padding-left: 12pt;
+    position: relative;
+  }
+
+  .phase-item-compact::before {
+    content: "•";
+    color: #e84c2b;
+    position: absolute;
+    left: 0;
+  }
+
+  .next-steps-condensed {
+    margin-top: 20pt;
+    background: #f8f9fa;
+    padding: 12pt;
+    border-radius: 6pt;
+  }
+
+  .next-steps-list-compact {
+    margin: 8pt 0 0 16pt;
+    padding: 0;
+    font-size: 10pt;
+    line-height: 1.4;
+  }
+
+  .next-steps-list-compact li {
+    margin: 4pt 0;
+    color: #374151;
+  }
+
+  /* Tools Table */
+  .tools-table {
+    margin: 16pt 0;
+  }
+
+  .tools-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+
+  .tools-table th,
+  .tools-table td {
+    padding: 6pt;
+    text-align: left;
+    border-bottom: 1pt solid #e5e7eb;
+  }
+
+  .tools-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .tool-name {
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  .tool-category {
+    color: #e84c2b;
+    font-weight: 500;
+  }
+
+  .tool-description {
+    color: #666;
+    font-size: 8pt;
+  }
+
+  .tool-license {
+    color: #374151;
+    font-size: 8pt;
+  }
+
+  /* Consultant Commentary */
+  .consultant-commentary {
+    margin-top: 20pt;
+    background: #f8f9fa;
+    padding: 16pt;
+    border-left: 4pt solid #e84c2b;
+    border-radius: 4pt;
+  }
+
+  .commentary-content {
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #374151;
+    text-align: justify;
+  }
+
+  /* Print optimization */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Additional break controls */
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .metric-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+} /* END @media print */
+
+/* Non-print styles for development/preview */
+@media screen {
+  .executive-pdf-layout.preview {
+    display: block;
+    max-width: 210mm;
+    margin: 0 auto;
+    background: white;
+    color: #1a1a1a;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  .executive-pdf-layout.preview .pdf-page {
+    width: 100%;
+    min-height: auto;
+    padding: 40px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .executive-pdf-layout.preview .pdf-page:last-child {
+    border-bottom: none;
+  }
+}

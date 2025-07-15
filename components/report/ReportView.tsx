@@ -28,6 +28,8 @@ import { MatrixDebugger } from "@/app/(app)/reports/[id]/matrix-debugger"
 import { RoleSelector } from "@/app/(app)/reports/[id]/role-selector"
 import { AiTool, AICapability } from '@shared/schema.ts'
 import type { Report, Assessment, HeatmapData, PrioritizedItem, AISuggestion, PerformanceImpact, ReportWithAssessmentDetails } from '@shared/schema'
+import { ExecutivePdfLayout } from "./ExecutivePdfLayout"
+import "./executive-pdf.css"
 
 const ITEMS_PER_PAGE = 10
 
@@ -320,7 +322,16 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <>
+      {/* Executive PDF Layout - Hidden by default, only shown when printing */}
+      <ExecutivePdfLayout 
+        report={reportDetails}
+        capabilities={allCapabilities}
+        tools={tools}
+      />
+      
+      {/* Main Report View - Normal display */}
+      <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="bg-white shadow-sm print:shadow-none">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -345,7 +356,7 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={handleExportPDF}>
-                    <Printer className="mr-2 h-4 w-4" /> Print/PDF
+                    <FileText className="mr-2 h-4 w-4" /> Export to PDF
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExportCSV}>
                     <FileSpreadsheet className="mr-2 h-4 w-4" /> Export Capabilities (CSV)
@@ -1029,6 +1040,7 @@ export default function ReportView({ report: initialReport }: ReportViewProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   )
 }

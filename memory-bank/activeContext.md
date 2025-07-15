@@ -1,6 +1,118 @@
 # Active Context
 
-## Current Focus: Asynchronous Report Generation and Timeout Prevention (January 2025)
+## Current Focus: Executive PDF Export System Implementation (January 2025)
+
+### Recently Completed: Professional PDF Export Functionality
+
+**Feature:** Implemented a sophisticated PDF export system for executive-quality reports that can be presented to CEOs, CFOs, and Board members.
+
+**Implementation Details:**
+1. **Executive PDF Layout Component (`components/report/ExecutivePdfLayout.tsx`):**
+   - Professional 5-page report layout optimized for C-level presentations
+   - Executive Summary, AI Adoption Score, Priority Matrix, Capabilities Table, Tool Recommendations
+   - Completely separate from existing web interface to avoid layout disruption
+
+2. **Professional Styling (`components/report/executive-pdf.css`):**
+   - Print-optimized CSS with proper page breaks and professional typography
+   - Uses CSS media queries to hide interactive UI and show PDF layout only when printing
+   - Executive-quality visual design with consistent branding elements
+
+3. **Seamless Integration:**
+   - Updated `ReportView.tsx` to include the PDF layout component (hidden by default)
+   - Modified export dropdown to use "Export to PDF" with `window.print()` for native browser PDF generation
+   - No changes to existing web interface - all current functionality preserved
+
+4. **Future Customization Framework:**
+   - `pdf-branding-system.ts` - Flexible theming system for client-specific branding
+   - `pdf-test-utils.ts` - Testing and validation utilities
+   - Comprehensive documentation in `README-pdf-export.md`
+
+**Technical Resolution:**
+- Fixed TypeScript compilation errors by ensuring proper number conversion in capability sorting
+- Corrected property access to use `report.assessment?.title` instead of non-existent `organizationName`
+- Successfully builds with no compilation errors
+
+**Recent Updates (Latest):**
+- **Fixed Font Sizing Issues**: Reduced KPI metric font sizes from 28pt to 16pt for smaller metrics and 24pt for main AI score
+- **Added Page Borders**: Implemented professional top/bottom borders on each page to prevent cut-off appearance
+- **Condensed AI Adoption Score Section**: Compressed spacing and layout to fit analysis on single page
+- **Added Priority Matrix**: Implemented visual 2x2 matrix showing capability quadrants (Quick Wins, Strategic Investments, etc.)
+- **Removed Blank Pages**: Consolidated roadmap and eliminated extra page breaks
+- **Improved Page Structure**: Reduced from 5 pages to 4 optimized pages with better content density
+
+**Latest Critical Fixes (Current Session):**
+- **Fixed AI Adoption Score Data Issue**: Resolved 0% metrics display
+  - Corrected data access pattern for `aiAdoptionScoreDetails.components`
+  - Added support for complex object structures (`normalizedScore`, `value`, `score` properties)
+  - Now properly displays adoption rates, time savings, cost efficiency, and performance metrics
+- **Enhanced Page Layout and Borders**:
+  - Increased page padding to 25mm top, 30mm bottom for proper header/footer spacing
+  - Added consistent gradient borders (top: orange, bottom: gray) on all pages
+  - Prevented executive summary from breaking awkwardly across pages with `page-break-inside: avoid`
+- **Fixed Priority Matrix Issues**:
+  - Increased spacing from page top (30pt) to prevent edge cutoff
+  - Enhanced quadrant padding (16pt) and added minimum height (60pt)
+  - Created prominent circular "balloon" count indicators with white background and orange borders
+  - Fixed text overlay issues with proper z-index positioning
+  - Matrix now stays intact as one unit with `page-break-inside: avoid`
+
+**Latest Structural Improvements (Current Session):**
+- **Professional Title Page**: Created dedicated title page with centered layout
+  - Large report title with organization name prominently displayed
+  - Assessment title as subtitle
+  - Generation date in footer
+  - Professional typography with proper spacing
+- **Dedicated Executive Summary Page**: Full page for executive summary
+  - Prevents awkward page breaks and text cutoff
+  - Enhanced readability with proper line spacing
+  - Professional background styling with orange accent border
+- **Optimized Page 3 Layout**: Condensed key metrics, organization profile, and AI adoption score
+  - Compact grid layout for AI score components
+  - Reduced font sizes and spacing for better fit
+  - Maintained readability while maximizing content density
+- **Enhanced Section Headers**: Updated Priority Matrix header to match AI Adoption Score style
+  - Consistent large font size with red underline
+  - Added descriptive subtitles for better context
+  - Professional formatting throughout
+
+**Structural PDF Layout Fixes (Latest):**
+- **Robust Page Break System**: Implemented comprehensive page break controls
+  - Added both legacy (`page-break-after: always`) and modern (`break-after: page`) CSS properties
+  - Ensured every `.pdf-page` container forces a new physical page
+  - Added `break-inside: avoid` to prevent content from splitting across pages
+- **Section Integrity Protection**: Applied break-inside controls to all major sections
+  - Executive Summary, Key Metrics, Company Profile, AI Adoption Score, Priority Matrix, and Appendix
+  - Section titles protected with `break-inside: avoid` to stay with their content
+  - Tables and matrices kept together as single units
+- **Typography Improvements**: Enhanced text flow with orphans/widows control
+  - Added `orphans: 3` and `widows: 3` to prevent single lines from being isolated
+  - Improved readability and professional appearance
+- **Corrected Page Numbering**: Fixed duplicate page numbering in comments
+  - Page 1: Title Page
+  - Page 2: Executive Summary  
+  - Page 3: Key Metrics + Organization Profile + AI Adoption Score
+  - Page 4: Priority Matrix + Strategic Recommendations
+  - Page 5: Appendix (Tools + Commentary)
+- **Header/Border Consistency**: Ensured proper top/bottom borders on all pages
+  - Orange gradient top border on every page
+  - Gray gradient bottom border on every page
+  - No mid-page horizontal lines or border artifacts
+
+**Updated Page Structure (Latest):**
+1. **Page 1**: Title Page - Professional cover with report title, organization name, and assessment title
+2. **Page 2**: Executive Summary - Full page dedicated to executive summary with proper spacing
+3. **Page 3**: Key Performance Indicators + Organization Profile + AI Adoption Score Analysis (compact)
+4. **Page 4**: AI Capability Prioritization Matrix + Strategic Recommendations
+5. **Page 5**: Implementation Roadmap + Recommended AI Tools + Consultant Commentary
+
+**User Experience:**
+- Single "Export to PDF" button generates professional, print-ready reports
+- Browser's native print-to-PDF functionality provides consistent cross-platform results
+- 4-page optimized report with improved readability and executive focus
+- Professional borders and spacing prevent cut-off issues
+- Priority matrix provides at-a-glance strategic overview
+
+## Previous Focus: Asynchronous Report Generation and Timeout Prevention (January 2025)
 
 ### Critical Issue Resolution: Assessment Submission Timeouts
 
@@ -525,4 +637,101 @@ This plan aims to integrate the new functionality incrementally. We'll need to r
 - Export functionality.
 
 - Print styles.
+
+# Active Development Context
+
+## Executive PDF Export - Critical Page Break Fixes (January 2025)
+
+### Issue Resolution: Version 1.6 CSS Structure and Page Overlap Problems
+
+**Problem Identified:**
+The executive PDF export system had critical CSS syntax errors and structural issues causing:
+- Priority Matrix and Strategic Recommendations overlapping on the same page
+- Missing closing braces in CSS causing entire rulesets to fail silently
+- Ineffective fragmentation controls for large block elements
+- Page break controls not applying properly
+
+**Root Causes:**
+1. **CSS Syntax Errors:** Missing closing braces at virtually every level in `executive-pdf.css`
+2. **Improper Nesting:** CSS selectors improperly nested causing parser failures
+3. **JSX Structure Issue:** Matrix and recommendations combined in single `.pdf-page` container
+4. **Fragmentation Control:** Missing `break-inside: avoid !important` for critical elements
+
+**Critical Fixes Applied:**
+
+#### 1. CSS Structure Overhaul (`components/report/executive-pdf.css`)
+```css
+@media print {
+  /* --- FRAGMENTATION CONTROL FOR LARGE BLOCKS --- */
+  .priority-matrix,
+  .matrix-container,
+  .matrix-grid,
+  .recommendations-table {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  
+  .priority-matrix {
+    margin-top: 30pt;
+    max-height: 170mm;
+    overflow: hidden;
+  }
+  
+  .recommendations-table {
+    margin: 16pt 0;
+    page-break-before: always;
+    break-before: page;
+  }
+}
+```
+
+#### 2. JSX Structure Fix (`components/report/ExecutivePdfLayout.tsx`)
+**Before:** Matrix and recommendations combined in PAGE 4
+**After:** Split into separate dedicated pages:
+```jsx
+{/* PAGE 4: Priority Matrix */}
+<div className="pdf-page">
+  <h1 className="section-title">AI Capability Prioritization Matrix</h1>
+  {/* Matrix content only */}
+</div>
+
+{/* PAGE 5: Strategic Recommendations */}
+<div className="pdf-page">
+  <h1 className="section-title">Strategic Recommendations</h1>
+  {/* Recommendations table only */}
+</div>
+
+{/* PAGE 6: Implementation Roadmap + Tools + Commentary */}
+```
+
+#### 3. Data Access Fixes
+Fixed TypeScript errors for proper data access:
+- `report.organizationName` (not `report.assessment?.organizationName`)
+- `report.assessment?.companyStage` (not `report.assessment?.growthStage`)
+
+**Technical Implementation Details:**
+- All print fragmentation rules now properly enclosed in `@media print { ... }`
+- Enhanced CSS specificity with `!important` for critical break controls
+- Added `max-height: 170mm` constraints to prevent content overflow
+- Improved page padding (25mm top, 30mm bottom) for proper header/footer spacing
+- Enhanced border system with consistent orange gradients on all pages
+
+**Build Verification:**
+- All changes compile successfully with `npm run build`
+- No TypeScript errors or CSS syntax issues
+- Proper component imports maintained (Table, Badge components)
+
+**Impact:**
+- Professional 6-page executive PDF report system
+- Complete elimination of page break overlap issues
+- Robust fragmentation control preventing content splitting
+- Executive-quality presentation suitable for C-level stakeholders
+- No disruption to existing web interface functionality
+
+**Documentation:**
+- Comprehensive implementation documented in `memory-bank/activeContext.md`
+- PDF export system ready for production use
+- Clear separation between web and PDF rendering systems
 

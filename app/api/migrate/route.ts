@@ -10,7 +10,7 @@ export async function POST() {
 
   try {
     // Ensure storage is initialized
-    await storage.ensureInitialized();
+    await (storage as any).ensureInitialized();
 
     // Get the database instance from storage
     const db = (storage as any).db;

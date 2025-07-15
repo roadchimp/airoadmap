@@ -1,20 +1,60 @@
 import { JobScraper } from '../lib/services/jobScraper';
-import type { JobScraperConfig, JobDescription } from '../../shared/schema';
+import type { JobScraperConfig } from '../../shared/schema';
 import { storage } from '../storage';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
 
+// --- Start of Logging Setup ---
+const LOGS_DIR = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(LOGS_DIR)) {
+  fs.mkdirSync(LOGS_DIR, { recursive: true });
+}
+
+const logFileName = `scraper-run-${new Date().toISOString().replace(/:/g, '-')}.log`;
+const logFilePath = path.join(LOGS_DIR, logFileName);
+const logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+
+console.log = (...args: any[]) => {
+  const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg).join(' ');
+  logStream.write(`[LOG] ${new Date().toISOString()}: ${message}\n`);
+  originalConsoleLog.apply(console, args);
+};
+
+console.error = (...args: any[]) => {
+  const message = args.map(arg => {
+    if (arg instanceof Error) {
+      return arg.stack;
+    }
+    return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg;
+  }).join(' ');
+  logStream.write(`[ERROR] ${new Date().toISOString()}: ${message}\n`);
+  originalConsoleError.apply(console, args);
+};
+
+console.log(`Logging scraper activity to: ${logFilePath}`);
+// --- End of Logging Setup ---
+
 /**
  * Multi-role job scraper with random intervals
- * 
+ *
  * USAGE:
- * 1. Make sure DATABASE_URL, LINKEDIN_EMAIL, and LINKEDIN_PASSWORD are in your .env file
- * 2. Run with: npx tsx server/scraper/custom-scraper.ts
+ * 1. For a single, specific job scrape:
+ *    - Create a config file (e.g., server/scraper/configs/your-job.json).
+ *    - Run: npx tsx server/scraper/custom-scraper.ts --config server/scraper/configs/your-job.json
+ * 
+ * 2. For scraping multiple hardcoded roles:
+ *    - Make sure DATABASE_URL, LINKEDIN_EMAIL, and LINKEDIN_PASSWORD are in your .env file
+ *    - Run with: NODE_ENV=development npx tsx server/scraper/custom-scraper.ts
  */
 
-// Define job roles to scrape
+// Define job roles to scrape (used when not in single-scrape mode)
 const jobRolesToScrape = [
   {
     title: 'Customer Success Manager',
@@ -60,60 +100,45 @@ function getRandomDelay(minSeconds: number, maxSeconds: number): number {
   return Math.floor(Math.random() * (maxSeconds - minSeconds + 1) + minSeconds) * 1000;
 }
 
-// Track existing job URLs to avoid duplicates
-let existingJobUrls = new Set<string>();
+async function scrapeSingleRole(config: JobScraperConfig): Promise<number> {
+  const jobScraper = new JobScraper();
 
-async function loadExistingJobUrls() {
+  console.log(`\nPreparing to scrape for: ${config.name}`);
+      
+  // Random delay before starting this role (3-10 seconds)
+  const startDelay = getRandomDelay(3, 10);
+  console.log(`Waiting ${startDelay/1000} seconds before starting...`);
+  await new Promise(resolve => setTimeout(resolve, startDelay));
+  
+  console.log(`Starting scrape for ${config.name}...`);
+  console.log(`Keywords: ${config.keywords?.join(', ') || 'No keywords specified'}`);
+  console.log(`Locations: ${config.location || 'N/A'}`);
+  console.log(`Max results to fetch for this run: ${config.maxResults}`);
+
   try {
-    // Get all existing job descriptions
-    const allJobs = await storage.listJobDescriptions(1000, 0);
+    // The runScraper method now handles all logic internally, including duplicate checking and saving.
+    // It returns the count of NEW jobs that were successfully saved to the database.
+    const newJobsCount = await jobScraper.runScraper(config);
     
-    // Extract and store all source URLs in a Set for efficient lookup
-    existingJobUrls = new Set(allJobs.map(job => job.sourceUrl));
-    console.log(`Loaded ${existingJobUrls.size} existing job URLs from database to avoid duplicates`);
-  } catch (error) {
-    console.error('Error loading existing job URLs:', error);
-    console.log('Will continue without duplicate checking');
+    console.log(`Completed ${config.name}. Saved ${newJobsCount} new unique jobs to the database.`);
+    return newJobsCount;
+  } catch (roleError) {
+    console.error(`Error scraping for ${config.name}:`, roleError);
+    return 0; // Return 0 if there was an error
   }
 }
 
-// Function to filter out duplicate jobs
-function filterNewJobs(jobs: JobDescription[]): JobDescription[] {
-  const newJobs = jobs.filter(job => !existingJobUrls.has(job.sourceUrl));
-  
-  // Add new URLs to our set to prevent duplicates within this run
-  newJobs.forEach(job => existingJobUrls.add(job.sourceUrl));
-  
-  if (jobs.length !== newJobs.length) {
-    console.log(`Filtered out ${jobs.length - newJobs.length} duplicate jobs`);
-  }
-  
-  return newJobs;
-}
-
-// Monkey patch the JobScraper class to add duplicate filtering
-const originalRunScraper = JobScraper.prototype.runScraper;
-JobScraper.prototype.runScraper = async function(config: JobScraperConfig): Promise<number> {
-  // Call the original method which returns number of jobs scraped
-  const scrapedJobs = await originalRunScraper.call(this, config);
-  
-  // We don't have direct access to the job descriptions here, but we'll check after each role
-  return scrapedJobs;
-};
 
 async function runMultiRoleScraper() {
   try {
     console.log('Starting multi-role job scraper with random intervals...');
     console.log('Will collect up to 50 total job descriptions across multiple roles');
     
-    // Load existing job URLs first to prevent duplicates
-    await loadExistingJobUrls();
-    
     const jobScraper = new JobScraper();
     let totalJobsScraped = 0;
     const maxJobsToScrape = 50;
     
-    // Get current job count in database - using listJobDescriptions since countJobDescriptions doesn't exist
+    // Get current job count in database
     try {
       const existingJobs = await storage.listJobDescriptions();
       console.log(`Currently have ${existingJobs.length} job descriptions in database`);
@@ -131,52 +156,23 @@ async function runMultiRoleScraper() {
         break;
       }
       
-      console.log(`\nPreparing to scrape for: ${role.title}`);
-      
-      // Random delay before starting this role (3-10 seconds)
-      const startDelay = getRandomDelay(3, 10);
-      console.log(`Waiting ${startDelay/1000} seconds before starting...`);
-      await new Promise(resolve => setTimeout(resolve, startDelay));
-      
-      // Create configuration for this role
       const config: JobScraperConfig = {
         id: Math.floor(Math.random() * 10000), // Random ID for this run
         name: `${role.title} Jobs`,
-        targetWebsite: 'linkedin', // Use LinkedIn only
+        targetWebsite: 'linkedin',
         keywords: role.keywords,
-        location: 'Remote', // Default to remote
+        location: 'Remote',
         isActive: true,
         lastRun: null,
         createdAt: new Date(),
-        cronSchedule: '0 0 * * *', // Not relevant for manual run
+        cronSchedule: '0 0 * * *',
+        maxResults: maxJobsToScrape - totalJobsScraped,
       };
       
-      console.log(`Starting scrape for ${role.title}...`);
-      console.log(`Keywords: ${config.keywords?.join(', ') || 'No keywords specified'}`);
-      console.log(`Target website: LinkedIn`);
-      
-      // Run the scraper with our configuration
-      try {
-        const jobsScraped = await jobScraper.runScraper(config);
-        
-        // After scraping, check for new jobs that might have been added
-        const afterScrapingJobs = await storage.listJobDescriptions(1000, 0);
-        const newJobUrls = afterScrapingJobs
-          .filter(job => !existingJobUrls.has(job.sourceUrl))
-          .map(job => job.sourceUrl);
-        
-        // Update our tracking set with any new jobs
-        newJobUrls.forEach(url => existingJobUrls.add(url));
-        
-        // Update our count of actual new jobs
-        totalJobsScraped += newJobUrls.length;
-        
-        console.log(`Completed ${role.title}. Found ${jobsScraped} jobs, ${newJobUrls.length} new unique jobs.`);
-        console.log(`Total new unique jobs scraped so far: ${totalJobsScraped}/${maxJobsToScrape}`);
-      } catch (roleError) {
-        console.error(`Error scraping for ${role.title}:`, roleError);
-        console.log('Continuing with next role...');
-      }
+      const newJobsCount = await scrapeSingleRole(config);
+      totalJobsScraped += newJobsCount;
+
+      console.log(`Total new unique jobs scraped so far: ${totalJobsScraped}/${maxJobsToScrape}`);
       
       // Random delay before next role (15-45 seconds)
       if (totalJobsScraped < maxJobsToScrape && shuffledRoles.indexOf(role) < shuffledRoles.length - 1) {
@@ -193,5 +189,64 @@ async function runMultiRoleScraper() {
   }
 }
 
+async function main() {
+  const args = process.argv.slice(2);
+  const configArgIndex = args.findIndex(arg => arg === '--config');
+  
+  const initialJobs = await storage.listJobDescriptions();
+  console.log(`Found ${initialJobs.length} jobs in the database initially.`);
+
+  if (configArgIndex !== -1 && args[configArgIndex + 1]) {
+    const configPath = path.resolve(args[configArgIndex + 1]);
+    console.log(`Running in single-scrape mode with config: ${configPath}`);
+    
+    try {
+      const configFile = fs.readFileSync(configPath, 'utf-8');
+      const externalConfig = JSON.parse(configFile);
+
+      const locations = Array.isArray(externalConfig.locations) ? externalConfig.locations : [externalConfig.locations];
+      const globalMaxResults = externalConfig.maxResults || 50;
+      let totalJobsScraped = 0;
+
+      for (const location of locations) {
+        if (totalJobsScraped >= globalMaxResults) {
+          console.log(`Global max results limit of ${globalMaxResults} reached. Halting all scraping.`);
+          break;
+        }
+
+        console.log(`\n--- Starting scrape for location: ${location} ---`);
+        const remainingJobsToScrape = globalMaxResults - totalJobsScraped;
+        console.log(`Need to find ${remainingJobsToScrape} more jobs.`);
+
+
+        const config: JobScraperConfig = {
+          id: Math.floor(Math.random() * 10000),
+          name: `${externalConfig.jobTitle} (${location})` || `Custom Scrape (${location})`,
+          targetWebsite: externalConfig.source || 'linkedin',
+          keywords: externalConfig.searchTerms || [],
+          location: location,
+          maxResults: remainingJobsToScrape,
+          isActive: true,
+          lastRun: null,
+          createdAt: new Date(),
+          cronSchedule: '',
+        };
+        
+        const newJobsCount = await scrapeSingleRole(config);
+        totalJobsScraped += newJobsCount;
+      }
+      console.log(`\n--- Total new unique jobs scraped across all locations: ${totalJobsScraped} ---`);
+
+    } catch (error) {
+      console.error(`Error reading or parsing config file at ${configPath}:`, error);
+      process.exit(1);
+    }
+  } else {
+    console.log('No --config flag found. Running in multi-role scraper mode.');
+    await runMultiRoleScraper();
+  }
+}
+
+
 // Run the scraper
-runMultiRoleScraper(); 
+main();

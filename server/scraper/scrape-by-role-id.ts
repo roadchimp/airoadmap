@@ -53,6 +53,7 @@ async function scrapeByRoleId(roleId: number) {
       lastRun: null,
       createdAt: new Date(),
       cronSchedule: '0 0 * * *', // Not relevant for manual run
+      maxResults: 50, // Default max results for this run
     };
     
     console.log(`Starting job scrape for ${role.title}...`);

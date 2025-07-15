@@ -64,6 +64,20 @@
       "when": 1751040313599,
       "tag": "0008_little_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1752566659377,
+      "tag": "0009_free_joseph",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1752571020819,
+      "tag": "0010_natural_vargas",
+      "breakpoints": true
     }
   ]
 }

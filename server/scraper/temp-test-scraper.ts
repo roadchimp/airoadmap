@@ -39,7 +39,8 @@ async function testScraper() {
       isActive: true,
       lastRun: null,
       createdAt: new Date(),
-      cronSchedule: '0 0 * * *'
+      cronSchedule: '0 0 * * *',
+      maxResults: 10, // Add max results for testing
     };
 
     console.log('Starting test scrape with verbose logging...');

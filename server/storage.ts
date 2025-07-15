@@ -213,6 +213,7 @@ export interface IStorage {
   createJobDescription(jobDescription: InsertJobDescription): Promise<JobDescription>;
   updateJobDescriptionProcessedContent(id: number, processedContent: ProcessedJobContent): Promise<JobDescription>;
   updateJobDescriptionStatus(id: number, status: string, error?: string): Promise<JobDescription>;
+  getJobDescriptions(): Promise<JobDescription[]>;
   
   // Job Scraper Config methods
   getJobScraperConfig(id: number): Promise<JobScraperConfig | undefined>;

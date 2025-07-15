@@ -1,7 +1,7 @@
 import { drizzle as drizzleNodePostgres } from 'drizzle-orm/node-postgres';
 import { drizzle as drizzleNeonHttp } from 'drizzle-orm/neon-http';
 import { neon, neonConfig } from '@neondatabase/serverless';
-import { eq, sql, asc, and, inArray } from 'drizzle-orm';
+import { eq, sql, asc, and, inArray, desc } from 'drizzle-orm';
 // Using dynamic import for pg which works better with ESM
 import { IStorage, ReportWithMetricsAndRules, FullAICapability, ToolWithMappedCapabilities, AiTool as BaseAiTool } from './storage.ts';
 import { Pool } from 'pg';
@@ -46,7 +46,7 @@ import type {
   InsertAICapability,
   Assessment, InsertAssessment, WizardStepData,
   Report, InsertReport,
-  JobDescription, InsertJobDescription, ProcessedJobContent,
+  JobDescription, ProcessedJobContent,
   JobScraperConfig, InsertJobScraperConfig,
   AiTool, 
   InsertAiTool, 
@@ -66,6 +66,7 @@ import type {
   CapabilityRoleImpact as CapabilityRoleImpactType,
   AssessmentAICapability, // Add this import
   InsertAssessmentAICapability, // Add this import
+  InsertJobDescription,
 } from '../shared/schema.ts';
 
 // Load root .env file for local development
@@ -1223,52 +1224,8 @@ export class PgStorage implements IStorage {
 
   async createJobDescription(jobDescription: InsertJobDescription): Promise<JobDescription> {
     await this.ensureInitialized();
-    console.log('PgStorage: Creating job description:', jobDescription.title);
-    try {
-      const now = new Date();
-      
-      // Ensure keywords is properly formatted as an array of strings
-      const keywords = jobDescription.keywords 
-        ? Array.isArray(jobDescription.keywords) 
-          ? jobDescription.keywords 
-          : [String(jobDescription.keywords)]
-        : null;
-      
-      // Create a sanitized object to insert
-      const sanitizedJobDescription = {
-        ...jobDescription,
-        status: jobDescription.status || 'raw',
-        company: jobDescription.company || null,
-        location: jobDescription.location || null,
-        processedContent: null,
-        keywords: keywords,
-        dateScraped: now,
-        dateProcessed: null,
-        error: null
-      };
-      
-      // Log the data we're trying to insert for debugging
-      console.log('PgStorage: Inserting with data:', JSON.stringify({
-        title: sanitizedJobDescription.title,
-        company: sanitizedJobDescription.company,
-        jobBoard: sanitizedJobDescription.jobBoard,
-        keywords: sanitizedJobDescription.keywords
-      }));
-      
-      const result = await this.db.insert(jobDescriptions).values(sanitizedJobDescription).returning();
-      console.log('PgStorage: Successfully created job description with ID:', result[0].id);
-      return result[0];
-    } catch (error) {
-      console.error('PgStorage: Error creating job description:', error);
-      // Add more detailed error reporting
-      if (error instanceof Error) {
-        console.error('Error details:', error.message);
-        if ('stack' in error) {
-          console.error('Stack trace:', error.stack);
-        }
-      }
-      throw error;
-    }
+    const result = await this.db.insert(jobDescriptions).values(jobDescription).returning();
+    return result[0];
   }
 
   async updateJobDescriptionProcessedContent(id: number, processedContent: ProcessedJobContent): Promise<JobDescription> {
@@ -1287,16 +1244,15 @@ export class PgStorage implements IStorage {
   }
 
   async updateJobDescriptionStatus(id: number, status: string, error?: string): Promise<JobDescription> {
-    await this.ensureInitialized();
-    const result = await this.db.update(jobDescriptions)
-      .set({ 
-        status,
-        error: error || null
-      })
-      .where(eq(jobDescriptions.id, id))
-      .returning();
-    
-    return result[0];
+    const [updated] = await this.db.update(jobDescriptions).set({ status, error, updatedAt: new Date() }).where(eq(jobDescriptions.id, id)).returning();
+    if (!updated) {
+      throw new Error(`Job description with ID ${id} not found`);
+    }
+    return updated;
+  }
+
+  async getJobDescriptions(): Promise<JobDescription[]> {
+    return this.db.select().from(jobDescriptions).orderBy(desc(jobDescriptions.dateScraped));
   }
 
   // Job Scraper Config methods
@@ -1351,6 +1307,11 @@ export class PgStorage implements IStorage {
       .returning();
     
     return result[0];
+  }
+
+  async getJobScraperConfigs(): Promise<JobScraperConfig[]> {
+    await this.ensureInitialized();
+    return await this.db.select().from(jobScraperConfigs);
   }
 
   // AITool methods

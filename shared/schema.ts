@@ -545,7 +545,13 @@ export const jobDescriptions = pgTable("job_descriptions", {
   dateProcessed: timestamp("date_processed"),
   status: text("status").default("raw").notNull(), // raw, processed, error
   error: text("error"),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+  organizationId: integer('organization_id').references(() => organizations.id),
+  jobRoleId: integer('job_role_id').references(() => jobRoles.id),
 });
+
+export type JobDescription = typeof jobDescriptions.$inferSelect;
+export type InsertJobDescription = typeof jobDescriptions.$inferInsert;
 
 export const insertJobDescriptionSchema = createInsertSchema(jobDescriptions).pick({
   title: true,
@@ -559,15 +565,16 @@ export const insertJobDescriptionSchema = createInsertSchema(jobDescriptions).pi
 });
 
 export const jobScraperConfigs = pgTable("job_scraper_configs", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  targetWebsite: text("target_website").notNull(),
-  keywords: text("keywords").array(),
-  location: text("location"),
-  isActive: boolean("is_active").default(true).notNull(),
-  cronSchedule: text("cron_schedule").default("0 0 * * *").notNull(), // Daily at midnight by default
-  lastRun: timestamp("last_run"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+	id: serial("id").primaryKey().notNull(),
+	name: text("name").notNull(),
+	targetWebsite: text("target_website").notNull(),
+	keywords: text("keywords").array(),
+	location: text("location"),
+	isActive: boolean("is_active").default(true).notNull(),
+	lastRun: timestamp("last_run", { mode: 'date' }),
+	cronSchedule: text("cron_schedule"),
+	createdAt: timestamp("created_at", { mode: 'date' }).defaultNow().notNull(),
+	maxResults: integer("max_results").default(50),
 });
 
 export const insertJobScraperConfigSchema = createInsertSchema(jobScraperConfigs).pick({
@@ -580,9 +587,6 @@ export const insertJobScraperConfigSchema = createInsertSchema(jobScraperConfigs
 });
 
 // Types
-export type JobDescription = typeof jobDescriptions.$inferSelect;
-export type InsertJobDescription = z.infer<typeof insertJobDescriptionSchema>;
-
 export type JobScraperConfig = typeof jobScraperConfigs.$inferSelect;
 export type InsertJobScraperConfig = z.infer<typeof insertJobScraperConfigSchema>;
 

@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useSession } from '@/lib/session/SessionContext';
 import { Department } from '@/lib/session/sessionTypes';
-import SearchInput from '../../../../../../components/ui/search-input'; 
-import DepartmentCard from '../../../../../../components/ui/department-card';
+import SearchInput from '@/components/ui/search-input'; 
+import DepartmentCard from '@/components/ui/department-card';
 
 const DepartmentSelectionStep: React.FC = () => {
   const { 

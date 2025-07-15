@@ -36,6 +36,20 @@
       "when": 1751038860863,
       "tag": "0004_misty_darwin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1752566036728,
+      "tag": "0005_gorgeous_marauders",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1752570901313,
+      "tag": "0006_living_zombie",
+      "breakpoints": true
     }
   ]
 }

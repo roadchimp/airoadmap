@@ -323,7 +323,8 @@ class LinkedInScraper {
   async scrapeJobDescriptions(config: JobScraperConfig): Promise<InsertJobDescription[]> {
     const { keywords, location } = config;
     const jobDescriptions: InsertJobDescription[] = [];
-    
+    let limitReached = false;
+
     try {
       // Check for null or empty keywords
       if (!keywords || keywords.length === 0) {
@@ -360,201 +361,207 @@ class LinkedInScraper {
       logToFile(`🔍 Processing ${keywords.length} keywords with concurrency limit: ${LINKEDIN_CONFIG.MAX_CONCURRENT_SCRAPES}`);
       
       for (const keyword of keywords) {
-        logToFile(`🔍 Processing keyword: "${keyword}"`);
+        if (limitReached) break;
+
+        logToFile(`🔍 Searching for keyword: "${keyword}"...`);
+        const searchUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(config.location || 'Austin, Texas')}`;
         
-        try {
-          // Navigate to LinkedIn Jobs
-          logToFile('🌐 Navigating to LinkedIn Jobs...');
+        logToFile(`🌐 Navigating to LinkedIn Jobs...`);
+        
+        // Click on the Jobs icon (multiple selectors for redundancy)
+        const jobsIconSelectors = [
+          'a[href="https://www.linkedin.com/jobs/?"]',
+          'a[data-link-to="jobs"]',
+          'a[href^="/jobs"]',
+          'a.app-aware-link[href^="/jobs"]'
+        ];
+        
+        let clickedJobsIcon = false;
+        for (const selector of jobsIconSelectors) {
+          try {
+            const element = await page.$(selector);
+            if (element) {
+              logToFile(`✅ Found jobs link with selector: ${selector}`);
+              await element.click();
+              clickedJobsIcon = true;
+              break;
+            }
+          } catch (e) {
+            // Continue trying other selectors
+          }
+        }
+        
+        if (!clickedJobsIcon) {
+          // If we couldn't find the jobs icon, navigate directly to the jobs page
+          logToFile('⚠️ Could not find jobs icon, navigating directly to jobs page...');
+          await page.goto('https://www.linkedin.com/jobs/', {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+          });
+        }
+        
+        // Wait for the jobs page to load
+        await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
+        
+        // Input the keyword in the search field
+        logToFile(`🔤 Entering keyword: "${keyword}"`);
+        
+        // Click on the search box to activate it (try multiple selectors)
+        const searchBoxSelectors = [
+          'input[aria-label="Search job titles or companies"]',
+          'input[placeholder="Search job titles or companies"]',
+          'input[role="combobox"]',
+          '.jobs-search-box__text-input[aria-label="Search job titles or companies"]'
+        ];
+        
+        let searchBoxFound = false;
+        for (const selector of searchBoxSelectors) {
+          try {
+            const searchBox = await page.$(selector);
+            if (searchBox) {
+              logToFile(`✅ Found search box with selector: ${selector}`);
+              await searchBox.click();
+              await searchBox.type(keyword);
+              searchBoxFound = true;
+              break;
+            }
+          } catch (error) {
+            // Continue trying other selectors
+          }
+        }
+        
+        if (!searchBoxFound) {
+          logToFile('⚠️ Could not find the search box. Trying an alternative approach...');
+          // If no search box found, try the URL approach directly
+          const keywordEncoded = encodeURIComponent(keyword);
+          const locationEncoded = encodeURIComponent(location || '');
+          await page.goto(`https://www.linkedin.com/jobs/search/?keywords=${keywordEncoded}&location=${locationEncoded}`, {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+          });
+        } else {
+          // Press Enter to submit the search
+          logToFile('🔍 Submitting search...');
+          await page.keyboard.press('Enter');
+        }
+        
+        // Wait for search results to load
+        logToFile('⏳ Waiting for search results to load...');
+        await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
+        
+        // Extract job links - using retries for reliability
+        let jobLinks: string[] = [];
+        let retries = 0;
+        const maxRetries = 3;
+        
+        while (jobLinks.length === 0 && retries < maxRetries) {
+          if (retries > 0) {
+            logToFile(`🔄 Retry ${retries}/${maxRetries} extracting job links...`);
+            await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
+          }
           
-          // Click on the Jobs icon (multiple selectors for redundancy)
-          const jobsIconSelectors = [
-            'a[href="https://www.linkedin.com/jobs/?"]',
-            'a[data-link-to="jobs"]',
-            'a[href^="/jobs"]',
-            'a.app-aware-link[href^="/jobs"]'
-          ];
+          // Scroll down to load more results
+          logToFile('📜 Scrolling to load more job results...');
+          await this.scrollPage(page);
           
-          let clickedJobsIcon = false;
-          for (const selector of jobsIconSelectors) {
+          // Extract job links
+          jobLinks = await this.extractJobLinks(page);
+          logToFile(`📊 Found ${jobLinks.length} job links`);
+          
+          retries++;
+        }
+        
+        // Limit the number of jobs to process
+        const jobLinksToProcess = jobLinks.slice(0, LINKEDIN_CONFIG.MAX_JOBS_PER_KEYWORD);
+        logToFile(`🔍 Processing ${jobLinksToProcess.length} job links for keyword "${keyword}"`);
+        
+        // Extract job descriptions from the links concurrently with rate limiting
+        const jobPromises = jobLinksToProcess.map((jobUrl, index) => {
+          return this.limit(async () => {
+            if (limitReached) return; // Don't start new tasks if limit is hit
+
+            logToFile(`🔍 [${index + 1}/${jobLinksToProcess.length}] Getting job details for ${jobUrl}...`);
+            await this.randomDelay(
+              LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 0.8,
+              LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 1.2
+            );
+
+            logToFile(`🌐 Loading job details from ${jobUrl}...`);
+            // Navigate to job detail page
             try {
-              const element = await page.$(selector);
-              if (element) {
-                logToFile(`✅ Found jobs link with selector: ${selector}`);
-                await element.click();
-                clickedJobsIcon = true;
-                break;
-              }
-            } catch (e) {
-              // Continue trying other selectors
+              await page.goto(jobUrl, {
+                waitUntil: 'domcontentloaded',
+                timeout: 30000
+              });
+              logToFile(`✅ Navigated to job detail page: ${jobUrl}`);
+            } catch (error: unknown) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              logToFile(`⚠️ Error navigating to job detail page: ${jobUrl}. Error: ${errorMessage}`);
+              return; // Skip this job and move to the next
             }
-          }
-          
-          if (!clickedJobsIcon) {
-            // If we couldn't find the jobs icon, navigate directly to the jobs page
-            logToFile('⚠️ Could not find jobs icon, navigating directly to jobs page...');
-            await page.goto('https://www.linkedin.com/jobs/', {
-              waitUntil: 'domcontentloaded',
-              timeout: 30000
-            });
-          }
-          
-          // Wait for the jobs page to load
-          await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
-          
-          // Input the keyword in the search field
-          logToFile(`🔤 Entering keyword: "${keyword}"`);
-          
-          // Click on the search box to activate it (try multiple selectors)
-          const searchBoxSelectors = [
-            'input[aria-label="Search job titles or companies"]',
-            'input[placeholder="Search job titles or companies"]',
-            'input[role="combobox"]',
-            '.jobs-search-box__text-input[aria-label="Search job titles or companies"]'
-          ];
-          
-          let searchBoxFound = false;
-          for (const selector of searchBoxSelectors) {
-            try {
-              const searchBox = await page.$(selector);
-              if (searchBox) {
-                logToFile(`✅ Found search box with selector: ${selector}`);
-                await searchBox.click();
-                await searchBox.type(keyword);
-                searchBoxFound = true;
-                break;
-              }
-            } catch (error) {
-              // Continue trying other selectors
-            }
-          }
-          
-          if (!searchBoxFound) {
-            logToFile('⚠️ Could not find the search box. Trying an alternative approach...');
-            // If no search box found, try the URL approach directly
-            const keywordEncoded = encodeURIComponent(keyword);
-            const locationEncoded = encodeURIComponent(location || '');
-            await page.goto(`https://www.linkedin.com/jobs/search/?keywords=${keywordEncoded}&location=${locationEncoded}`, {
-              waitUntil: 'domcontentloaded',
-              timeout: 30000
-            });
-          } else {
-            // Press Enter to submit the search
-            logToFile('🔍 Submitting search...');
-            await page.keyboard.press('Enter');
-          }
-          
-          // Wait for search results to load
-          logToFile('⏳ Waiting for search results to load...');
-          await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
-          
-          // Extract job links - using retries for reliability
-          let jobLinks: string[] = [];
-          let retries = 0;
-          const maxRetries = 3;
-          
-          while (jobLinks.length === 0 && retries < maxRetries) {
-            if (retries > 0) {
-              logToFile(`🔄 Retry ${retries}/${maxRetries} extracting job links...`);
-              await this.randomDelay(LINKEDIN_CONFIG.PAGE_LOAD_DELAY, LINKEDIN_CONFIG.PAGE_LOAD_DELAY * 1.5);
-            }
-            
-            // Scroll down to load more results
-            logToFile('📜 Scrolling to load more job results...');
-            await this.scrollPage(page);
-            
-            // Extract job links
-            jobLinks = await this.extractJobLinks(page);
-            logToFile(`📊 Found ${jobLinks.length} job links`);
-            
-            retries++;
-          }
-          
-          // Limit the number of jobs to process
-          const jobLinksToProcess = jobLinks.slice(0, LINKEDIN_CONFIG.MAX_JOBS_PER_KEYWORD);
-          logToFile(`🔍 Processing ${jobLinksToProcess.length} job links for keyword "${keyword}"`);
-          
-          // Extract job descriptions from the links concurrently with rate limiting
-          const jobPromises = jobLinksToProcess.map((jobUrl, index) => {
-            return this.limit(async () => {
-              logToFile(`🔍 [${index + 1}/${jobLinksToProcess.length}] Getting job details for ${jobUrl}...`);
-              await this.randomDelay(
-                LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 0.8,
-                LINKEDIN_CONFIG.BETWEEN_JOBS_DELAY * 1.2
-              );
 
-              logToFile(`🌐 Loading job details from ${jobUrl}...`);
-              // Navigate to job detail page
-              try {
-                await page.goto(jobUrl, {
-                  waitUntil: 'domcontentloaded',
-                  timeout: 30000
-                });
-                logToFile(`✅ Navigated to job detail page: ${jobUrl}`);
-              } catch (error: unknown) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                logToFile(`⚠️ Error navigating to job detail page: ${jobUrl}. Error: ${errorMessage}`);
-                return; // Skip this job and move to the next
-              }
-
-              // Wait for job details with increased timeout
-              logToFile('⏳ Waiting for job details to load...');
-              await page.waitForSelector('.job-details', { timeout: 30000 })
-                .catch(() => {
-                  logToFile('⚠️ Could not find job details');
-                });
-
-              // Extract job details
-              logToFile('🔍 Extracting job details...');
-              const jobDetails = await page.evaluate(() => {
-                const title = document.querySelector('.job-details-jobs-unified-top-card__job-title')?.textContent?.trim();
-                const company = document.querySelector('.job-details-jobs-unified-top-card__company-name')?.textContent?.trim();
-                const location = document.querySelector('.job-details-jobs-unified-top-card__bullet')?.textContent?.trim();
-                const descriptionElement = document.querySelector('.jobs-description__content');
-                const description = descriptionElement?.textContent?.trim();
-
-                return {
-                  title,
-                  company,
-                  location,
-                  description
-                };
+            // Wait for job details with increased timeout
+            logToFile('⏳ Waiting for job details to load...');
+            await page.waitForSelector('.job-details', { timeout: 30000 })
+              .catch(() => {
+                logToFile('⚠️ Could not find job details');
               });
 
-              if (jobDetails.title && jobDetails.description) {
-                logToFile(`✅ Successfully extracted job: "${jobDetails.title}" at "${jobDetails.company}"`);
-                jobDescriptions.push({
-                  title: jobDetails.title,
-                  company: jobDetails.company || '',
-                  location: jobDetails.location || '',
-                  jobBoard: 'linkedin',
-                  sourceUrl: jobUrl,
-                  rawContent: jobDetails.description,
-                  keywords: [keyword],
-                  status: 'raw'
-                });
-              } else {
-                logToFile(`⚠️ Failed to extract complete job details from ${jobUrl}`);
-              }
+            // Extract job details
+            logToFile('🔍 Extracting job details...');
+            const jobDetails = await page.evaluate(() => {
+              const title = document.querySelector('.job-details-jobs-unified-top-card__job-title')?.textContent?.trim();
+              const company = document.querySelector('.job-details-jobs-unified-top-card__company-name')?.textContent?.trim();
+              const location = document.querySelector('.job-details-jobs-unified-top-card__bullet')?.textContent?.trim();
+              const descriptionElement = document.querySelector('.jobs-description__content');
+              const description = descriptionElement?.textContent?.trim();
+
+              return {
+                title,
+                company,
+                location,
+                description
+              };
             });
+
+            if (jobDetails.title && jobDetails.description) {
+              logToFile(`✅ Successfully extracted job: "${jobDetails.title}" at "${jobDetails.company}"`);
+              jobDescriptions.push({
+                title: jobDetails.title,
+                company: jobDetails.company || '',
+                location: jobDetails.location || '',
+                jobBoard: 'linkedin',
+                sourceUrl: jobUrl,
+                rawContent: jobDetails.description,
+                keywords: [keyword],
+                status: 'raw'
+              });
+            } else {
+              logToFile(`⚠️ Failed to extract complete job details from ${jobUrl}`);
+            }
+
+            // Check if we've hit the limit after processing each job
+            if (config.maxResults && jobDescriptions.length >= config.maxResults) {
+              if (!limitReached) { // Log this only once
+                logToFile(`🎯 Max results limit of ${config.maxResults} reached. Finishing active scrapes.`);
+                limitReached = true;
+              }
+            }
           });
-          
-          // Wait for all job promises to complete
-          await Promise.all(jobPromises);
-          
-          logToFile(`✅ Completed processing keyword: "${keyword}". Found ${jobDescriptions.length} job descriptions so far.`);
-          
-          // Add delay between keywords to prevent rate limiting
-          if (keywords.indexOf(keyword) < keywords.length - 1) {
-            const delayMs = LINKEDIN_CONFIG.BETWEEN_KEYWORDS_DELAY;
-            logToFile(`⏳ Waiting ${delayMs / 1000} seconds before processing next keyword...`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-          }
-          
-        } catch (keywordError: unknown) {
-          const errorMessage = keywordError instanceof Error ? keywordError.message : String(keywordError);
-          logToFile(`❌ Error processing keyword "${keyword}": ${errorMessage}`);
-          // Continue with next keyword
+        });
+        
+        // Wait for all job promises to complete
+        await Promise.all(jobPromises);
+        
+        logToFile(`✅ Completed processing keyword: "${keyword}". Found ${jobDescriptions.length} job descriptions so far.`);
+        
+        // Add delay between keywords to prevent rate limiting
+        if (keywords.indexOf(keyword) < keywords.length - 1) {
+          const delayMs = LINKEDIN_CONFIG.BETWEEN_KEYWORDS_DELAY;
+          logToFile(`⏳ Waiting ${delayMs / 1000} seconds before processing next keyword...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
         }
+        
       }
       
       logToFile(`🎉 LinkedIn scraping completed. Found ${jobDescriptions.length} total job descriptions.`);

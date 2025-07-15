@@ -15,6 +15,7 @@ import {
   JobRole, 
   AICapability, 
   AiTool,
+  JobDescription,
   insertJobRoleSchema, 
   insertAICapabilitySchema, 
   Department,
@@ -83,6 +84,13 @@ const Library: React.FC = () => {
     queryKey: ["/api/tools"],
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const {
+    data: jobDescriptions = [],
+    isLoading: isLoadingJobDescriptions,
+  } = useQuery<JobDescription[]>({
+    queryKey: ["/api/job-descriptions"],
   });
   
   // Fetch departments for the job role form
@@ -350,6 +358,7 @@ const Library: React.FC = () => {
         initialJobRoles={jobRoles}
         initialAiCapabilities={aiCapabilities}
         initialAiTools={aiTools}
+        initialJobDescriptions={jobDescriptions}
       />
       
       {/* Job Role Dialog */}

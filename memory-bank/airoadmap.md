@@ -172,6 +172,7 @@ headers: {
     *   Corrected usage of `AiTool` primary key (`tool_id` instead of `id`) throughout the library components.
     *   Created a reusable `components/shared/ConfirmationDialog.tsx`.
     *   Resolved various type errors related to `tsconfig.json` configuration and component prop mismatches.
+    *   Added a "Scraped Jobs" tab to the library page to display job descriptions from the database.
 
 ## UI Architecture Pattern
 

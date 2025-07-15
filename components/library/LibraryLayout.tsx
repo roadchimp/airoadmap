@@ -53,7 +53,8 @@ import {
   InsertAiTool,
   InsertAICapability,
   InsertJobRole,
-  AiToolFormData // Import the shared type
+  AiToolFormData, // Import the shared type
+  JobDescription
 } from "@shared/schema";
 import AIToolDialog from "./AIToolDialog"; // Assuming this exists and props match
 import ConfirmationDialog from "@/components/shared/ConfirmationDialog"; // Corrected path assuming standard structure
@@ -71,6 +72,7 @@ interface LibraryLayoutProps {
   initialAiCapabilities: AICapability[];
   /** Array of AI tools (using snake_case schema type). */
   initialAiTools: AiTool[]; 
+  initialJobDescriptions: JobDescription[];
 }
 
 // --- Helper Function for Status Badges (moved/adapted from old DataTable) ---
@@ -126,6 +128,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
   initialJobRoles,
   initialAiCapabilities,
   initialAiTools,
+  initialJobDescriptions,
 }) => {
   const { toast } = useToast(); // Use the hook to get the toast function
   const [activeTab, setActiveTab] = useState("jobRoles"); // Change default to Job Roles
@@ -134,6 +137,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
   const [jobRoles, setJobRoles] = useState<JobRoleWithDepartment[]>(initialJobRoles);
   const [aiCapabilities, setAiCapabilities] = useState<AICapability[]>(initialAiCapabilities);
   const [aiTools, setAiTools] = useState<AiTool[]>(initialAiTools); // This state is now used by the react-table instance
+  const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>(initialJobDescriptions);
   
   // --- Fetch Departments for Forms --- 
    const { data: departments = [], isLoading: isLoadingDepartments } = useQuery<Department[]>({ // Explicit type for query
@@ -161,6 +165,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
   useEffect(() => setJobRoles(initialJobRoles), [initialJobRoles]);
   useEffect(() => setAiCapabilities(initialAiCapabilities), [initialAiCapabilities]);
   // useEffect(() => setAiTools(initialAiTools), [initialAiTools]); // Remove this, table state handles it
+  useEffect(() => setJobDescriptions(initialJobDescriptions), [initialJobDescriptions]);
 
   // --- TODO: Implement Actual Mutations using TanStack Query --- 
   const createToolMutation = useMutation({
@@ -626,6 +631,46 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
     },
   ];
 
+  // --- Job Description Columns ---
+  const jobDescriptionsColumns: ColumnDef<JobDescription>[] = [
+    {
+      accessorKey: "title",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Title <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => <div className="font-medium">{row.getValue("title")}</div>,
+    },
+    {
+      accessorKey: "company",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Company <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+    },
+    {
+      accessorKey: "location",
+      header: "Location",
+    },
+    {
+      accessorKey: "dateScraped",
+      header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+          Date Scraped <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("dateScraped"));
+        return <div className="text-left font-medium">{date.toLocaleDateString()}</div>;
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+    },
+  ];
 
   // --- AI Tools Table Instance --- 
   const aiToolsTable = useReactTable({
@@ -696,7 +741,7 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Tab List container */}
           <div className="border-b border-neutral-200 dark:border-neutral-700"> 
-            <TabsList className="grid w-full grid-cols-3 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-t-lg">
+            <TabsList className="grid w-full grid-cols-4 bg-neutral-100 dark:bg-neutral-800 p-1 rounded-t-lg">
               <TabsTrigger value="jobRoles" className="py-2 data-[state=active]:bg-white data-[state=active]:dark:bg-neutral-950 data-[state=active]:shadow-sm rounded-md"> 
                 Job Roles
               </TabsTrigger>
@@ -705,6 +750,9 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
               </TabsTrigger>
               <TabsTrigger value="aiTools" className="py-2 data-[state=active]:bg-white data-[state=active]:dark:bg-neutral-950 data-[state=active]:shadow-sm rounded-md"> 
                 AI Tools
+              </TabsTrigger>
+              <TabsTrigger value="scraped_jobs" className="py-2 data-[state=active]:bg-white data-[state=active]:dark:bg-neutral-950 data-[state=active]:shadow-sm rounded-md"> 
+                Scraped Jobs
               </TabsTrigger>
             </TabsList>
           </div>
@@ -850,6 +898,16 @@ const LibraryLayout: React.FC<LibraryLayoutProps> = ({ // Explicitly type props
                   </Button>
                 </div>
               </div>
+            </div>
+          </TabsContent>
+
+          {/* Tab Content for Scraped Jobs */}
+          <TabsContent value="scraped_jobs" className="p-0">
+            <div className="w-full p-4">
+              <DataTable<JobDescription>
+                data={jobDescriptions}
+                columns={jobDescriptionsColumns}
+              />
             </div>
           </TabsContent>
         </Tabs>

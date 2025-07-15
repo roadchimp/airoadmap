@@ -255,6 +255,7 @@ export class PgStorage implements IStorage {
   }
 
   async createJobRole(role: InsertJobRole): Promise<BaseJobRole> {
+    await this.ensureInitialized();
     const result = await this.db.insert(jobRoles).values(role).returning();
     return result[0];
   }

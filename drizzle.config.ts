@@ -5,7 +5,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  out: "./migrations-vercel",
+  out: "./migrations-preview-reports-ui",
   schema: "./shared/schema.ts",
   dialect: "postgresql",
   dbCredentials: {

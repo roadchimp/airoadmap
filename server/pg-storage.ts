@@ -1119,10 +1119,14 @@ export class PgStorage implements IStorage {
     } catch (error) {
       console.error('Error fetching reports with Drizzle, falling back to raw SQL:', error);
       // Fallback to raw SQL if ORM fails
-      const result = await this.db.execute(sql`SELECT * FROM reports`);
+      const result = await this.db.execute(
+        sql`SELECT id, assessment_id, user_id, generated_at, executive_summary, 
+                   prioritization_data, ai_suggestions, performance_impact, 
+                   consultant_commentary, ai_adoption_score_details, roi_details
+            FROM reports 
+            ORDER BY generated_at DESC`
+      );
       // The raw SQL query result might have a different structure, ensure it's mapped correctly
-      // This mapping depends on the raw result format, which could be result.rows, result, etc.
-      // Adjust this part based on how your DB driver returns raw query results.
       return result.rows || result;
     }
   }
@@ -1133,7 +1137,23 @@ export class PgStorage implements IStorage {
         console.warn("listReportsForUser called without a user profile id.");
         return [];
     }
-    return await this.db.select().from(reports).where(eq(reports.userId, userProfile.id));
+    
+    try {
+      // Try the Drizzle ORM approach first
+      return await this.db.select().from(reports).where(eq(reports.userId, userProfile.id));
+    } catch (error) {
+      console.error('Error with Drizzle query for listReportsForUser, using raw SQL:', error);
+      // Fallback to raw SQL
+      const result = await this.db.execute(
+        sql`SELECT id, assessment_id, user_id, generated_at, executive_summary, 
+                   prioritization_data, ai_suggestions, performance_impact, 
+                   consultant_commentary, ai_adoption_score_details, roi_details
+            FROM reports 
+            WHERE user_id = ${userProfile.id}
+            ORDER BY generated_at DESC`
+      );
+      return result.rows || result;
+    }
   }
 
   async createReport(report: InsertReport): Promise<Report> {

@@ -541,7 +541,7 @@ export default function AssessmentViewClient({
               </Button>
             )}
             <Button onClick={handlePrint}>Export Assessment</Button>
-            <Button onClick={handleRegenerate} variant="secondary">Re-generate Report</Button>
+            <Button onClick={handleRegenerate} variant="secondary" className="text-white">Re-generate Report</Button>
           </div>
         </div>
       </main>

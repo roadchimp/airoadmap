@@ -1,16 +1,5 @@
 import { NextResponse } from 'next/server';
-import { storage } from '@/server/storage';
-
-// Helper function to get base URL
-function getBaseUrl(): string {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  return 'http://localhost:3000';
-}
+import { generateReportForAssessment } from '@/server/lib/services/reportService';
 
 export async function POST(
   request: Request,
@@ -25,54 +14,12 @@ export async function POST(
   }
 
   try {
-    // 1. Fetch the existing assessment to ensure it exists
-    const assessment = await storage.getAssessment(assessmentId);
-    if (!assessment) {
-      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
-    }
-    console.log(`[REGENERATE_ROUTE] Found assessment: ${assessment.title}`);
-
-    // 2. Trigger the prioritization logic asynchronously
-    const triggerReportGeneration = async () => {
-      try {
-        const baseUrl = getBaseUrl();
-        const internalSecret = process.env.INTERNAL_REQUEST_SECRET;
-        
-        console.log(`[REGENERATE_ROUTE] Triggering report generation for assessment ${assessment.id} to ${baseUrl}/api/prioritize`);
-
-        if (!internalSecret && process.env.NODE_ENV === 'development') {
-          console.error('[REGENERATE_ROUTE] CRITICAL: INTERNAL_REQUEST_SECRET is not set in development. Report generation will likely fail authentication.');
-        }
-
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
-        if (internalSecret) {
-          headers['X-Internal-Request-Secret'] = internalSecret;
-        }
-
-        console.log('[REGENERATE_ROUTE] Sending headers:', JSON.stringify(headers, null, 2));
-        
-        const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify({ assessmentId: assessment.id }),
-        });
-
-        if (reportResponse.ok) {
-          const reportData = await reportResponse.json();
-          console.log(`[REGENERATE_ROUTE] Successfully started report generation. Response: ${JSON.stringify(reportData)}`);
-        } else {
-          const errorBody = await reportResponse.text();
-          console.error(`[REGENERATE_ROUTE] Failed to generate report. Status: ${reportResponse.status}. Body: ${errorBody}`);
-        }
-      } catch (reportError) {
-        console.error('[REGENERATE_ROUTE] Error triggering report generation fetch call:', reportError);
-      }
-    };
-
-    // Fire and forget
-    triggerReportGeneration();
+    // We can call the service directly, but we still want this to be async
+    // so the client gets an immediate response. We won't await the result here.
+    generateReportForAssessment(assessmentId, { regenerate: true }).catch(error => {
+      // Log the error centrally, perhaps using a more robust logging service in the future.
+      console.error(`[REGENERATE_ROUTE] Background report generation failed for assessment ${assessmentId}:`, error);
+    });
 
     return NextResponse.json(
       { message: 'Report regeneration started in the background.', success: true },

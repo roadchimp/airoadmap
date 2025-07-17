@@ -7,7 +7,11 @@ import { logToFile } from '../services/logger';
 /**
  * Calculates the prioritization results based on wizard step data
  */
-export async function calculatePrioritization(assessmentId: number, stepData: WizardStepData) {
+export async function calculatePrioritization(
+  assessmentId: number, 
+  stepData: WizardStepData,
+  options: { noCache?: boolean } = {}
+) {
   // Prioritized items list
   const prioritizedItems: PrioritizedItem[] = [];
   
@@ -166,8 +170,10 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
     payload: { stepData, prioritizedItems }
   });
   const executiveSummaryPromise = generateEnhancedExecutiveSummary(
+    assessmentId,
     stepData,
-    prioritizedItems
+    prioritizedItems,
+    options
   ).then(result => {
     logToFile('openai-requests.log', { 
       type: 'Response: generateEnhancedExecutiveSummary',

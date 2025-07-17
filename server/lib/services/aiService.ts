@@ -164,15 +164,17 @@ interface AIRecommendationResponse {
  * Generate an enhanced executive summary with OpenAI GPT-4
  */
 export async function generateEnhancedExecutiveSummary(
+  assessmentId: number,
   stepData: WizardStepData, 
-  prioritizedRoles: any[]
+  prioritizedItems: any[], // Changed from prioritizedRoles to be more generic
+  options: { noCache?: boolean } = {}
 ): Promise<string> {
   console.log('[AI Service] generateEnhancedExecutiveSummary called');
   
   // Skip OpenAI calls during build time
   if (isVercelBuild) {
     console.log('[AI Service] Skipping OpenAI call during build - using fallback for executive summary');
-    return fallbackExecutiveSummary(stepData, prioritizedRoles);
+    return fallbackExecutiveSummary(stepData, prioritizedItems);
   }
   
   // Try module-level client first, then runtime client
@@ -187,7 +189,7 @@ export async function generateEnhancedExecutiveSummary(
   try {
     if (!workingOpenAI) {
       console.log('[AI Service] No OpenAI client available - using fallback for executive summary');
-      return fallbackExecutiveSummary(stepData, prioritizedRoles);
+      return fallbackExecutiveSummary(stepData, prioritizedItems);
     }
 
     // Extract relevant data for prompt construction
@@ -198,11 +200,11 @@ export async function generateEnhancedExecutiveSummary(
     console.log(`[AI Service] Generating executive summary for: ${companyName} in ${industry}`);
     
     // Get top prioritized roles
-    const topRoles = prioritizedRoles.slice(0, 3).map(role => ({
-      title: role.title,
-      priority: role.priority,
-      valueScore: role.valueScore,
-      effortScore: role.effortScore
+    const topRoles = prioritizedItems.slice(0, 3).map(item => ({
+      name: item.name, // Changed from title to name
+      priority: item.priority,
+      valueScore: item.valueScore,
+      effortScore: item.effortScore
     }));
     
     // Construct prompt
@@ -210,7 +212,7 @@ export async function generateEnhancedExecutiveSummary(
     Their primary goals are: ${goals}
     
     The assessment identified these top priority opportunities:
-    ${topRoles.map(role => `- ${role.title} (Priority: ${role.priority}, Value: ${role.valueScore}/5, Effort: ${role.effortScore}/5)`).join('\n')}
+    ${topRoles.map(item => `- ${item.name} (Priority: ${item.priority}, Value: ${item.valueScore}/5, Effort: ${item.effortScore}/5)`).join('\n')}
     
     Write an executive summary (300-400 words) highlighting:
     1. Key opportunities for AI transformation
@@ -222,11 +224,15 @@ export async function generateEnhancedExecutiveSummary(
 
     const model = "gpt-4";
     
-    // Check if we have a cached response
-    const cachedResponse = getCachedResponse(prompt, model);
-    if (cachedResponse) {
-      console.log('[AI Service] Using cached response for executive summary');
-      return cachedResponse;
+    // Check if we have a cached response, bypass if noCache is true
+    if (!options.noCache) {
+      const cachedResponse = getCachedResponse(prompt, model);
+      if (cachedResponse) {
+        console.log('[AI Service] Using cached response for executive summary');
+        return cachedResponse;
+      }
+    } else {
+      console.log('[AI Service] Bypassing cache for executive summary generation.');
     }
 
     console.log('[AI Service] Making OpenAI API call for executive summary...');
@@ -237,12 +243,13 @@ export async function generateEnhancedExecutiveSummary(
       messages: [
         { role: "system", content: "You are an AI transformation consultant providing executive-level strategic insights." },
         { role: "user", content: prompt }
-      ]
+      ],
+      seed: assessmentId,
     });
 
     console.log('[AI Service] OpenAI API call successful for executive summary');
     
-    const content = response.choices[0].message.content || fallbackExecutiveSummary(stepData, prioritizedRoles);
+    const content = response.choices[0].message.content || fallbackExecutiveSummary(stepData, prioritizedItems);
     
     // Cache the response
     cacheResponse(prompt, model, content);
@@ -257,7 +264,7 @@ export async function generateEnhancedExecutiveSummary(
       stack: error instanceof Error ? error.stack : undefined
     });
     console.log('[AI Service] Falling back to default executive summary');
-    return fallbackExecutiveSummary(stepData, prioritizedRoles);
+    return fallbackExecutiveSummary(stepData, prioritizedItems);
   }
 }
 
@@ -520,9 +527,9 @@ Return ONLY the JSON object, no additional text.`;
 /**
  * Fallback function for executive summary
  */
-function fallbackExecutiveSummary(stepData: WizardStepData, prioritizedRoles: any[]): string {
+function fallbackExecutiveSummary(stepData: WizardStepData, prioritizedItems: any[]): string {
   const companyName = stepData.basics?.companyName || "your company";
-  const topRoles = prioritizedRoles.slice(0, 2);
+  const topRoles = prioritizedItems.slice(0, 2);
   
   // Extract unique departments safely
   const departmentSet = new Set<string>();
@@ -535,7 +542,7 @@ function fallbackExecutiveSummary(stepData: WizardStepData, prioritizedRoles: an
   
   return `Based on our analysis of ${companyName}'s current processes and roles, we've identified significant opportunities for AI transformation that could lead to efficiency gains and cost savings.
 
-The assessment reveals that ${departments.join(" and ") || "key functional"} functions have the highest potential for immediate AI impact with relatively low implementation barriers. We estimate potential time savings of 15-20 hours per week per agent in ${topRoles[0]?.title || "key roles"} through AI-assisted processes and automation.
+The assessment reveals that ${departments.join(" and ") || "key functional"} functions have the highest potential for immediate AI impact with relatively low implementation barriers. We estimate potential time savings of 15-20 hours per week per agent in ${topRoles[0]?.name || "key roles"} through AI-assisted processes and automation.
 
 Our recommended approach is a phased implementation starting with these high-impact, low-effort areas to demonstrate quick wins and build organizational momentum for broader AI adoption.`;
 }

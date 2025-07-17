@@ -4,6 +4,7 @@ import { storage } from '@/server/storage';
 import { insertAssessmentSchema } from '@shared/schema';
 import { withAuthAndSecurity } from '../../middleware/AuthMiddleware';
 import { z } from 'zod';
+import { generateReportForAssessment } from '@/server/lib/services/reportService';
 
 // Helper function to get base URL
 function getBaseUrl(): string {
@@ -170,47 +171,11 @@ async function submitAssessment(request: Request, context: any) {
     console.log(`Assessment created with ID: ${assessment.id}`);
 
     // Trigger AI processing/report generation ASYNCHRONOUSLY
-    // Don't wait for completion to avoid timeouts
-    const triggerReportGeneration = async () => {
-      try {
-        const baseUrl = getBaseUrl();
-        const internalSecret = process.env.INTERNAL_REQUEST_SECRET;
-        
-        console.log(`[SUBMIT_ROUTE] Triggering report generation for assessment ${assessment.id} to ${baseUrl}/api/prioritize`);
-
-        if (!internalSecret && process.env.NODE_ENV === 'development') {
-          console.error('[SUBMIT_ROUTE] CRITICAL: INTERNAL_REQUEST_SECRET is not set in development. Report generation will likely fail authentication.');
-        }
-
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
-        if (internalSecret) {
-          headers['X-Internal-Request-Secret'] = internalSecret;
-        }
-
-        console.log('[SUBMIT_ROUTE] Sending headers:', JSON.stringify(headers, null, 2));
-        
-        const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
-          method: 'POST',
-          headers: headers,
-          body: JSON.stringify({ assessmentId: assessment.id }),
-        });
-
-        if (reportResponse.ok) {
-          const reportData = await reportResponse.json();
-          console.log(`[SUBMIT_ROUTE] Successfully started report generation. Response: ${JSON.stringify(reportData)}`);
-        } else {
-          const errorBody = await reportResponse.text();
-          console.error(`[SUBMIT_ROUTE] Failed to generate report. Status: ${reportResponse.status}. Body: ${errorBody}`);
-        }
-      } catch (reportError) {
-        console.error('[SUBMIT_ROUTE] Error triggering report generation fetch call:', reportError);
-      }
-    };
-
-    // Fire and forget - don't await this
-    triggerReportGeneration();
+    // We call the service directly and don't await it to avoid timeouts.
+    generateReportForAssessment(assessment.id).catch(error => {
+      // Log the error centrally. This detached promise won't crash the main thread.
+      console.error(`[SUBMIT_ROUTE] Background report generation failed for assessment ${assessment.id}:`, error);
+    });
 
     // Prepare the final response immediately
     const finalResponse = {

@@ -14,9 +14,9 @@ function getBaseUrl(): string {
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const assessmentId = parseInt(params.id, 10);
+  const assessmentId = parseInt(context.params.id, 10);
   console.log(`[REGENERATE_ROUTE] Received request for assessment ID: ${assessmentId}`);
 
   if (isNaN(assessmentId)) {

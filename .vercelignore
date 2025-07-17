@@ -1,0 +1,23 @@
+node_modules
+.next
+.vercel
+*.log
+logs/
+backups/
+migrations-local/
+migrations-preview/
+migrations-vercel/
+reports exports/
+server/batch-processing/requests/
+server/batch-processing/responses/
+server/scraper/output/
+temp/
+*.csv
+*.jsonl
+*.json
+!/server/job_responsibility_mappings.json
+!/playwright.config.ts
+!/package.json
+!/tsconfig.json
+!/theme.json
+!/vercel.json 

@@ -41,6 +41,42 @@
 └── memory-bank/            # AI Assistant project knowledge base
 ```
 
+## Project Status (as of Jan 2025)
+
+### What Works
+- **Core Features:**
+  - Dashboard overview
+  - Assessment creation and management
+  - Asynchronous, non-blocking report generation
+  - Professional PDF exports for executive reports
+  - User-specific data access for assessments and reports
+  - Library management (Job Roles, AI Capabilities, AI Tools)
+  - Batch processing system for job descriptions and capabilities
+- **Technical Implementation:**
+  - Stable Next.js App Router structure with clear Server/Client component separation.
+  - Robust backend with a PostgreSQL database via Drizzle ORM and a storage abstraction layer.
+  - Accurate AI Adoption Score calculation engine with industry-specific defaults.
+  - Secure API with authentication and CSRF protection middleware.
+
+### What Needs Improvement
+- **User Communication:**
+  - Proactively notify users about major bug fixes (like the AI Adoption Score correction) and feature enhancements.
+  - Improve clarity of error messages and user feedback during long-running processes.
+- **UI/UX:**
+  - Enhance mobile responsiveness across the application.
+  - Optimize performance for reports with very large datasets.
+- **Technical Debt:**
+  - Continue to refactor legacy patterns and strengthen error handling.
+
+### Next Development Priorities
+1. **Short-term:**
+   - Performance optimizations for report generation and large data tables.
+   - Mobile responsiveness enhancements.
+   - Add more data visualizations to reports.
+2. **Medium-term:**
+   - Implement advanced analytics and score tracking over time.
+   - Enhance the recommendation engine based on assessment data.
+
 ## Viewing Reports
 
 Report-Related Routes
@@ -84,6 +120,34 @@ headers: {
 
 ## Recent Changes / Milestones
 
+*   **Executive PDF Export System (January 2025):**
+    *   **Feature:** Implemented a professional, multi-page PDF export for executive reports, optimized for C-level presentations.
+    *   **Implementation:**
+        *   Created a dedicated PDF layout component (`ExecutivePdfLayout.tsx`) and print-optimized CSS (`executive-pdf.css`).
+        *   The system generates a 5-6 page report including a title page, executive summary, AI adoption score, priority matrix, recommendations, and tool appendix.
+        *   Integrated using the browser's native `window.print()` functionality for seamless PDF generation.
+        *   Resolved complex CSS page-break and content-splitting issues to ensure a clean, professional layout.
+    *   **Files Modified:** `components/report/ExecutivePdfLayout.tsx`, `components/report/executive-pdf.css`, `app/(app)/reports/[id]/view/page.tsx`.
+
+*   **Asynchronous Report Generation (January 2025):**
+    *   **Problem:** Assessment submissions were timing out due to long-running synchronous OpenAI API calls for report generation (5-10 minutes).
+    *   **Solution:**
+        *   Refactored the submission process into an asynchronous "fire-and-forget" pattern. The API now responds instantly, and report generation happens in the background.
+        *   Created a new `/api/assessments/[id]/report-status` endpoint for the frontend to poll for completion.
+        *   Implemented a polling mechanism on the frontend with clear UI states (loading spinners, progress messages) to inform the user.
+    *   **Impact:** Eliminated timeout errors, improved perceived performance, and provided a better user experience for a long-running task.
+    *   **Files Modified:** `/api/assessment/submit/route.ts`, `app/(app)/assessment/new/_components/assessment-wizard.tsx`.
+
+*   **API Security Hardening & Auth UX (December 2024):**
+    *   **Feature:** Implemented a robust API security and authentication system.
+    *   **Implementation:**
+        *   Created a middleware system (`withAuth`, `withCsrf`) to protect API routes against unauthorized access and CSRF attacks.
+        *   Automated user profile creation and mapping between Supabase Auth and internal user profiles.
+        *   Integrated a transparent CSRF token handling mechanism into the client-side API utility.
+        *   Improved authentication-related UX, such as login redirects and clear sign-in prompts.
+    *   **Impact:** All sensitive API endpoints are now protected, providing enterprise-grade security.
+    *   **Files Modified:** `app/api/middleware.ts`, `utils/api-client.ts`, multiple API routes.
+
 *   **Critical Production Bug Fixes (December 2024):**
     *   **Issue 1: State not being saved during wizard navigation**
         *   **Problem:** The assessment wizard only saved data to local state and localStorage, never persisting to backend during step navigation
@@ -124,21 +188,14 @@ headers: {
     *   **User Impact:** Users need to regenerate existing reports to see corrected AI Adoption Scores
     *   **Files Modified:** `server/lib/aiAdoptionScoreEngine.ts` (lines ~346-347)
 
-*   **User-Specific Report Access (December 2024):**
-    *   **Feature:** Implemented a feature to ensure users can only view reports they have created.
-    *   **Database:** Added a `user_id` column to the `reports` table, referencing `user_profiles.id`.
-    *   **Backend:**
-        *   Created a new `listReportsForUser` method in the storage layer to fetch reports for a specific user.
-        *   Modified `createReport` to automatically populate the `user_id` from the parent assessment.
-    *   **Frontend:**
-        *   Refactored `app/(app)/reports/page.tsx` to fetch data on the server for the authenticated user.
-        *   Simplified `app/(app)/reports/ReportsTable.tsx` to be a presentational component that receives data via props, removing its internal data-fetching logic.
-    *   **Files Modified:**
-        *   `shared/schema.ts`
-        *   `server/storage.ts`
-        *   `server/pg-storage.ts`
-        *   `app/(app)/reports/page.tsx`
-        *   `app/(app)/reports/ReportsTable.tsx`
+*   **User-Specific Data Access (January 2025):**
+    *   **Feature:** Enhanced data privacy by ensuring users can only see assessments and reports they have created.
+    *   **Implementation:**
+        *   Added a `user_id` to the `reports` table to link reports directly to users.
+        *   Created new user-specific data access methods (`listReportsForUser`, `listAssessmentsForUser`) in the storage layer.
+        *   Refactored data fetching in server components (`/reports/page.tsx`, `/assessment/current/page.tsx`) to use the new methods, restricting data to the authenticated user.
+    *   **Impact:** Enforces data isolation and security between users and aligns with Next.js best practices by moving data fetching to the server.
+    *   **Files Modified:** `shared/schema.ts`, `server/storage.ts`, `server/pg-storage.ts`, `app/(app)/reports/page.tsx`, `app/(app)/assessment/current/page.tsx`.
 
 *   **Comprehensive Report System Improvements (November 2024):**
     *   Implemented 8 major UI improvements including header consolidation and role-based filtering

@@ -79,12 +79,19 @@ export default async function AssessmentViewPage({ params }: PageProps) {
     notFound();
   }
 
-  const report = await storage.getReportByAssessmentId(assessmentId);
+  // Fetch all required data in parallel
+  const [report, capabilities, tools] = await Promise.all([
+    storage.getReportByAssessment(assessmentId),
+    storage.listAICapabilities(),
+    storage.getTools()
+  ]);
 
   return (
     <AssessmentViewClient 
       assessment={initialAssessmentData} 
-      reportId={report?.id}
+      report={report || null}
+      capabilities={capabilities}
+      tools={tools}
     />
   );
 }

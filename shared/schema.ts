@@ -421,55 +421,35 @@ export const workVolumeSchema = z.object({
     })),
 });
 
-// Tech stack schema with proper array handling
 export const dataSystemsSchema = z.object({
-  currentSystems: z.array(z.object({ 
-    name: z.string() 
-  })).optional(),
+  currentSystems: z.string().optional(),
+  dataQuality: z.number().optional(),
+  dataAvailability: z.array(z.string()).optional(),
+  existingAutomation: z.string().optional(),
   relevantTools: z.string().optional(),
-    dataAvailability: z.array(z.string()).optional(),
-    existingAutomation: z.string().optional(),
-    dataQuality: z.string().optional(),
-    dataQualityIssues: z.string().optional(),
-  integrationChallenges: z.string().optional(),
-  securityRequirements: z.string().optional(),
-  dataSecurity: z.string().optional(),
-  governance: z.string().optional(),
-  notes: z.string().optional(),
 });
 
-// Success metrics schema
-export const successMetricSchema = z.object({
-  name: z.string(),
+export const readinessExpectationsSchema = z.object({
+  roleAdoption: z.record(z.object({
+    openness: z.string().optional(),
+    skillsReadiness: z.string().optional(),
+    benefits: z.string().optional(),
+    successCriteria: z.string().optional(),
+    risks: z.string().optional(),
+    suitability: z.number().optional(),
+  })).optional(),
+  successMetrics: z.array(z.string()).optional(),
+  trainingNeeds: z.string().optional(),
+  keySuccessMetrics: z.string().optional(),
+  anticipatedTrainingNeeds: z.string().optional(),
+  expectedAdoptionChallenges: z.string().optional(),
 });
 
-export const keyMetricSchema = z.object({
-  name: z.string(),
-});
-
-// Readiness expectations schema with proper typing
-const readinessExpectationsSchema = z.object({
-    roleAdoption: z.record(z.string(), z.object({
-      openness: z.string().optional(),
-      skillsReadiness: z.string().optional(),
-      benefits: z.string().optional(),
-      successCriteria: z.string().optional(),
-      risks: z.string().optional(),
-      suitability: z.number().optional(),    
-    })),
-  timelineExpectation: z.string().optional(),
-  budgetRange: z.string().optional(),
-  riskTolerance: z.string().optional(),
-  successMetrics: z.array(successMetricSchema).optional(),
-    trainingNeeds: z.string().optional(),  
-});
-
-// ROI targets schema with proper typing
-const roiTargetsSchema = z.object({
-  primaryGoals: z.array(z.string()).optional(),
+export const roiTargetsSchema = z.object({
+  primaryGoals: z.array(z.string().nullable()).optional(),
   expectedROI: z.string().optional(),
   timeToValue: z.string().optional(),
-  keyMetrics: z.array(keyMetricSchema).optional(),
+  keyMetrics: z.array(z.string()).optional(),
 });
 
 // Pain points schema with proper typing
@@ -526,8 +506,6 @@ export type RolesData = z.infer<typeof rolesSchema>;
 export type WorkVolumeData = z.infer<typeof workVolumeSchema>;
 export type DataSystemsData = z.infer<typeof dataSystemsSchema>;
 export type PainPointsData = z.infer<typeof painPointsSchema>;
-export type SuccessMetric = z.infer<typeof successMetricSchema>;
-export type KeyMetric = z.infer<typeof keyMetricSchema>;
 export type WizardStepData = z.infer<typeof wizardStepDataSchema>;
 
 // Job Description models

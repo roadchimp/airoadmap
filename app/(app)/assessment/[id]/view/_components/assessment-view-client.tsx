@@ -15,14 +15,28 @@ import {
   DollarSignIcon,
   FileTextIcon,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Assessment, WizardStepData, JobRole, Department } from "@shared/schema"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import { Badge } from "@/components/ui/badge"
+import type {
+  FullAICapability,
+  ReportWithMetricsAndRules,
+  ToolWithMappedCapabilities,
+} from "@/server/storage"
 
 interface AssessmentViewClientProps {
-  assessment: Assessment & { rolesDetailed?: JobRole[] };
-  reportId?: number;
+  assessment: any // Replace with a more specific type if available
+  report: ReportWithMetricsAndRules | null
+  capabilities: FullAICapability[]
+  tools: ToolWithMappedCapabilities[]
 }
 
 // Properly type the roles data structure
@@ -44,15 +58,49 @@ type CurrentSystem = {
   name: string;
 }
 
-type SuccessMetric = {
-  name: string;
+// Helper to parse consolidated text fields
+const parseConsolidatedText = (text: string | undefined, key: string): string => {
+  if (!text) return 'N/A';
+  const match = text.match(new RegExp(`${key}: (.*?)(?:\n|$)`));
+  return match ? match[1].trim() : 'N/A';
+};
+
+// Reusable UI components for displaying info
+const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div>
+    <h4 className="font-medium text-gray-800 mb-1">{label}</h4>
+    <p className="text-gray-600 break-words">{String(value || 'N/A')}</p>
+  </div>
+);
+
+const InfoList = ({ label, items }: { label: string; items: string[] }) => (
+  <div>
+    <h4 className="font-medium text-gray-800 mb-2">{label}</h4>
+    <ul className="list-disc list-inside text-gray-600 space-y-1">
+      {items.length > 0 ? items.map((item, index) => <li key={index}>{item}</li>) : <li>N/A</li>}
+    </ul>
+  </div>
+);
+
+// Local helper functions as they are not exported from scoring-ui
+const getPriorityColor = (valueScore: number) => {
+  if (valueScore > 75) return "bg-[#e84c2b]"
+  if (valueScore > 50) return "bg-[#f8a97a]"
+  return "bg-gray-500"
 }
 
-type KeyMetric = {
-  name: string;
+const getPriorityLabel = (valueScore: number) => {
+  if (valueScore > 75) return "High"
+  if (valueScore > 50) return "Medium"
+  return "Low"
 }
 
-export default function AssessmentViewClient({ assessment, reportId }: AssessmentViewClientProps) {
+export default function AssessmentViewClient({
+  assessment,
+  report,
+  capabilities,
+  tools,
+}: AssessmentViewClientProps) {
   const [openSections, setOpenSections] = useState<string[]>([
     "organization",
     "roles",
@@ -70,6 +118,32 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
   const handlePrint = () => {
     window.print();
   }
+
+  const handleRegenerate = async () => {
+    if (!assessment?.id) {
+      console.error("No assessment ID available to regenerate.");
+      alert("Error: Missing assessment ID.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/assessment/${assessment.id}/regenerate`, {
+        method: 'POST',
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        alert("Report regeneration started successfully. Please check the logs for progress.");
+      } else {
+        console.error("Failed to start report regeneration:", result);
+        alert(`Error: ${result.error || 'An unknown error occurred.'}`);
+      }
+    } catch (error) {
+      console.error("Error calling regenerate endpoint:", error);
+      alert("An unexpected error occurred while trying to regenerate the report.");
+    }
+  };
 
   const stepData = assessment.stepData as WizardStepData;
 
@@ -321,67 +395,38 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
       description: "Current technology landscape",
       icon: DatabaseIcon,
       content: (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-800 mb-1">Current Systems</h4>
-              <ul className="list-disc list-inside text-gray-600 space-y-1">
-                {renderArray(
-                  stepData.techStack?.currentSystems,
-                  (system: CurrentSystem) => <li>{system.name}</li>,
-                  (system: CurrentSystem, index: number) => `system-${index}-${system.name}`,
-                  'single-system'
-                )}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-1">Data Quality</h4>
-              <p className="text-gray-600">{stepData.techStack?.dataQuality}</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-1">Integration Challenges</h4>
-              <p className="text-gray-600">{stepData.techStack?.integrationChallenges}</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-1">Security Requirements</h4>
-              <p className="text-gray-600">{stepData.techStack?.securityRequirements}</p>
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: "readiness",
-      title: "Readiness & Expectations",
-      description: "Timeline and expectations",
-      icon: CheckCircleIcon,
-      content: (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-gray-800 mb-1">Timeline Expectation</h4>
-              <p className="text-gray-600">{stepData.adoption?.timelineExpectation}</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-1">Budget Range</h4>
-              <p className="text-gray-600">{stepData.adoption?.budgetRange}</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-800 mb-1">Risk Tolerance</h4>
-              <p className="text-gray-600">{stepData.adoption?.riskTolerance}</p>
-            </div>
-          </div>
-          <div>
-            <h4 className="font-medium text-gray-800 mb-1">Success Metrics</h4>
-            <ul className="list-disc list-inside text-gray-600 space-y-1">
-              {renderArray(
-                stepData.adoption?.successMetrics,
-                (metric: SuccessMetric) => <li>{metric.name}</li>,
-                (metric: SuccessMetric, index: number) => `success-metric-${index}-${metric.name}`,
-                'single-metric'
-              )}
-            </ul>
-          </div>
+        <div className="space-y-6">
+          {/* Data & Systems */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Data & Systems</CardTitle>
+              <CardDescription>Current technology landscape</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <InfoItem label="Current Systems" value={stepData.techStack?.currentSystems as any} />
+              <InfoItem label="Data Quality" value={stepData.techStack?.dataQuality} />
+              <InfoItem label="Integration Challenges" value={parseConsolidatedText(stepData.techStack?.relevantTools, 'Integration Challenges')} />
+              <InfoItem label="Security Requirements" value={parseConsolidatedText(stepData.techStack?.relevantTools, 'Security Requirements')} />
+              <InfoItem label="Data Accessibility" value={stepData.techStack?.dataAvailability?.[0]} />
+              <InfoItem label="Systems Integration" value={stepData.techStack?.existingAutomation} />
+            </CardContent>
+          </Card>
+
+          {/* Readiness & Expectations */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Readiness & Expectations</CardTitle>
+              <CardDescription>Timeline and expectations</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <InfoItem label="Timeline Expectation" value={parseConsolidatedText(stepData.adoption?.anticipatedTrainingNeeds, 'Timeline')} />
+              <InfoItem label="Budget Range" value={parseConsolidatedText(stepData.adoption?.anticipatedTrainingNeeds, 'Budget')} />
+              <InfoItem label="Risk Tolerance" value={parseConsolidatedText(stepData.adoption?.anticipatedTrainingNeeds, 'Risk Tolerance')} />
+              <InfoItem label="Organizational Readiness" value={parseConsolidatedText(stepData.adoption?.expectedAdoptionChallenges, 'Organizational Readiness')} />
+              <InfoItem label="Stakeholder Alignment" value={parseConsolidatedText(stepData.adoption?.expectedAdoptionChallenges, 'Stakeholder Alignment')} />
+              <InfoList label="Success Metrics" items={stepData.adoption?.successMetrics as string[] || []} />
+            </CardContent>
+          </Card>
         </div>
       ),
     },
@@ -406,7 +451,7 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
             <h4 className="font-medium text-gray-800 mb-2">Primary Goals</h4>
             <div className="flex flex-wrap gap-2">
               {renderArray(
-                stepData.roiTargets?.primaryGoals,
+                (stepData.roiTargets?.primaryGoals || []).filter((g): g is string => !!g),
                 (goal: string) => (
                   <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
                     {goal}
@@ -422,8 +467,8 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
             <ul className="list-disc list-inside text-gray-600 space-y-1">
               {renderArray(
                 stepData.roiTargets?.keyMetrics,
-                (metric: KeyMetric) => <li>{metric.name}</li>,
-                (metric: KeyMetric, index: number) => `key-metric-${index}-${metric.name}`,
+                (metric: string) => <li>{metric}</li>,
+                (metric: string, index: number) => `key-metric-${index}-${metric}`,
                 'single-roi-metric'
               )}
             </ul>
@@ -487,15 +532,16 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
           </div>
 
           <div className="mt-8 flex justify-end gap-3">
-            {reportId && (
+            {report && (
               <Button variant="outline" asChild>
-                <Link href={`/reports/${reportId}`} className="flex items-center">
+                <Link href={`/reports/${report.id}`} className="flex items-center">
                   <FileTextIcon className="w-4 h-4 mr-2" />
                   View Report
                 </Link>
               </Button>
             )}
             <Button onClick={handlePrint}>Export Assessment</Button>
+            <Button onClick={handleRegenerate} variant="secondary">Re-generate Report</Button>
           </div>
         </div>
       </main>

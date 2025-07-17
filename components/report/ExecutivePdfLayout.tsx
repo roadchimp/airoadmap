@@ -47,9 +47,9 @@ export function ExecutivePdfLayout({ report, capabilities, tools }: ExecutivePdf
   // Get top capabilities for executive summary
   const topCapabilities = sortedCapabilities.slice(0, 5)
 
-  // AI Adoption Score data - Fix data access
+  // AI Adoption Score data
   const aiAdoptionData = report?.aiAdoptionScoreDetails as any
-  const aiScore = aiAdoptionData?.score || aiAdoptionData?.overallScore || 0
+  const aiScore = aiAdoptionData?.overallScore || 0
   const aiComponents = aiAdoptionData?.components || {}
 
   // ROI calculations
@@ -187,24 +187,22 @@ export function ExecutivePdfLayout({ report, capabilities, tools }: ExecutivePdf
         
         <div className="score-breakdown compact-page3">
           <div className="score-components">
-            {Object.entries(aiComponents).map(([key, value]) => (
+            {Object.entries(aiComponents).map(([key, value]: [string, any]) => {
+              const scorePercent = Math.round((value?.normalizedScore || 0) * 100);
+              return (
               <div key={key} className="score-component">
                 <div className="component-header">
                   <span className="component-label">{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
-                  <span className="component-score">{Math.round(Number(value) || 0)}%</span>
+                  <span className="component-score">{scorePercent}%</span>
                 </div>
                 <div className="component-bar">
-                  <div className="component-fill" style={{ width: `${Number(value) || 0}%` }}></div>
+                  <div className="component-fill" style={{ width: `${scorePercent}%` }}></div>
                 </div>
                 <p className="component-description">
-                  {key === 'timeSavings' && 'Contribution to overall AI adoption readiness'}
-                  {key === 'adoptionRate' && 'Percentage of users actively leveraging AI tools on a monthly basis'}
-                  {key === 'costEfficiency' && 'Cost-effectiveness ratio of AI licenses versus equivalent human labor'}
-                  {key === 'toolSprawlReduction' && 'Contribution to overall AI adoption readiness'}
-                  {key === 'performanceImprovement' && 'Aggregate improvement across key performance metrics'}
+                  {getComponentDescription(key)}
                 </p>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </div>
@@ -405,11 +403,11 @@ export function ExecutivePdfLayout({ report, capabilities, tools }: ExecutivePdf
 // Helper function for component descriptions
 function getComponentDescription(key: string): string {
   const descriptions: Record<string, string> = {
-    adoptionRate: "Percentage of users actively leveraging AI tools on a monthly basis",
-    timeSaved: "Average time savings per user through AI automation and assistance", 
-    costEfficiency: "Cost-effectiveness ratio of AI licenses versus equivalent human labor",
-    performanceImprovement: "Aggregate improvement across key performance metrics",
-    toolSprawl: "Impact on tool consolidation versus fragmentation"
+    adoptionRate: "Percentage of users actively leveraging AI tools on a monthly basis.",
+    timeSavings: "Contribution to overall AI adoption readiness from time saved.",
+    costEfficiency: "Cost-effectiveness ratio of AI licenses versus equivalent human labor.",
+    performanceImprovement: "Aggregate improvement across key performance metrics.",
+    toolSprawlReduction: "Contribution to score based on tool consolidation and integration."
   }
-  return descriptions[key] || "Contribution to overall AI adoption readiness"
+  return descriptions[key] || "Contribution to overall AI adoption readiness."
 } 

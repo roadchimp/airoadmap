@@ -5,10 +5,33 @@ import type { WizardStepData, AssessmentResponse } from '@shared/schema';
 
 // POST /api/prioritize
 export async function POST(request: Request) {
+  // Security check for internal requests
+  console.log('[PRIORITIZE_ROUTE] Received request');
+  const internalSecret = request.headers.get('X-Internal-Request-Secret');
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
+  console.log(`[PRIORITIZE_ROUTE] Environment: ${process.env.NODE_ENV}`);
+  console.log(`[PRIORITIZE_ROUTE] Received X-Internal-Request-Secret: ${internalSecret ? 'Present' : 'Missing'}`);
+
+  // In development, the internal secret is REQUIRED.
+  // In production, we assume a different mechanism (like Vercel's private network) handles this.
+  if (isDevelopment) {
+    if (internalSecret !== process.env.INTERNAL_REQUEST_SECRET) {
+      console.error('[PRIORITIZE_ROUTE] Unauthorized: Invalid or missing internal secret in development.');
+      return NextResponse.json({ error: 'Unauthorized: Invalid internal secret' }, { status: 401 });
+    }
+    console.log('[PRIORITIZE_ROUTE] Development authentication successful.');
+  } else {
+    // Production environment - you might have different checks here
+    console.log('[PRIORITIZE_ROUTE] Running in production, skipping local secret check.');
+  }
+
   try {
     const { assessmentId } = await request.json();
+    console.log(`[PRIORITIZE_ROUTE] Processing assessmentId: ${assessmentId}`);
 
     if (!assessmentId || typeof assessmentId !== 'number') {
+      console.error(`[PRIORITIZE_ROUTE] Invalid assessmentId: ${assessmentId}`);
       return NextResponse.json({ message: 'Valid assessment ID is required and must be a number' }, { status: 400 });
     }
 
@@ -31,6 +54,7 @@ export async function POST(request: Request) {
 
     // Calculate prioritization (now async with AI integration)
     const results = await calculatePrioritization(assessmentId, stepData);
+    console.log('[PRIORITIZE_ROUTE] Prioritization calculation complete.');
 
     // Create a report with the results
     const report = await storage.createReport({
@@ -42,16 +66,19 @@ export async function POST(request: Request) {
       consultantCommentary: "", // Default empty commentary
       aiAdoptionScoreDetails: results.aiAdoptionScoreDetails,
     });
+    console.log(`[PRIORITIZE_ROUTE] Report created with ID: ${report.id}`);
 
     // Update assessment status to completed
     await storage.updateAssessmentStatus(assessmentId, "completed");
+    console.log(`[PRIORITIZE_ROUTE] Assessment status updated for ID: ${assessmentId}`);
 
     return NextResponse.json(report, { status: 201 });
 
   } catch (error) {
-    console.error('Error generating prioritization results:', error);
+    const assessmentIdFromBody = await request.json().catch(() => ({})); // Try to get ID for logging
+    console.error(`[PRIORITIZE_ROUTE] Error generating prioritization for assessmentId ${assessmentIdFromBody?.assessmentId}:`, error);
     const errorMessage = error instanceof Error ? error.message : 'Error generating prioritization results';
-    return NextResponse.json({ message: errorMessage }, { status: 500 }); // Original used 500
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
 

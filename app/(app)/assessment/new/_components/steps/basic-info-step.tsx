@@ -105,11 +105,14 @@ const BasicInfoStep = () => {
 
   const stakeholderOptions = [
     'Executive Leadership',
-    'IT Department',
+    'Technology',
     'Operations',
     'Finance',
     'Human Resources',
-    'Sales & Marketing'
+    'Sales & Marketing',
+    'Investment',
+    'Risk & Compliance',
+    'Legal'
   ];
 
   return (

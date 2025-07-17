@@ -51,7 +51,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({
       icon: ClipboardList,
     },
     {
-      title: "Previous Reports",
+      title: "Reports",
       href: "/reports",
       icon: Clock,
     },

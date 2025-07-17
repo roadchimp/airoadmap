@@ -480,6 +480,15 @@ const ReviewSubmitStep = () => {
             <CardTitle>Data & Systems</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <Label>Current Systems</Label>
+              <Textarea 
+                value={dataSystemsData.currentSystems || ''} 
+                readOnly 
+                className="bg-gray-50 mt-2" 
+                rows={3}
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Data Accessibility</Label>
@@ -495,12 +504,30 @@ const ReviewSubmitStep = () => {
               </div>
             </div>
             <div>
-              <Label>Relevant Tools & Platforms</Label>
+              <Label>Integration Challenges</Label>
+              <Textarea 
+                value={dataSystemsData.integrationChallenges || ''} 
+                readOnly 
+                className="bg-gray-50 mt-2" 
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label>Security Requirements</Label>
+              <Textarea 
+                value={dataSystemsData.securityRequirements || ''} 
+                readOnly 
+                className="bg-gray-50 mt-2" 
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label>Additional Tools & Platforms</Label>
               <Textarea 
                 value={dataSystemsData.relevantTools || ''} 
                 readOnly 
                 className="bg-gray-50 mt-2" 
-                rows={3}
+                rows={2}
               />
             </div>
             {dataSystemsData.notes && (
@@ -523,6 +550,20 @@ const ReviewSubmitStep = () => {
             <CardTitle>Readiness & Expectations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <div>
+                <Label>Timeline Expectation</Label>
+                <Input value={readinessData.timelineExpectation || ''} readOnly className="bg-gray-50" />
+              </div>
+              <div>
+                <Label>Budget Range</Label>
+                <Input value={readinessData.budgetRange || ''} readOnly className="bg-gray-50" />
+              </div>
+              <div>
+                <Label>Risk Tolerance</Label>
+                <Input value={readinessData.riskTolerance || ''} readOnly className="bg-gray-50" />
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Organizational Readiness</Label>
@@ -531,6 +572,14 @@ const ReviewSubmitStep = () => {
               <div>
                 <Label>Stakeholder Alignment</Label>
                 <Input value={readinessData.stakeholderAlignment || ''} readOnly className="bg-gray-50" />
+              </div>
+            </div>
+            <div>
+              <Label>Success Metrics</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {readinessData.successMetrics?.map((metric: {name: string}, index: number) => (
+                  <Badge key={index} variant="secondary">{metric.name}</Badge>
+                )) || <span className="text-gray-500">None defined</span>}
               </div>
             </div>
             <div>
@@ -552,12 +601,12 @@ const ReviewSubmitStep = () => {
               />
             </div>
             <div>
-              <Label>Key Success Metrics</Label>
+              <Label>Additional Notes on Success Metrics</Label>
               <Textarea 
                 value={readinessData.keySuccessMetrics || ''} 
                 readOnly 
                 className="bg-gray-50 mt-2" 
-                rows={3}
+                rows={2}
               />
             </div>
           </CardContent>

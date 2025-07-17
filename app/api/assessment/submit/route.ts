@@ -111,30 +111,42 @@ async function submitAssessment(request: Request, context: any) {
         },
         techStack: {
           currentSystems: dataSystemsStep.dataSystems?.currentSystems || '',
-          relevantTools: dataSystemsStep.dataSystems?.relevantTools || '',
-          integrationChallenges: dataSystemsStep.dataSystems?.integrationChallenges || '',
-          securityRequirements: dataSystemsStep.dataSystems?.securityRequirements || '',
+          // Combine new fields into the legacy 'relevantTools' for now to avoid schema changes.
+          // This ensures data is not lost.
+          relevantTools: [
+            dataSystemsStep.dataSystems?.relevantTools,
+            `Integration Challenges: ${dataSystemsStep.dataSystems?.integrationChallenges}`,
+            `Security Requirements: ${dataSystemsStep.dataSystems?.securityRequirements}`
+          ].filter(Boolean).join('\n\n'),
           dataAvailability: [dataSystemsStep.dataSystems?.dataAccessibility || ''],
           existingAutomation: dataSystemsStep.dataSystems?.systemsIntegration || '',
           dataQuality: parseInt(dataSystemsStep.dataSystems?.dataQuality) || 5,
         },
         adoption: {
-          timelineExpectation: readinessStep.readiness?.timelineExpectation || '',
-          budgetRange: readinessStep.readiness?.budgetRange || '',
-          riskTolerance: readinessStep.readiness?.riskTolerance || '',
-          successMetrics: readinessStep.readiness?.successMetrics || [],
-          organizationalReadiness: readinessStep.readiness?.organizationalReadiness || '',
-          stakeholderAlignment: readinessStep.readiness?.stakeholderAlignment || '',
-          anticipatedTrainingNeeds: readinessStep.readiness?.anticipatedTrainingNeeds || '',
-          expectedAdoptionChallenges: readinessStep.readiness?.expectedAdoptionChallenges || '',
+          // Combine new readiness fields into existing text fields to avoid schema changes.
+          anticipatedTrainingNeeds: [
+            `Timeline: ${readinessStep.readiness?.timelineExpectation || 'N/A'}`,
+            `Budget: ${readinessStep.readiness?.budgetRange || 'N/A'}`,
+            `Risk Tolerance: ${readinessStep.readiness?.riskTolerance || 'N/A'}`,
+            `\n---Anticipated Training Needs---\n${readinessStep.readiness?.anticipatedTrainingNeeds || ''}`
+          ].join('\n'),
+          expectedAdoptionChallenges: [
+            `Organizational Readiness: ${readinessStep.readiness?.organizationalReadiness || 'N/A'}`,
+            `Stakeholder Alignment: ${readinessStep.readiness?.stakeholderAlignment || 'N/A'}`,
+            `\n---Expected Adoption Challenges---\n${readinessStep.readiness?.expectedAdoptionChallenges || ''}`
+          ].join('\n'),
+          // Transform the success metrics object array into a simple string array.
+          successMetrics: (readinessStep.readiness?.successMetrics || []).map((m: { name: string }) => m.name),
+          // Keep the additional notes field separate.
           keySuccessMetrics: readinessStep.readiness?.keySuccessMetrics || '',
           roleAdoption: {}
         },
         roiTargets: {
+          // Transform goals and metrics from object arrays to simple string arrays.
+          primaryGoals: (roiStep.roiTargets?.primaryGoals || []).map((g: { name: string }) => g.name),
+          keyMetrics: (roiStep.roiTargets?.keyMetrics || []).map((m: { name: string }) => m.name),
           expectedROI: roiStep.roiTargets?.expectedROI || '',
           timeToValue: roiStep.roiTargets?.timeToValue || '',
-          primaryGoals: roiStep.roiTargets?.primaryGoals || [],
-          keyMetrics: roiStep.roiTargets?.keyMetrics || [],
         },
         scores: {},
         aiAdoptionScoreInputs: {
@@ -161,32 +173,39 @@ async function submitAssessment(request: Request, context: any) {
     // Don't wait for completion to avoid timeouts
     const triggerReportGeneration = async () => {
       try {
-        console.log('Triggering AI report generation asynchronously...');
         const baseUrl = getBaseUrl();
-        const automationToken = process.env.VERCEL_AUTOMATION_TOKEN;
+        const internalSecret = process.env.INTERNAL_REQUEST_SECRET;
+        
+        console.log(`[SUBMIT_ROUTE] Triggering report generation for assessment ${assessment.id} to ${baseUrl}/api/prioritize`);
 
-        if (!automationToken) {
-          console.error('CRITICAL: VERCEL_AUTOMATION_TOKEN is not set. Report generation will fail.');
-          return;
+        if (!internalSecret && process.env.NODE_ENV === 'development') {
+          console.error('[SUBMIT_ROUTE] CRITICAL: INTERNAL_REQUEST_SECRET is not set in development. Report generation will likely fail authentication.');
         }
+
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        if (internalSecret) {
+          headers['X-Internal-Request-Secret'] = internalSecret;
+        }
+
+        console.log('[SUBMIT_ROUTE] Sending headers:', JSON.stringify(headers, null, 2));
         
         const reportResponse = await fetch(`${baseUrl}/api/prioritize`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${automationToken}`,
-          },
+          headers: headers,
           body: JSON.stringify({ assessmentId: assessment.id }),
         });
 
         if (reportResponse.ok) {
           const reportData = await reportResponse.json();
-          console.log(`Report generated with ID: ${reportData.id}`);
+          console.log(`[SUBMIT_ROUTE] Successfully started report generation. Response: ${JSON.stringify(reportData)}`);
         } else {
-          console.error('Failed to generate report:', await reportResponse.text());
+          const errorBody = await reportResponse.text();
+          console.error(`[SUBMIT_ROUTE] Failed to generate report. Status: ${reportResponse.status}. Body: ${errorBody}`);
         }
       } catch (reportError) {
-        console.error('Error triggering report generation:', reportError);
+        console.error('[SUBMIT_ROUTE] Error triggering report generation fetch call:', reportError);
       }
     };
 

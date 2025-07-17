@@ -207,6 +207,16 @@ headers: {
     *   Renamed "Assessment Context Card" to "Company Information" with improved styling
     *   Resolved issues with role data extraction from `stepData.roles.selectedRoles` path
 
+*   **Report Generation Refactor & Deterministic AI (July 2025):**
+    *   **Problem:** Regenerating reports resulted in identical content due to an application-level cache. Additionally, internal API calls between serverless functions were failing with `ECONNRESET` errors in the Vercel environment.
+    *   **Solution:**
+        *   Refactored the core report generation logic into a central, reusable function in `server/lib/services/reportService.ts`.
+        *   Modified the `/api/assessment/submit` and `/api/assessment/[id]/regenerate` routes to call this new service directly, eliminating the unreliable internal `fetch` calls.
+        *   Added a `noCache: true` option to the report generation flow, allowing the "Re-generate Report" feature to bypass the application's internal cache and request a fresh response from OpenAI.
+        *   Ensured deterministic AI outputs for the same assessment by adding the `assessmentId` as the `seed` parameter in the OpenAI API call.
+    *   **Impact:** Fixed the `ECONNRESET` error, improved architectural robustness, and provided precise control over caching and AI output determinism.
+    *   **Files Modified:** `server/lib/services/reportService.ts` (new), `app/api/prioritize/route.ts`, `app/api/assessment/submit/route.ts`, `app/api/assessment/[id]/regenerate/route.ts`, `server/lib/engines/prioritizationEngine.ts`, `server/lib/services/aiService.ts`.
+
 *   **Batch Processing System Enhancement:**
     *   Extended `batchProcessor.ts` with job role matching capabilities for AI capabilities
     *   Added new storage methods: `mapCapabilityToJobRole()`, `unmapCapabilityFromJobRole()`, `getJobRolesForCapability()`

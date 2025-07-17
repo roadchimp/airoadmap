@@ -735,3 +735,30 @@ Fixed TypeScript errors for proper data access:
 - PDF export system ready for production use
 - Clear separation between web and PDF rendering systems
 
+## Technical Debt & Backlog
+
+### API Route Consolidation
+- **Issue:** The project currently has two similar API directories: `/api/assessment` (singular) and `/api/assessments` (plural). This is confusing and violates RESTful API design principles.
+- **Analysis:**
+  - `/api/assessments` handles standard CRUD operations (List, Create, Get, Update, Delete).
+  - `/api/assessment` handles specific actions like `/submit`, `/[id]/regenerate`, and `/score`.
+- **Proposed Solution (Deferred):**
+  1.  **Consolidate Endpoints:** Move all action-based routes from `/api/assessment` into the `/api/assessments` directory.
+      - `POST /api/assessment/submit` -> `POST /api/assessments/submit`
+      - `POST /api/assessment/[id]/regenerate` -> `POST /api/assessments/[id]/regenerate`
+      - `POST /api/assessment/score` -> `POST /api/assessments/score`
+  2.  **Update Frontend:** Modify all client-side `fetch` calls to point to the new, consolidated API routes.
+  3.  **Cleanup:** Delete the now-empty `/api/assessment` directory and update the `AuthMiddleware` matcher to remove the redundant path.
+- **Status:** This refactor has been deferred to a separate, dedicated task to avoid scope creep.
+
+- ** Issue: ** 
+View existing assessment is missing these values. They may just need to get updated, given that the review and submit page is displaying all the same values. 
+Step one, strategic focus is not getting moved to the review page
+Step Three: General Areas for Improvement. 
+This might be redundant. Do we need it? ￼
+Step 4, General Assessment Slider Values. 
+Each role's data description is missing. 
+Step 5: Additional Tools and Platforms and also Notes. ￼
+Step 6: Anticipated training needs, adoption challenges, and additional notes. ￼
+Step 7, AI adoption score inputs. 
+￼

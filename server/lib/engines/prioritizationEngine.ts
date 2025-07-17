@@ -2,7 +2,6 @@ import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, 
 import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "../../../server/lib/services/aiService";
 import { storage } from '@/server/storage';
 import { calculateAiAdoptionScore, CalculatedAiAdoptionScore } from "./aiAdoptionScoreEngine";
-import { logToFile } from '../services/logger';
 
 /**
  * Calculates the prioritization results based on wizard step data
@@ -164,22 +163,14 @@ export async function calculatePrioritization(
   const promises = [];
 
   // Generate AI-enhanced executive summary using Anthropic
-  logToFile('openai-requests.log', { 
-    type: 'Request: generateEnhancedExecutiveSummary',
-    assessmentId,
-    payload: { stepData, prioritizedItems }
-  });
+  console.log(`[PrioritizationEngine] Requesting executive summary for assessment: ${assessmentId}`);
   const executiveSummaryPromise = generateEnhancedExecutiveSummary(
     assessmentId,
     stepData,
     prioritizedItems,
     options
   ).then(result => {
-    logToFile('openai-requests.log', { 
-      type: 'Response: generateEnhancedExecutiveSummary',
-      assessmentId,
-      response: result 
-    });
+    console.log(`[PrioritizationEngine] Received executive summary for assessment: ${assessmentId}`);
     return result;
   });
   promises.push(executiveSummaryPromise);
@@ -214,19 +205,10 @@ export async function calculatePrioritization(
     const rolePainPoints = painPoints[item.id.toString()] || {};
     
     // Call AI service for capability recommendations
-    logToFile('openai-requests.log', { 
-      type: 'Request: generateAICapabilityRecommendations',
-      assessmentId,
-      payload: { role, department, rolePainPoints }
-    });
+    console.log(`[PrioritizationEngine] Requesting AI recommendations for role: ${role.title}`);
     return generateAICapabilityRecommendations(role, department, rolePainPoints)
       .then(result => {
-        logToFile('openai-requests.log', { 
-          type: 'Response: generateAICapabilityRecommendations',
-          assessmentId,
-          role: role.title,
-          response: result 
-        });
+        console.log(`[PrioritizationEngine] Received AI recommendations for role: ${role.title}`);
         return result;
       });
   });
@@ -257,20 +239,11 @@ export async function calculatePrioritization(
       updated_at: new Date()
     };
     
-    // Call AI service for performance impact predictions
-    logToFile('openai-requests.log', { 
-      type: 'Request: generatePerformanceImpact',
-      assessmentId,
-      payload: { role, department }
-    });
+    // Call AI service for performance impact
+    console.log(`[PrioritizationEngine] Requesting performance impact for role: ${role.title}`);
     return generatePerformanceImpact(role, department)
       .then(result => {
-        logToFile('openai-requests.log', { 
-          type: 'Response: generatePerformanceImpact',
-          assessmentId,
-          role: role.title,
-          response: result 
-        });
+        console.log(`[PrioritizationEngine] Received performance impact for role: ${role.title}`);
         return result;
       });
   });

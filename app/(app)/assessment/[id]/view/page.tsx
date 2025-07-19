@@ -83,7 +83,7 @@ export default async function AssessmentViewPage({ params }: PageProps) {
   const [report, capabilities, tools] = await Promise.all([
     storage.getReportByAssessment(assessmentId),
     storage.listAICapabilities(),
-    storage.getTools()
+    storage.getTools({ assessmentId: assessmentId.toString() })
   ]);
 
   return (

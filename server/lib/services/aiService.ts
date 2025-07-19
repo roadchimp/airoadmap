@@ -9,16 +9,20 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Determine if we're in build/deploy context
-const isVercelBuild = process.env.VERCEL_ENV === 'preview' || 
-                      process.env.VERCEL_ENV === 'production' && 
-                      !process.env.NEXT_RUNTIME;
+// We're in build time ONLY during static generation, not during serverless function execution
+const isVercelBuild = process.env.VERCEL && 
+                      process.env.NEXT_PHASE === 'phase-production-build';
 
 // Enhanced environment variable checking with detailed logging
 console.log(`[AI Service] Environment: ${process.env.NODE_ENV}`);
 console.log(`[AI Service] Is Vercel Build: ${isVercelBuild}`);
+console.log('[AI Service] Build detection variables:');
+console.log(`[AI Service] - VERCEL: ${process.env.VERCEL}`);
+console.log(`[AI Service] - NEXT_PHASE: ${process.env.NEXT_PHASE}`);
+console.log(`[AI Service] - NEXT_RUNTIME: ${process.env.NEXT_RUNTIME}`);
+console.log(`[AI Service] - VERCEL_URL: ${process.env.VERCEL_URL}`);
 console.log(`[AI Service] All environment variables check:`);
 console.log(`[AI Service] - NODE_ENV: ${process.env.NODE_ENV}`);
-console.log(`[AI Service] - VERCEL: ${process.env.VERCEL}`);
 console.log(`[AI Service] - VERCEL_ENV: ${process.env.VERCEL_ENV}`);
 console.log(`[AI Service] - Available env vars starting with 'OPENAI': ${Object.keys(process.env).filter(key => key.startsWith('OPENAI')).join(', ')}`);
 console.log(`[AI Service] - Raw OPENAI_API_KEY value type: ${typeof process.env.OPENAI_API_KEY}`);

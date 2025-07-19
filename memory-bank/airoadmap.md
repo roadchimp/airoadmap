@@ -120,6 +120,16 @@ headers: {
 
 ## Recent Changes / Milestones
 
+*   **AI Service Vercel Deployment Fix (January 2025):**
+    *   **Problem:** AI services were incorrectly identifying serverless function execution as "build time" in Vercel environments, causing OpenAI calls to be skipped and report regeneration to fail.
+    *   **Root Cause:** The `isVercelBuild` detection logic `process.env.VERCEL_ENV === 'preview' || process.env.VERCEL_ENV === 'production' && !process.env.NEXT_RUNTIME` was too broad, treating preview/production runtime as build time.
+    *   **Solution:** 
+        *   Changed build detection to `process.env.VERCEL && process.env.NEXT_PHASE === 'phase-production-build'` which only considers it build time during actual Next.js static generation.
+        *   Added comprehensive logging for build detection variables to aid debugging.
+    *   **Impact:** Fixed report regeneration, AI capability recommendations, and performance impact generation in deployed environments.
+    *   **Testing Infrastructure:** Created `/api/test-ai` endpoint and `/dev/test-ai` page to test AI services in deployed environments since `/scripts` folder is in .gitignore.
+    *   **Files Modified:** `server/lib/services/aiService.ts`, `app/api/test-ai/route.ts` (new), `app/dev/test-ai/page.tsx` (new).
+
 *   **Executive PDF Export System (January 2025):**
     *   **Feature:** Implemented a professional, multi-page PDF export for executive reports, optimized for C-level presentations.
     *   **Implementation:**

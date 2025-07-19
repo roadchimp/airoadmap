@@ -88,8 +88,8 @@ export class PgStorage implements IStorage {
   }
 
   private async initializeAsync(): Promise<void> {
+    let connectionString: string | undefined;
     try {
-      let connectionString: string | undefined;
 
       // Use Neon connection string on Vercel
       if (process.env.VERCEL_ENV === 'production') {
@@ -98,6 +98,11 @@ export class PgStorage implements IStorage {
         if (!connectionString) {
           throw new Error('DATABASE_POSTGRES_URL environment variable not set for Vercel environment');
         }
+        
+        // Configure Neon for better serverless compatibility
+        neonConfig.fetchConnectionCache = true;
+        neonConfig.useSecureWebSocket = false;
+        
         const sql = neon(connectionString);
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
@@ -109,6 +114,11 @@ export class PgStorage implements IStorage {
         if (!connectionString) {
           throw new Error('DATABASE_PREVIEW_URL environment variable not set for Vercel environment');
         }
+        
+        // Configure Neon for better serverless compatibility
+        neonConfig.fetchConnectionCache = true;
+        neonConfig.useSecureWebSocket = false;
+        
         const sql = neon(connectionString);
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
@@ -128,6 +138,12 @@ export class PgStorage implements IStorage {
       }
     } catch (error) {
       console.error('Error initializing database connection:', error);
+      console.error('Connection string format check:', {
+        hasConnectionString: !!connectionString,
+        startsWithPostgres: connectionString?.startsWith('postgres'),
+        length: connectionString?.length,
+        vercelEnv: process.env.VERCEL_ENV
+      });
       throw error;
     }
   }

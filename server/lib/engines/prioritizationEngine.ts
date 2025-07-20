@@ -11,6 +11,7 @@ export async function calculatePrioritization(
   stepData: WizardStepData,
   options: { noCache?: boolean } = {}
 ) {
+  console.log(`[PrioritizationEngine] Starting calculation for assessment ID: ${assessmentId}`);
   // Prioritized items list
   const prioritizedItems: PrioritizedItem[] = [];
   
@@ -158,6 +159,9 @@ export async function calculatePrioritization(
     return a.effortScore - b.effortScore; // Ascending effort (easier first)
   });
   
+  console.log(`[PrioritizationEngine] Completed role prioritization. Found ${prioritizedItems.length} prioritized items`);
+  console.log(`[PrioritizationEngine] Top 3 roles:`, prioritizedItems.slice(0, 3).map(item => ({ name: item.name, valueScore: item.valueScore, effortScore: item.effortScore })));
+
   // OPTIMIZATION: Run all AI API calls in parallel
   // Create an array of promises for all OpenAI API calls
   const promises = [];
@@ -250,7 +254,9 @@ export async function calculatePrioritization(
   promises.push(...performanceImpactPromises);
   
   // Wait for all promises to resolve
+  console.log(`[PrioritizationEngine] Starting ${promises.length} parallel AI API calls...`);
   const results = await Promise.all(promises);
+  console.log(`[PrioritizationEngine] Completed all ${promises.length} AI API calls`);
   
   // Extract results
   const executiveSummary = results[0] as string;

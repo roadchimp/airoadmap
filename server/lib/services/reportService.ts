@@ -79,7 +79,21 @@ export async function generateReportForAssessment(assessmentId: number, options:
   }
 
   console.log(`[ReportService] Calculating prioritization for assessment ID: ${assessmentId}`);
-  const results = await calculatePrioritization(assessmentId, stepData, { noCache: options.regenerate });
+  console.log(`[ReportService] Step data summary:`, {
+    hasBasics: !!stepData.basics,
+    hasRoles: !!stepData.roles,
+    selectedRolesCount: stepData.roles?.selectedRoles?.length || 0,
+    painPointsCount: Object.keys(stepData.painPoints?.roleSpecificPainPoints || {}).length
+  });
+  
+  let results;
+  try {
+    results = await calculatePrioritization(assessmentId, stepData, { noCache: options.regenerate });
+    console.log(`[ReportService] Prioritization calculation completed for assessment ID: ${assessmentId}`);
+  } catch (error) {
+    console.error(`[ReportService] Error during prioritization calculation for assessment ID: ${assessmentId}:`, error);
+    throw error;
+  }
 
   console.log(`[ReportService] Creating report in database for assessment ID: ${assessmentId}`);
   const report = await storage.createReport({

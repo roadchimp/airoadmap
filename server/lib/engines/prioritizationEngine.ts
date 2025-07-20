@@ -285,6 +285,7 @@ export async function calculatePrioritization(
     if (Array.isArray(roleRecommendations)) {
       for (const rec of roleRecommendations) {
         try {
+          console.log(`[DEBUG] About to find/create capability: ${rec.capabilityName}`);
           // Step 1: Find or create the global AI capability
           const globalCapability = await storage.findOrCreateGlobalAICapability(
             rec.capabilityName || `Unknown Capability ${i}`, // Required with fallback
@@ -301,6 +302,12 @@ export async function calculatePrioritization(
               tags: rec.tags || []
             }
           );
+          console.log(`[DEBUG] Global capability result:`, globalCapability);
+
+          if (!globalCapability || !globalCapability.id) {
+            console.error(`[ERROR] Failed to create global capability for: ${rec.capabilityName}`);
+            continue; // Skip this capability
+          }
           
           // Step 1.5: Map this capability to all selected roles from the assessment
           // This creates the missing relationship data that enables role-based filtering

@@ -60,16 +60,22 @@ function setNestedValue(obj: any, path: string[], value: any): void {
  * @returns The newly created report object.
  */
 export async function generateReportForAssessment(assessmentId: number, options: { regenerate?: boolean } = {}) {
-  console.log(`[ReportService] Starting report generation for assessment ID: ${assessmentId}`);
+  try {
+    console.log(`[ReportService] Starting report generation for assessment ID: ${assessmentId}`);
 
-  const assessment = await storage.getAssessment(assessmentId);
+    console.log(`[ReportService] Fetching assessment data...`);
+    const assessment = await storage.getAssessment(assessmentId);
+    console.log(`[ReportService] Assessment fetched:`, { id: assessment?.id, title: assessment?.title });
   if (!assessment) {
     console.error(`[ReportService] Assessment not found for ID: ${assessmentId}`);
     throw new Error('Assessment not found');
   }
 
+  console.log(`[ReportService] Fetching assessment responses...`);
   const assessmentResponses = await storage.getAssessmentResponsesByAssessment(assessmentId);
+  console.log(`[ReportService] Assessment responses fetched:`, { count: assessmentResponses?.length || 0 });
   
+  console.log(`[ReportService] Processing step data...`);
   let stepData = assessment.stepData as WizardStepData;
   if (assessmentResponses && assessmentResponses.length > 0) {
     stepData = convertResponsesToStepData(assessmentResponses, stepData || {});
@@ -110,4 +116,9 @@ export async function generateReportForAssessment(assessmentId: number, options:
   console.log(`[ReportService] Report generation complete for assessment ID: ${assessmentId}. Report ID: ${report.id}`);
   
   return report;
+  } catch (error) {
+    console.error(`[ReportService] Fatal error in report generation for assessment ID: ${assessmentId}:`, error);
+    console.error(`[ReportService] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+    throw error;
+  }
 } 

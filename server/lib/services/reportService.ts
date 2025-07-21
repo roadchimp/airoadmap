@@ -64,7 +64,14 @@ export async function generateReportForAssessment(assessmentId: number, options:
     console.log(`[ReportService] Starting report generation for assessment ID: ${assessmentId}`);
 
     console.log(`[ReportService] Fetching assessment data...`);
-    const assessment = await storage.getAssessment(assessmentId);
+    
+    // Add timeout protection for database calls
+    const assessmentPromise = storage.getAssessment(assessmentId);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database timeout: getAssessment took longer than 30s')), 30000)
+    );
+    
+    const assessment = await Promise.race([assessmentPromise, timeoutPromise]) as any;
     console.log(`[ReportService] Assessment fetched:`, { id: assessment?.id, title: assessment?.title });
   if (!assessment) {
     console.error(`[ReportService] Assessment not found for ID: ${assessmentId}`);
@@ -76,7 +83,7 @@ export async function generateReportForAssessment(assessmentId: number, options:
   console.log(`[ReportService] Assessment responses fetched:`, { count: assessmentResponses?.length || 0 });
   
   console.log(`[ReportService] Processing step data...`);
-  let stepData = assessment.stepData as WizardStepData;
+  let stepData = (assessment as any).stepData as WizardStepData;
   if (assessmentResponses && assessmentResponses.length > 0) {
     stepData = convertResponsesToStepData(assessmentResponses, stepData || {});
   } else if (!stepData) {

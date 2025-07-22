@@ -37,6 +37,12 @@ yarn-error.log*
 *.swp
 *.swo
 
+# MCP (Model Context Protocol) configuration
+.mcp.json
+
+# Serena development tool files
+.serena/
+
 # TypeScript
 *.tsbuildinfo
 vite.config.ts.*

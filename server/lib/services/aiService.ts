@@ -10,8 +10,10 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Determine if we're in build/deploy context
 // We're in build time ONLY during static generation, not during serverless function execution
+// Fixed: More restrictive check to avoid false positives in production runtime
 const isVercelBuild = process.env.VERCEL && 
-                      process.env.NEXT_PHASE === 'phase-production-build';
+                      process.env.NEXT_PHASE === 'phase-production-build' &&
+                      process.env.NEXT_RUNTIME !== 'nodejs';
 
 // Enhanced environment variable checking with detailed logging
 console.log(`[AI Service] Environment: ${process.env.NODE_ENV}`);
@@ -87,8 +89,12 @@ if (isVercelBuild) {
 
 // Alternative function to get OpenAI client at runtime (in case env vars aren't available at module load)
 function getRuntimeOpenAIClient(): OpenAI | null {
-  // Skip during build time
-  if (isVercelBuild) {
+  // Skip during build time with improved detection
+  const runtimeIsVercelBuild = process.env.VERCEL && 
+                               process.env.NEXT_PHASE === 'phase-production-build' &&
+                               process.env.NEXT_RUNTIME !== 'nodejs';
+  
+  if (runtimeIsVercelBuild) {
     console.log('[AI Service] Skipping OpenAI client initialization during build time');
     return null;
   }
@@ -175,8 +181,12 @@ export async function generateEnhancedExecutiveSummary(
 ): Promise<string> {
   console.log('[AI Service] generateEnhancedExecutiveSummary called');
   
-  // Skip OpenAI calls during build time
-  if (isVercelBuild) {
+  // Skip OpenAI calls during build time with improved detection
+  const currentIsVercelBuild = process.env.VERCEL && 
+                               process.env.NEXT_PHASE === 'phase-production-build' &&
+                               process.env.NEXT_RUNTIME !== 'nodejs';
+  
+  if (currentIsVercelBuild) {
     console.log('[AI Service] Skipping OpenAI call during build - using fallback for executive summary');
     return fallbackExecutiveSummary(stepData, prioritizedItems);
   }
@@ -295,8 +305,12 @@ export async function generateAICapabilityRecommendations(
   console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
   console.log(`[AI Service] OpenAI client available: ${!!openai}`);
   
-  // Skip OpenAI calls during build time
-  if (isVercelBuild) {
+  // Skip OpenAI calls during build time with improved detection
+  const currentIsVercelBuild = process.env.VERCEL && 
+                               process.env.NEXT_PHASE === 'phase-production-build' &&
+                               process.env.NEXT_RUNTIME !== 'nodejs';
+  
+  if (currentIsVercelBuild) {
     console.log('[AI Service] Skipping OpenAI call during build - using fallback for AI capability recommendations');
     return fallbackAICapabilities(role, department);
   }
@@ -429,8 +443,12 @@ export async function generatePerformanceImpact(
   console.log(`[AI Service] Role: ${role.title}, Department: ${department.name}`);
   console.log(`[AI Service] OpenAI client available: ${!!openai}`);
   
-  // Skip OpenAI calls during build time
-  if (isVercelBuild) {
+  // Skip OpenAI calls during build time with improved detection
+  const currentIsVercelBuild = process.env.VERCEL && 
+                               process.env.NEXT_PHASE === 'phase-production-build' &&
+                               process.env.NEXT_RUNTIME !== 'nodejs';
+  
+  if (currentIsVercelBuild) {
     console.log('[AI Service] Skipping OpenAI call during build - using fallback for performance impact');
     return fallbackPerformanceImpact(role);
   }
@@ -671,8 +689,12 @@ function fallbackPerformanceImpact(role: JobRole): any {
 export async function generateAIResponse(prompt: string): Promise<string> {
   console.log('[AI Service] generateAIResponse called');
   
-  // Skip OpenAI calls during build time
-  if (isVercelBuild) {
+  // Skip OpenAI calls during build time with improved detection
+  const currentIsVercelBuild = process.env.VERCEL && 
+                               process.env.NEXT_PHASE === 'phase-production-build' &&
+                               process.env.NEXT_RUNTIME !== 'nodejs';
+  
+  if (currentIsVercelBuild) {
     console.log('[AI Service] Skipping OpenAI call during build - using fallback response');
     return "This is a fallback response during build time. The AI service is not available during static site generation.";
   }

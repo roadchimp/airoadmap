@@ -195,11 +195,26 @@ export class PgStorage implements IStorage {
         neonConfig.webSocketConstructor = undefined; // Force HTTP fallback for stability
         
         // Use pooled connection string for better connection management
-        // Recommended Neon connection string parameters for production:
-        // ?connect_timeout=30&application_name=airoadmap&pool_timeout=30&statement_timeout=120000
-        const pooledConnectionString = connectionString.includes('-pooler') ? 
+        let pooledConnectionString = connectionString.includes('-pooler') ? 
           connectionString : 
           connectionString.replace(/(.+)@([^@]+)\./, '$1@$2-pooler.');
+        
+        // Automatically append recommended Neon parameters for better reliability
+        const recommendedParams = new URLSearchParams({
+          connect_timeout: '30',
+          application_name: 'airoadmap',
+          pool_timeout: '30', 
+          statement_timeout: '120000'
+        });
+        
+        // Add parameters if not already present
+        const url = new URL(pooledConnectionString);
+        recommendedParams.forEach((value, key) => {
+          if (!url.searchParams.has(key)) {
+            url.searchParams.set(key, value);
+          }
+        });
+        pooledConnectionString = url.toString();
         
         const sql = neon(pooledConnectionString, {
           fetchOptions: {
@@ -231,9 +246,26 @@ export class PgStorage implements IStorage {
         neonConfig.webSocketConstructor = undefined; // Force HTTP fallback for stability
         
         // Use pooled connection string for better connection management
-        const pooledConnectionString = connectionString.includes('-pooler') ? 
+        let pooledConnectionString = connectionString.includes('-pooler') ? 
           connectionString : 
           connectionString.replace(/(.+)@([^@]+)\./, '$1@$2-pooler.');
+        
+        // Automatically append recommended Neon parameters for better reliability
+        const recommendedParams = new URLSearchParams({
+          connect_timeout: '30',
+          application_name: 'airoadmap',
+          pool_timeout: '30', 
+          statement_timeout: '120000'
+        });
+        
+        // Add parameters if not already present
+        const url = new URL(pooledConnectionString);
+        recommendedParams.forEach((value, key) => {
+          if (!url.searchParams.has(key)) {
+            url.searchParams.set(key, value);
+          }
+        });
+        pooledConnectionString = url.toString();
         
         const sql = neon(pooledConnectionString, {
           fetchOptions: {

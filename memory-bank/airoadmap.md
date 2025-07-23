@@ -217,14 +217,15 @@ headers: {
     *   Renamed "Assessment Context Card" to "Company Information" with improved styling
     *   Resolved issues with role data extraction from `stepData.roles.selectedRoles` path
 
-*   **Role Data Format Fix & React Error Resolution (July 2025):**
-    *   **Problem:** Assessment views were crashing with React error #31 due to objects being passed as React children. Additionally, role lookup was failing during report generation, causing "Could not find role data" warnings and undefined role names.
+*   **Neon Database Connection Resilience & Role Data Format Fix (July 2025):**
+    *   **Problem:** Assessment views were crashing with React error #31 due to objects being passed as React children. Additionally, role lookup was failing during report generation, causing "Could not find role data" warnings and undefined role names. Critical database connection failures were occurring with `[SocketError]: other side closed` errors during report generation, caused by Neon database cold starts and connection timeouts.
     *   **Solution:**
         *   **React Error Fix:** Enhanced `InfoItem` and `InfoList` components with proper type safety and object handling. Added robust `renderArray` helper function to safely render arrays vs objects. Fixed stakeholder and role rendering to handle both string and object formats.
         *   **Role Data Format Mismatch:** Identified critical data flow issue where assessment submission converts full role objects to IDs (line 103 in submit route), but prioritization engine expected full objects. Updated prioritization engine to fetch role data from database when needed instead of expecting pre-populated objects.
+        *   **Database Connection Resilience:** Implemented comprehensive Neon serverless database connection improvements including exponential backoff retry logic, connection pooling with `-pooler` suffix auto-detection, enhanced timeout configuration (60s), and optimized Neon config settings (`pipelineConnect: false`, `pipelineTLS: false`).
         *   **TypeScript Fixes:** Added proper type casting (`as unknown as number[]`) to handle schema vs runtime format differences. Updated all dependent files to handle role IDs correctly.
-    *   **Impact:** Fixed client-side crashes during assessment viewing. Resolved role identification issues during report generation. Console logs now show meaningful role titles instead of "undefined (ID: undefined)". All role processing now works correctly with proper database lookups.
-    *   **Files Modified:** `app/(app)/assessment/[id]/view/_components/assessment-view-client.tsx`, `server/lib/engines/prioritizationEngine.ts`, `server/pg-storage.ts`, `app/api/reports/[id]/populate-filters/route.ts`, `lib/prioritizationEngine.ts`.
+    *   **Impact:** Fixed client-side crashes during assessment viewing. Resolved role identification issues during report generation. Eliminated database connection timeout failures during report generation. Console logs now show meaningful role titles instead of "undefined (ID: undefined)". All role processing and database operations now work correctly with automatic retry and proper database lookups.
+    *   **Files Modified:** `app/(app)/assessment/[id]/view/_components/assessment-view-client.tsx`, `server/lib/engines/prioritizationEngine.ts`, `server/pg-storage.ts`, `app/api/reports/[id]/populate-filters/route.ts`, `lib/prioritizationEngine.ts`, `vercel.json`.
 
 *   **Report Generation Refactor & Deterministic AI (July 2025):**
     *   **Problem:** Regenerating reports resulted in identical content due to an application-level cache. Additionally, internal API calls between serverless functions were failing with `ECONNRESET` errors in the Vercel environment.

@@ -83,6 +83,44 @@ export class PgStorage implements IStorage {
   private isInitialized: boolean = false;
   private initPromise: Promise<void>;
 
+  // Retry helper for database operations
+  private async retryOperation<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<T> {
+    let lastError: Error;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error as Error;
+        
+        // Check if it's a connection error that might benefit from retry
+        if (
+          error instanceof Error && 
+          (error.message.includes('fetch failed') || 
+           error.message.includes('socket') ||
+           error.message.includes('timeout') ||
+           error.message.includes('connection'))
+        ) {
+          if (attempt < maxRetries) {
+            const delay = baseDelay * Math.pow(2, attempt);
+            console.log(`Database operation failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms:`, error.message);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+        }
+        
+        // If it's not a connection error or we've exhausted retries, throw immediately
+        throw error;
+      }
+    }
+    
+    throw lastError!;
+  }
+
   constructor() {
     this.initPromise = this.initializeAsync();
   }
@@ -102,8 +140,19 @@ export class PgStorage implements IStorage {
         // Configure Neon for better serverless compatibility
         neonConfig.fetchConnectionCache = true;
         neonConfig.useSecureWebSocket = false;
+        neonConfig.pipelineConnect = false;
+        neonConfig.pipelineTLS = false;
         
-        const sql = neon(connectionString);
+        // Use pooled connection string for better connection management
+        const pooledConnectionString = connectionString.includes('-pooler') ? 
+          connectionString : 
+          connectionString.replace(/(.+)@([^@]+)\./, '$1@$2-pooler.');
+        
+        const sql = neon(pooledConnectionString, {
+          fetchOptions: {
+            signal: AbortSignal.timeout(60000), // 60 second timeout
+          },
+        });
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
         console.log('Neon HTTP database connection established');
@@ -118,8 +167,19 @@ export class PgStorage implements IStorage {
         // Configure Neon for better serverless compatibility
         neonConfig.fetchConnectionCache = true;
         neonConfig.useSecureWebSocket = false;
+        neonConfig.pipelineConnect = false;
+        neonConfig.pipelineTLS = false;
         
-        const sql = neon(connectionString);
+        // Use pooled connection string for better connection management
+        const pooledConnectionString = connectionString.includes('-pooler') ? 
+          connectionString : 
+          connectionString.replace(/(.+)@([^@]+)\./, '$1@$2-pooler.');
+        
+        const sql = neon(pooledConnectionString, {
+          fetchOptions: {
+            signal: AbortSignal.timeout(60000), // 60 second timeout
+          },
+        });
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
         console.log('Neon HTTP database connection established');
@@ -561,40 +621,42 @@ export class PgStorage implements IStorage {
       tags?: string[];
     }
   ): Promise<BaseAICapability> {
-    await this.ensureInitialized();
-    
-    // First try to find an existing capability with the same name and category
-    const existingCapability = await this.db
-      .select()
-      .from(aiCapabilitiesTable)
-      .where(
-        and(
-          eq(aiCapabilitiesTable.name, capabilityName),
-          eq(aiCapabilitiesTable.category, capabilityCategory)
+    return this.retryOperation(async () => {
+      await this.ensureInitialized();
+      
+      // First try to find an existing capability with the same name and category
+      const existingCapability = await this.db
+        .select()
+        .from(aiCapabilitiesTable)
+        .where(
+          and(
+            eq(aiCapabilitiesTable.name, capabilityName),
+            eq(aiCapabilitiesTable.category, capabilityCategory)
+          )
         )
-      )
-      .limit(1);
-    
-    if (existingCapability.length > 0) {
-      return existingCapability[0] as BaseAICapability;
-    }
-    
-    // If not found, create a new global capability
-    const newCapability: InsertAICapability = {
-      name: capabilityName,
-      category: capabilityCategory,
-      description: description || null,
-      default_business_value: defaults?.default_business_value || null,
-      default_implementation_effort: defaults?.default_implementation_effort || null,
-      default_ease_score: defaults?.default_ease_score || null,
-      default_value_score: defaults?.default_value_score || null,
-      default_feasibility_score: defaults?.default_feasibility_score || null,
-      default_impact_score: defaults?.default_impact_score || null,
-      tags: defaults?.tags || [],
-    };
-    
-    const result = await this.db.insert(aiCapabilitiesTable).values(newCapability).returning();
-    return result[0] as BaseAICapability;
+        .limit(1);
+      
+      if (existingCapability.length > 0) {
+        return existingCapability[0] as BaseAICapability;
+      }
+      
+      // If not found, create a new global capability
+      const newCapability: InsertAICapability = {
+        name: capabilityName,
+        category: capabilityCategory,
+        description: description || null,
+        default_business_value: defaults?.default_business_value || null,
+        default_implementation_effort: defaults?.default_implementation_effort || null,
+        default_ease_score: defaults?.default_ease_score || null,
+        default_value_score: defaults?.default_value_score || null,
+        default_feasibility_score: defaults?.default_feasibility_score || null,
+        default_impact_score: defaults?.default_impact_score || null,
+        tags: defaults?.tags || [],
+      };
+      
+      const result = await this.db.insert(aiCapabilitiesTable).values(newCapability).returning();
+      return result[0] as BaseAICapability;
+    });
   }
 
   /**
@@ -603,52 +665,54 @@ export class PgStorage implements IStorage {
   async createAssessmentAICapability(
     data: InsertAssessmentAICapability
   ): Promise<AssessmentAICapability> {
-    await this.ensureInitialized();
-    
-    // Import the Zod schema to validate and transform the data
-    const { insertAssessmentAICapabilitySchema } = await import('../shared/schema');
-    
-    // Validate and transform the data to ensure numeric scores
-    const validatedData = insertAssessmentAICapabilitySchema.parse(data);
-    
-    // Check if this assessment-capability pair already exists
-    const existingLink = await this.db
-      .select()
-      .from(assessmentAICapabilitiesTable)
-      .where(
-        and(
-          eq(assessmentAICapabilitiesTable.assessmentId, validatedData.assessmentId),
-          eq(assessmentAICapabilitiesTable.aiCapabilityId, validatedData.aiCapabilityId)
-        )
-      )
-      .limit(1);
+    return this.retryOperation(async () => {
+      await this.ensureInitialized();
       
-    if (existingLink.length > 0) {
-      // If it exists, update it with new values
-      const updatedLink = await this.db
-        .update(assessmentAICapabilitiesTable)
-        .set({
-          ...validatedData,
-          updatedAt: new Date()
-        })
+      // Import the Zod schema to validate and transform the data
+      const { insertAssessmentAICapabilitySchema } = await import('../shared/schema');
+      
+      // Validate and transform the data to ensure numeric scores
+      const validatedData = insertAssessmentAICapabilitySchema.parse(data);
+      
+      // Check if this assessment-capability pair already exists
+      const existingLink = await this.db
+        .select()
+        .from(assessmentAICapabilitiesTable)
         .where(
           and(
             eq(assessmentAICapabilitiesTable.assessmentId, validatedData.assessmentId),
             eq(assessmentAICapabilitiesTable.aiCapabilityId, validatedData.aiCapabilityId)
           )
         )
+        .limit(1);
+        
+      if (existingLink.length > 0) {
+        // If it exists, update it with new values
+        const updatedLink = await this.db
+          .update(assessmentAICapabilitiesTable)
+          .set({
+            ...validatedData,
+            updatedAt: new Date()
+          })
+          .where(
+            and(
+              eq(assessmentAICapabilitiesTable.assessmentId, validatedData.assessmentId),
+              eq(assessmentAICapabilitiesTable.aiCapabilityId, validatedData.aiCapabilityId)
+            )
+          )
+          .returning();
+          
+        return updatedLink[0] as AssessmentAICapability;
+      }
+      
+      // If not, create a new link
+      const result = await this.db
+        .insert(assessmentAICapabilitiesTable)
+        .values(validatedData)
         .returning();
         
-      return updatedLink[0] as AssessmentAICapability;
-    }
-    
-    // If not, create a new link
-    const result = await this.db
-      .insert(assessmentAICapabilitiesTable)
-      .values(validatedData)
-      .returning();
-      
-    return result[0] as AssessmentAICapability;
+      return result[0] as AssessmentAICapability;
+    });
   }
 
   /**

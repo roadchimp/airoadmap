@@ -60,20 +60,6 @@ export async function GET() {
         console.log('- DATABASE_POSTGRES_URL exists:', !!process.env.DATABASE_POSTGRES_URL);
         console.log('- DATABASE_PREVIEW_URL exists:', !!process.env.DATABASE_PREVIEW_URL);
         
-        // Log partial connection strings for debugging (first 30 chars + last 10 chars)
-        const logPartialUrl = (url: string | undefined, name: string) => {
-            if (url) {
-                const masked = url.length > 40 
-                    ? `${url.substring(0, 30)}...${url.substring(url.length - 10)}`
-                    : url.substring(0, 30) + '...';
-                console.log(`- ${name}:`, masked);
-            }
-        };
-        
-        logPartialUrl(process.env.DATABASE_URL, 'DATABASE_URL');
-        logPartialUrl(process.env.DATABASE_POSTGRES_URL, 'DATABASE_POSTGRES_URL');
-        logPartialUrl(process.env.DATABASE_PREVIEW_URL, 'DATABASE_PREVIEW_URL');
-        
         const storage = getStorage();
         const summaryData = await storage.getDepartmentRoleSummary();
         
@@ -91,21 +77,9 @@ export async function GET() {
             console.log('No Finance department found in raw data');
             console.log('Available departments:', summaryData.map(d => ({ id: d.department_id, name: d.department_name })));
         }
+        console.log('=== END DATABASE DEBUG ===');
         
         const { hierarchical, roles } = convertToSessionTypes(summaryData);
-
-        // Log converted data for debugging
-        const financeConverted = hierarchical.find(dept => dept.name.includes('Finance'));
-        if (financeConverted) {
-            console.log('Finance department converted data:', {
-                id: financeConverted.id,
-                name: financeConverted.name,
-                rolesCount: financeConverted.roles?.length || 0,
-                roles: financeConverted.roles?.map(r => ({ id: r.id, title: r.title })) || []
-            });
-        }
-        
-        console.log('=== END DATABASE DEBUG ===');
 
         return NextResponse.json({
             hierarchical,
@@ -117,7 +91,6 @@ export async function GET() {
                 cacheVersion: '1.0.0',
                 debugInfo: {
                     vercelEnv: process.env.VERCEL_ENV,
-                    nodeEnv: process.env.NODE_ENV,
                     rawDataCount: summaryData.length,
                     financeFound: !!financeData,
                     financeRolesCount: financeData?.roles?.length || 0

@@ -77,6 +77,19 @@ if (process.env.NODE_ENV === 'development') {
   }
 }
 
+/**
+ * PostgreSQL storage implementation with enhanced connection handling for serverless environments.
+ * 
+ * Key optimizations for preventing timeout errors:
+ * - Extended Neon HTTP timeout from 60s to 120s for long operations
+ * - Enhanced retry logic (4 attempts with exponential backoff) for connection errors
+ * - Connection health checks and automatic reconnection for Neon
+ * - Pooled connection strings with enhanced configuration
+ * - Comprehensive error detection for network/timeout/connection issues
+ * - Retry protection on critical operations: getReport, getAssessment, createReport, 
+ *   findOrCreateGlobalAICapability, createAssessmentAICapability, mapCapabilityToJobRoleWithImpact
+ * - Vercel function timeout increased to 120s to match database timeout
+ */
 export class PgStorage implements IStorage {
   private db: any; // Drizzle instance
   private pool: Pool | undefined; // Only used for local pg
@@ -86,7 +99,7 @@ export class PgStorage implements IStorage {
   // Retry helper for database operations
   private async retryOperation<T>(
     operation: () => Promise<T>,
-    maxRetries: number = 3,
+    maxRetries: number = 4,  // Increased from 3 to 4
     baseDelay: number = 1000
   ): Promise<T> {
     let lastError: Error;
@@ -97,13 +110,16 @@ export class PgStorage implements IStorage {
       } catch (error) {
         lastError = error as Error;
         
-        // Check if it's a connection error that might benefit from retry
+        // Enhanced error detection for Neon/connection issues
         if (
           error instanceof Error && 
           (error.message.includes('fetch failed') || 
            error.message.includes('socket') ||
            error.message.includes('timeout') ||
-           error.message.includes('connection'))
+           error.message.includes('connection') ||
+           error.message.includes('aborted') ||
+           error.message.includes('network') ||
+           error.message.toLowerCase().includes('neon'))
         ) {
           if (attempt < maxRetries) {
             const delay = baseDelay * Math.pow(2, attempt);
@@ -137,11 +153,12 @@ export class PgStorage implements IStorage {
           throw new Error('DATABASE_POSTGRES_URL environment variable not set for Vercel environment');
         }
         
-        // Configure Neon for better serverless compatibility
+        // Enhanced Neon configuration for better serverless compatibility
         neonConfig.fetchConnectionCache = true;
         neonConfig.useSecureWebSocket = false;
         neonConfig.pipelineConnect = false;
         neonConfig.pipelineTLS = false;
+        neonConfig.webSocketConstructor = undefined; // Force HTTP fallback for stability
         
         // Use pooled connection string for better connection management
         const pooledConnectionString = connectionString.includes('-pooler') ? 
@@ -150,12 +167,17 @@ export class PgStorage implements IStorage {
         
         const sql = neon(pooledConnectionString, {
           fetchOptions: {
-            signal: AbortSignal.timeout(60000), // 60 second timeout
+            signal: AbortSignal.timeout(120000), // Increased to 120 seconds for long operations
+            cache: 'no-cache',
+            keepalive: true,
           },
+          // Add connection pooling and reuse
+          fullResults: false,
+          arrayMode: false,
         });
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
-        console.log('Neon HTTP database connection established');
+        console.log('Neon HTTP database connection established with enhanced configuration');
       }  else if (process.env.VERCEL_ENV === 'preview') {
         // Use Neon HTTP connection for preview environment (Each branch has its own preview URL)
         console.log('Initializing Neon HTTP database connection for Vercel preview');
@@ -164,11 +186,12 @@ export class PgStorage implements IStorage {
           throw new Error('DATABASE_PREVIEW_URL environment variable not set for Vercel environment');
         }
         
-        // Configure Neon for better serverless compatibility
+        // Enhanced Neon configuration for better serverless compatibility
         neonConfig.fetchConnectionCache = true;
         neonConfig.useSecureWebSocket = false;
         neonConfig.pipelineConnect = false;
         neonConfig.pipelineTLS = false;
+        neonConfig.webSocketConstructor = undefined; // Force HTTP fallback for stability
         
         // Use pooled connection string for better connection management
         const pooledConnectionString = connectionString.includes('-pooler') ? 
@@ -177,12 +200,17 @@ export class PgStorage implements IStorage {
         
         const sql = neon(pooledConnectionString, {
           fetchOptions: {
-            signal: AbortSignal.timeout(60000), // 60 second timeout
+            signal: AbortSignal.timeout(120000), // Increased to 120 seconds for long operations
+            cache: 'no-cache',
+            keepalive: true,
           },
+          // Add connection pooling and reuse
+          fullResults: false,
+          arrayMode: false,
         });
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
-        console.log('Neon HTTP database connection established');
+        console.log('Neon HTTP database connection established with enhanced configuration');
       } else {
         // Use local DATABASE_URL for local development
         console.log('Initializing standard PostgreSQL connection for local development');
@@ -191,7 +219,12 @@ export class PgStorage implements IStorage {
           throw new Error('DATABASE_URL environment variable not set for local development (check .env file)');
         }
         const pg = await import('pg');
-        this.pool = new pg.Pool({ connectionString });
+        this.pool = new pg.Pool({ 
+          connectionString,
+          max: 20, // Increase connection pool size
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 20000,
+        });
         this.db = drizzleNodePostgres(this.pool);
         this.isInitialized = true;
         console.log('Standard PostgreSQL database connection established');
@@ -212,6 +245,20 @@ export class PgStorage implements IStorage {
   private async ensureInitialized(): Promise<void> {
     if (!this.isInitialized) {
       await this.initPromise;
+    }
+    
+    // Additional health check for Neon connections
+    if (process.env.VERCEL_ENV && !this.pool) {
+      try {
+        // Test the connection with a simple query to ensure it's working
+        await this.db.execute(sql`SELECT 1 as health_check`);
+      } catch (healthError) {
+        console.warn('Database health check failed, reinitializing connection:', healthError);
+        // Re-initialize connection if health check fails
+        this.isInitialized = false;
+        this.initPromise = this.initializeAsync();
+        await this.initPromise;
+      }
     }
   }
 
@@ -860,16 +907,18 @@ export class PgStorage implements IStorage {
 
   // Assessment methods
   async getAssessment(id: number, userId?: number): Promise<Assessment | undefined> {
-    await this.ensureInitialized();
-    
-    const result = await this.db.select()
-      .from(assessments)
-      .where(and(
-        eq(assessments.id, id),
-        userId ? eq(assessments.userId, userId) : undefined // Add user scoping only if userId is provided
-      ));
+    return this.retryOperation(async () => {
+      await this.ensureInitialized();
       
-    return result[0];
+      const result = await this.db.select()
+        .from(assessments)
+        .where(and(
+          eq(assessments.id, id),
+          userId ? eq(assessments.userId, userId) : undefined // Add user scoping only if userId is provided
+        ));
+        
+      return result[0];
+    });
   }
 
   async getReportByAssessmentId(assessmentId: number): Promise<Report | undefined> {
@@ -1065,32 +1114,34 @@ export class PgStorage implements IStorage {
   }
   // Report methods
   async getReport(id: number): Promise<ReportWithMetricsAndRules | undefined> {
-    await this.ensureInitialized();
-    
-    // First, get the basic report to find the assessmentId
-    const reportResult = await this.db
-      .select()
-      .from(reports)
-      .where(eq(reports.id, id))
-      .limit(1);
+    return this.retryOperation(async () => {
+      await this.ensureInitialized();
+      
+      // First, get the basic report to find the assessmentId
+      const reportResult = await this.db
+        .select()
+        .from(reports)
+        .where(eq(reports.id, id))
+        .limit(1);
 
-    if (reportResult.length === 0 || !reportResult[0]) {
+      if (reportResult.length === 0 || !reportResult[0]) {
+        return undefined;
+      }
+      
+      // Use getReportByAssessment to get the full report data
+      const assessmentId = reportResult[0].assessmentId;
+      const fullReport = await this.getReportByAssessment(assessmentId);
+      
+      // If found, return with the correct ID
+      if (fullReport) {
+        return {
+          ...fullReport,
+          id: id // Ensure we return the correct report ID
+        };
+      }
+      
       return undefined;
-    }
-    
-    // Use getReportByAssessment to get the full report data
-    const assessmentId = reportResult[0].assessmentId;
-    const fullReport = await this.getReportByAssessment(assessmentId);
-    
-    // If found, return with the correct ID
-    if (fullReport) {
-      return {
-        ...fullReport,
-        id: id // Ensure we return the correct report ID
-      };
-    }
-    
-    return undefined;
+    });
   }
 
   async getReportByAssessment(assessmentId: number): Promise<ReportWithMetricsAndRules | undefined> {
@@ -1237,26 +1288,28 @@ export class PgStorage implements IStorage {
   }
 
   async createReport(report: InsertReport): Promise<Report> {
-    await this.ensureInitialized();
+    return this.retryOperation(async () => {
+      await this.ensureInitialized();
 
-    if (!report.assessmentId) {
-      throw new Error('assessmentId is required to create a report');
-    }
+      if (!report.assessmentId) {
+        throw new Error('assessmentId is required to create a report');
+      }
 
-    // Fetch the assessment to get the userId
-    const relatedAssessment = await this.db.select({ userId: assessments.userId }).from(assessments).where(eq(assessments.id, report.assessmentId));
-    if (!relatedAssessment || relatedAssessment.length === 0) {
-      throw new Error(`Assessment with ID ${report.assessmentId} not found.`);
-    }
-    const userId = relatedAssessment[0].userId;
+      // Fetch the assessment to get the userId
+      const relatedAssessment = await this.db.select({ userId: assessments.userId }).from(assessments).where(eq(assessments.id, report.assessmentId));
+      if (!relatedAssessment || relatedAssessment.length === 0) {
+        throw new Error(`Assessment with ID ${report.assessmentId} not found.`);
+      }
+      const userId = relatedAssessment[0].userId;
 
-    const reportToInsert = {
-      ...report,
-      userId: userId,
-    };
+      const reportToInsert = {
+        ...report,
+        userId: userId,
+      };
 
-    const result = await this.db.insert(reports).values(reportToInsert).returning();
-    return result[0];
+      const result = await this.db.insert(reports).values(reportToInsert).returning();
+      return result[0];
+    });
   }
 
   async updateReportCommentary(id: number, commentary: string): Promise<Report> {
@@ -1795,29 +1848,31 @@ export class PgStorage implements IStorage {
   }
 
   async mapCapabilityToJobRoleWithImpact(capabilityId: number, jobRoleId: number, impactScore: number): Promise<void> {
-    await this.ensureInitialized();
-    
-    // Insert or update capability-job role mapping
-    await this.db
-      .insert(capabilityJobRoles)
-      .values({ 
-        capabilityId: capabilityId, 
-        jobRoleId: jobRoleId 
-      })
-      .onConflictDoNothing({ target: [capabilityJobRoles.capabilityId, capabilityJobRoles.jobRoleId] });
+    return this.retryOperation(async () => {
+      await this.ensureInitialized();
       
-    // Insert or update the impact score
-    await this.db
-      .insert(capabilityRoleImpacts)
-      .values({
-        capabilityId: capabilityId,
-        jobRoleId: jobRoleId,
-        impactScore: impactScore.toString() // Convert to string for numeric field
-      })
-      .onConflictDoUpdate({
-        target: [capabilityRoleImpacts.capabilityId, capabilityRoleImpacts.jobRoleId],
-        set: { impactScore: impactScore.toString() }
-      });
+      // Insert or update capability-job role mapping
+      await this.db
+        .insert(capabilityJobRoles)
+        .values({ 
+          capabilityId: capabilityId, 
+          jobRoleId: jobRoleId 
+        })
+        .onConflictDoNothing({ target: [capabilityJobRoles.capabilityId, capabilityJobRoles.jobRoleId] });
+        
+      // Insert or update the impact score
+      await this.db
+        .insert(capabilityRoleImpacts)
+        .values({
+          capabilityId: capabilityId,
+          jobRoleId: jobRoleId,
+          impactScore: impactScore.toString() // Convert to string for numeric field
+        })
+        .onConflictDoUpdate({
+          target: [capabilityRoleImpacts.capabilityId, capabilityRoleImpacts.jobRoleId],
+          set: { impactScore: impactScore.toString() }
+        });
+    });
   }
 
   async unmapCapabilityFromJobRole(capabilityId: number, jobRoleId: number): Promise<void> {

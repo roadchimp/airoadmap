@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "app/api/**/*.js": {
-      "maxDuration": 60
+      "maxDuration": 120
     }
   },
   "crons": [

@@ -99,3 +99,6 @@ server/scripts/
 /playwright/downloads/
 /playwright/videos/
 /playwright/screenshots/
+
+#Serena
+.serena/

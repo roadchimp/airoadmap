@@ -65,10 +65,10 @@ export async function generateReportForAssessment(assessmentId: number, options:
 
     console.log(`[ReportService] Fetching assessment data...`);
     
-    // Add timeout protection for database calls
+    // Increased timeout to 90s to allow for Neon cold starts and connection establishment
     const assessmentPromise = storage.getAssessment(assessmentId);
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database timeout: getAssessment took longer than 30s')), 30000)
+      setTimeout(() => reject(new Error('Database timeout: getAssessment took longer than 90s')), 90000)
     );
     
     const assessment = await Promise.race([assessmentPromise, timeoutPromise]) as any;

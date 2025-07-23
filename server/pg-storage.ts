@@ -82,19 +82,53 @@ if (process.env.NODE_ENV === 'development') {
  * 
  * Key optimizations for preventing timeout errors:
  * - Extended Neon HTTP timeout from 60s to 120s for long operations
- * - Enhanced retry logic (4 attempts with exponential backoff) for connection errors
- * - Connection health checks and automatic reconnection for Neon
- * - Pooled connection strings with enhanced configuration
- * - Comprehensive error detection for network/timeout/connection issues
+ * - Enhanced retry logic (4 attempts with exponential backoff) for connection errors  
+ * - Connection health checks with 10s timeout and automatic reconnection for Neon
+ * - Database keep-alive mechanism (5-minute intervals) to prevent scale-to-zero suspension
+ * - Pooled connection strings with enhanced configuration and HTTP fallback
+ * - Comprehensive error detection for network/timeout/connection/aborted issues
  * - Retry protection on critical operations: getReport, getAssessment, createReport, 
  *   findOrCreateGlobalAICapability, createAssessmentAICapability, mapCapabilityToJobRoleWithImpact
- * - Vercel function timeout increased to 120s to match database timeout
+ * - Vercel function timeout increased to 120s, report service timeout to 90s
+ * - Health check endpoint (/api/health-check) for external monitoring and keep-alive
  */
 export class PgStorage implements IStorage {
   private db: any; // Drizzle instance
   private pool: Pool | undefined; // Only used for local pg
   private isInitialized: boolean = false;
   private initPromise: Promise<void>;
+
+  // Keep-alive mechanism to prevent database suspension
+  private keepAliveInterval: NodeJS.Timeout | null = null;
+  
+  private async performKeepAlive(): Promise<void> {
+    try {
+      await this.db.execute(sql`SELECT 1 as keep_alive, NOW() as timestamp`);
+      console.log('[Database Keep-Alive] Ping successful');
+    } catch (error) {
+      console.warn('[Database Keep-Alive] Ping failed:', error);
+    }
+  }
+  
+  private startKeepAlive(): void {
+    // Only start keep-alive in serverless environments
+    if (process.env.VERCEL_ENV && !this.keepAliveInterval) {
+      // Ping database every 5 minutes to prevent suspension
+      this.keepAliveInterval = setInterval(() => {
+        this.performKeepAlive();
+      }, 5 * 60 * 1000); // 5 minutes
+      
+      console.log('[Database Keep-Alive] Started with 5-minute interval');
+    }
+  }
+  
+  private stopKeepAlive(): void {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+      console.log('[Database Keep-Alive] Stopped');
+    }
+  }
 
   // Retry helper for database operations
   private async retryOperation<T>(
@@ -161,6 +195,8 @@ export class PgStorage implements IStorage {
         neonConfig.webSocketConstructor = undefined; // Force HTTP fallback for stability
         
         // Use pooled connection string for better connection management
+        // Recommended Neon connection string parameters for production:
+        // ?connect_timeout=30&application_name=airoadmap&pool_timeout=30&statement_timeout=120000
         const pooledConnectionString = connectionString.includes('-pooler') ? 
           connectionString : 
           connectionString.replace(/(.+)@([^@]+)\./, '$1@$2-pooler.');
@@ -171,12 +207,13 @@ export class PgStorage implements IStorage {
             cache: 'no-cache',
             keepalive: true,
           },
-          // Add connection pooling and reuse
+          // Enhanced connection pooling and reuse
           fullResults: false,
           arrayMode: false,
         });
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
+        this.startKeepAlive(); // Start keep-alive for production
         console.log('Neon HTTP database connection established with enhanced configuration');
       }  else if (process.env.VERCEL_ENV === 'preview') {
         // Use Neon HTTP connection for preview environment (Each branch has its own preview URL)
@@ -204,12 +241,13 @@ export class PgStorage implements IStorage {
             cache: 'no-cache',
             keepalive: true,
           },
-          // Add connection pooling and reuse
+          // Enhanced connection pooling and reuse
           fullResults: false,
           arrayMode: false,
         });
         this.db = drizzleNeonHttp(sql);
         this.isInitialized = true;
+        this.startKeepAlive(); // Start keep-alive for preview
         console.log('Neon HTTP database connection established with enhanced configuration');
       } else {
         // Use local DATABASE_URL for local development
@@ -247,13 +285,20 @@ export class PgStorage implements IStorage {
       await this.initPromise;
     }
     
-    // Additional health check for Neon connections
+    // Enhanced health check for Neon connections
     if (process.env.VERCEL_ENV && !this.pool) {
       try {
-        // Test the connection with a simple query to ensure it's working
-        await this.db.execute(sql`SELECT 1 as health_check`);
+        // Test the connection with a simple query with timeout
+        const healthCheckPromise = this.db.execute(sql`SELECT 1 as health_check, NOW() as timestamp`);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Health check timeout')), 10000)
+        );
+        
+        await Promise.race([healthCheckPromise, timeoutPromise]);
       } catch (healthError) {
         console.warn('Database health check failed, reinitializing connection:', healthError);
+        // Stop any existing keep-alive before reinitializing
+        this.stopKeepAlive();
         // Re-initialize connection if health check fails
         this.isInitialized = false;
         this.initPromise = this.initializeAsync();
@@ -263,6 +308,9 @@ export class PgStorage implements IStorage {
   }
 
   async disconnect(): Promise<void> {
+    // Stop keep-alive timer
+    this.stopKeepAlive();
+    
     // Only need to disconnect the pool for local pg connections
     if (this.pool) {
       await this.pool.end();

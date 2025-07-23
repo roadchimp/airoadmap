@@ -3,9 +3,15 @@ import { storage } from '@/server/storage';
 import { AiTool, AICapability, JobRoleWithDepartment, JobDescription } from '@shared/schema';
 import LibraryLayout from '@/components/library/LibraryLayout';
 
+// Force dynamic rendering - this page requires server-side data fetching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Fetch all necessary data for the library view
 async function getLibraryData() {
   try {
+    console.log('[Library] Starting data fetch...');
+    
     const [aiTools, aiCapabilities, jobRoles, departments, jobDescriptions] = await Promise.all([
       storage.listAITools(),
       storage.listAICapabilities(),
@@ -13,6 +19,8 @@ async function getLibraryData() {
       storage.listDepartments(),
       storage.getJobDescriptions()
     ]);
+
+    console.log('[Library] Data fetch completed successfully');
 
     // Combine job roles with department names
     const jobRolesWithDept = jobRoles.map(role => {
@@ -27,8 +35,16 @@ async function getLibraryData() {
       jobDescriptions: Array.isArray(jobDescriptions) ? jobDescriptions : [],
     };
   } catch (error) {
-    console.error("Error fetching library data:", error);
-    return { aiTools: [], aiCapabilities: [], jobRoles: [], jobDescriptions: [] }; 
+    console.error("[Library] Error fetching library data:", error);
+    console.error("[Library] This page requires dynamic rendering - ensure database is accessible");
+    
+    // Return empty data structure to prevent build failures
+    return { 
+      aiTools: [], 
+      aiCapabilities: [], 
+      jobRoles: [], 
+      jobDescriptions: [] 
+    }; 
   }
 }
 

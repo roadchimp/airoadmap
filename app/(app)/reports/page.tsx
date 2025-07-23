@@ -5,6 +5,9 @@ import ReportsTable from './ReportsTable';
 import { unstable_noStore } from 'next/cache';
 import { createClient } from '@/../../utils/supabase/server';
 
+// Force dynamic rendering - this page requires server-side data fetching
+export const dynamic = 'force-dynamic';
+
 // Server-side data fetching function
 async function getReportsAndAssessmentsForUser(): Promise<{ reports: Report[], assessments: Assessment[] }> {
   // Disable caching to ensure fresh data on each request

@@ -4,6 +4,9 @@ import CurrentAssessmentsTable, { AssessmentWithReportId } from '@/components/as
 import { storage } from '@/server/storage';
 import { UserProfile } from '@shared/schema';
 
+// Force dynamic rendering - this page requires server-side data fetching
+export const dynamic = 'force-dynamic';
+
 // This is a server component, so we can fetch data directly
 export default async function CurrentAssessmentsPage() {
   const supabase = await createClient();

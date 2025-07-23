@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { IStorage } from "@/server/storage";
 import { Assessment, AssessmentResponse, JobRoleWithDepartment } from "@shared/schema";
 
+// Force dynamic rendering - this page requires server-side data fetching
+export const dynamic = 'force-dynamic';
+
 // Define params as a Promise
 type PageProps = {
   params: Promise<{ id: string }>;

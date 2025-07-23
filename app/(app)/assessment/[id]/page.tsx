@@ -4,6 +4,9 @@ import type { Assessment } from '@shared/schema';
 import { unstable_noStore } from 'next/cache';
 import EditAssessmentClient from './edit-assessment-client';
 
+// Force dynamic rendering - this page requires server-side data fetching
+export const dynamic = 'force-dynamic';
+
 interface AssessmentDetailPageProps {
   params: Promise<{
     id: string;

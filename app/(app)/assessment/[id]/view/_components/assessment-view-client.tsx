@@ -190,36 +190,39 @@ export default function AssessmentViewClient({
     getKey: (item: T, index: number) => string | number,
     fallbackKey?: string
   ): React.ReactNode => {
-    if (!items) return null;
+    if (!items) return <li>N/A</li>;
     
-    if (Array.isArray(items)) {
-      return items.map((item, index) => {
-        // Generate a more robust key
-        let key = getKey(item, index);
-        
-        // Handle undefined/null keys
-        if (key === undefined || key === null || key === '') {
-          key = `${fallbackKey || 'item'}-${index}`;
-        }
-        
-        // Ensure key is always a string
-        const finalKey = String(key);
-        
-        return (
-          <React.Fragment key={finalKey}>
-            {renderItem(item, index)}
-          </React.Fragment>
-        );
-      });
-
-    } else {
-      const key = fallbackKey || 'single-item';
+    // Ensure we're working with an array
+    const itemsArray = Array.isArray(items) ? items : [items];
+    
+    // Filter out any non-string items for stakeholders specifically
+    const validItems = itemsArray.filter(item => 
+      typeof item === 'string' || 
+      (typeof item === 'object' && item !== null && !React.isValidElement(item))
+    );
+    
+    if (validItems.length === 0) {
+      return <li>N/A</li>;
+    }
+    
+    return validItems.map((item, index) => {
+      // Generate a more robust key
+      let key = getKey(item, index);
+      
+      // Handle undefined/null keys
+      if (key === undefined || key === null || key === '') {
+        key = `${fallbackKey || 'item'}-${index}`;
+      }
+      
+      // Ensure key is always a string
+      const finalKey = String(key);
+      
       return (
-        <React.Fragment key={key}>
-          {renderItem(items, 0)}
+        <React.Fragment key={finalKey}>
+          {renderItem(item, index)}
         </React.Fragment>
       );
-    }
+    });
   };
 
   const sections = [

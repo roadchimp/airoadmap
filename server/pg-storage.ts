@@ -2,6 +2,8 @@ import { drizzle as drizzleNodePostgres } from 'drizzle-orm/node-postgres';
 import { drizzle as drizzleNeonHttp } from 'drizzle-orm/neon-http';
 import { neon, neonConfig } from '@neondatabase/serverless';
 import { eq, sql, asc, and, inArray, desc } from 'drizzle-orm';
+// Import for direct TCP connection fallback
+import { Client } from 'pg';
 // Using dynamic import for pg which works better with ESM
 import { IStorage, ReportWithMetricsAndRules, FullAICapability, ToolWithMappedCapabilities, AiTool as BaseAiTool } from './storage.ts';
 import { Pool } from 'pg';
@@ -95,6 +97,8 @@ if (process.env.NODE_ENV === 'development') {
 export class PgStorage implements IStorage {
   private db: any; // Drizzle instance
   private pool: Pool | undefined; // Only used for local pg
+  private directTcpClient: Client | undefined; // Direct TCP fallback for critical operations (Vercel only)
+  private fallbackCounter = { tcpSuccess: 0, httpFallback: 0 }; // Monitor fallback rates
   private isInitialized: boolean = false;
   private initPromise: Promise<void>;
 
@@ -227,9 +231,13 @@ export class PgStorage implements IStorage {
           arrayMode: false,
         });
         this.db = drizzleNeonHttp(sql);
+        
+        // Initialize direct TCP client for critical operations (bypasses HTTP driver delays)
+        await this.initializeDirectTcpClient(connectionString);
+        
         this.isInitialized = true;
         this.startKeepAlive(); // Start keep-alive for production
-        console.log('Neon HTTP database connection established with enhanced configuration');
+        console.log('Neon HTTP database connection established with enhanced configuration and direct TCP fallback');
       }  else if (process.env.VERCEL_ENV === 'preview') {
         // Use Neon HTTP connection for preview environment (Each branch has its own preview URL)
         console.log('Initializing Neon HTTP database connection for Vercel preview');
@@ -278,9 +286,13 @@ export class PgStorage implements IStorage {
           arrayMode: false,
         });
         this.db = drizzleNeonHttp(sql);
+        
+        // Initialize direct TCP client for critical operations (bypasses HTTP driver delays)
+        await this.initializeDirectTcpClient(connectionString);
+        
         this.isInitialized = true;
         this.startKeepAlive(); // Start keep-alive for preview
-        console.log('Neon HTTP database connection established with enhanced configuration');
+        console.log('Neon HTTP database connection established with enhanced configuration and direct TCP fallback');
       } else {
         // Use local DATABASE_URL for local development
         console.log('Initializing standard PostgreSQL connection for local development');
@@ -349,6 +361,102 @@ export class PgStorage implements IStorage {
       console.log('Standard PostgreSQL database connection closed');
     }
     this.isInitialized = false;
+  }
+
+  // Direct TCP Connection Methods (Vercel only - for critical operations)
+  private async initializeDirectTcpClient(neonConnectionString: string): Promise<void> {
+    try {
+      // Convert Neon pooler URL to direct TCP connection
+      // postgres://user:pass@host-pooler.region.aws.neon.tech/db → postgres://user:pass@host.region.aws.neon.tech:5432/db
+      const directConnectionString = neonConnectionString
+        .replace('-pooler', '') // Remove pooler suffix
+        .replace(/\?.*$/, ''); // Remove query parameters for direct connection
+      
+      console.log('[DirectTCP] Initializing direct TCP client for critical operations');
+      
+      this.directTcpClient = new Client({
+        connectionString: directConnectionString,
+        connectionTimeoutMillis: 10000, // 10s connection timeout
+        query_timeout: 30000, // 30s query timeout
+        statement_timeout: 30000, // 30s statement timeout
+        application_name: 'airoadmap-direct'
+      });
+      
+      // Test connection with retry logic and measure warm-up time
+      const warmupStart = Date.now();
+      await this.connectDirectTcpWithRetry();
+      const warmupDuration = Date.now() - warmupStart;
+      console.log(`[DirectTCP] Direct TCP client initialized successfully - warm-up connect took ${warmupDuration}ms`);
+      
+    } catch (error) {
+      console.error('[DirectTCP] CRITICAL: Failed to initialize direct TCP client in Vercel environment:', {
+        error: error instanceof Error ? error.message : error,
+        environment: process.env.VERCEL_ENV,
+        hasConnectionString: !!neonConnectionString
+      });
+      this.directTcpClient = undefined; // Fallback to HTTP driver
+    }
+  }
+
+  private async connectDirectTcpWithRetry(retries = 3): Promise<void> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        if (this.directTcpClient) {
+          await this.directTcpClient.connect();
+          return; // Success
+        }
+      } catch (error) {
+        console.log(`[DirectTCP] Connection attempt ${i + 1}/${retries} failed:`, error instanceof Error ? error.message : error);
+        
+        if (i === retries - 1) {
+          throw error; // Last attempt failed
+        }
+        
+        // Wait before retry (1s, 2s, 3s)
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      }
+    }
+  }
+
+  // HTTP Driver cleanup helper
+  private async ensureHttpDriverReady(): Promise<void> {
+    // This is a safety measure to ensure HTTP driver is ready after TCP failure
+    // Neon HTTP driver typically handles connection pooling automatically
+    // but we add this hook for potential future cleanup needs
+    if (this.db && typeof this.db.dispose === 'function') {
+      // If there's a cleanup method available, call it
+      console.log('[DirectTCP] Performing HTTP driver cleanup');
+      await this.db.dispose();
+    }
+    // Note: For Neon HTTP driver, connection pooling is handled automatically
+    // This method primarily serves as a placeholder for future optimizations
+  }
+
+  // Enhanced getAssessment with direct TCP fallback
+  private async getAssessmentDirectTcp(id: number, userId?: number): Promise<Assessment | undefined> {
+    if (!this.directTcpClient) {
+      throw new Error('Direct TCP client not available');
+    }
+
+    try {
+      console.log(`[DirectTCP] Using direct TCP connection for getAssessment(${id})`);
+      const startTime = Date.now();
+      
+      const query = userId 
+        ? 'SELECT * FROM assessments WHERE id = $1 AND user_id = $2'
+        : 'SELECT * FROM assessments WHERE id = $1';
+      
+      const params = userId ? [id, userId] : [id];
+      const result = await this.directTcpClient.query(query, params);
+      
+      const duration = Date.now() - startTime;
+      console.log(`[DirectTCP] getAssessment completed in ${duration}ms via direct TCP`);
+      
+      return result.rows[0] as Assessment | undefined;
+    } catch (error) {
+      console.error(`[DirectTCP] Direct TCP getAssessment failed:`, error);
+      throw error;
+    }
   }
 
   // User Profile methods
@@ -990,6 +1098,46 @@ export class PgStorage implements IStorage {
     return this.retryOperation(async () => {
       await this.ensureInitialized();
       
+      // Try direct TCP first (Vercel only - bypasses HTTP driver delays)
+      if (this.directTcpClient && (process.env.VERCEL_ENV === 'production' || process.env.VERCEL_ENV === 'preview')) {
+        // Sanity check: Verify client is available and connected
+        const clientState = (this.directTcpClient as any)?._connected;
+        if (!clientState) {
+          console.warn('[getAssessment] Direct TCP client not connected, using HTTP driver');
+          this.fallbackCounter.httpFallback++;
+        } else {
+        try {
+          const result = await this.getAssessmentDirectTcp(id, userId);
+          this.fallbackCounter.tcpSuccess++;
+          
+          // Log success rate periodically
+          const totalRequests = this.fallbackCounter.tcpSuccess + this.fallbackCounter.httpFallback;
+          if (totalRequests % 10 === 0) {
+            const tcpSuccessRate = (this.fallbackCounter.tcpSuccess / totalRequests * 100).toFixed(1);
+            console.log(`[DirectTCP] Success rate: ${tcpSuccessRate}% (${this.fallbackCounter.tcpSuccess}/${totalRequests} requests)`);
+          }
+          
+          return result;
+        } catch (error) {
+          this.fallbackCounter.httpFallback++;
+          const errorMessage = error instanceof Error ? error.message : error;
+          console.warn(`[getAssessment] Direct TCP failed (#${this.fallbackCounter.httpFallback}), falling back to HTTP driver:`, errorMessage);
+          
+          // Cleanup: Ensure HTTP driver connection pool is ready for fallback
+          try {
+            // Force HTTP driver to be ready (no-op if already ready)
+            await this.ensureHttpDriverReady();
+          } catch (cleanupError) {
+            console.warn('[getAssessment] HTTP driver cleanup warning:', cleanupError);
+          }
+          
+          // Continue to HTTP driver fallback
+        }
+        }
+      }
+      
+      // Fallback to HTTP driver (or primary method for local development)
+      console.log(`[getAssessment] Using HTTP driver for assessment ${id}`);
       const result = await this.db.select()
         .from(assessments)
         .where(and(

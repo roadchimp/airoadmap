@@ -65,13 +65,44 @@ export async function generateReportForAssessment(assessmentId: number, options:
 
     console.log(`[ReportService] Fetching assessment data...`);
     
-    // Increased timeout to 90s to allow for Neon cold starts and connection establishment
-    const assessmentPromise = storage.getAssessment(assessmentId);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database timeout: getAssessment took longer than 90s')), 90000)
-    );
+    // Enhanced connection resilience: multiple shorter attempts instead of one long timeout
+    // This addresses Neon HTTP driver connection establishment delays, not query performance
+    let assessment: any = null;
+    let attempts = 0;
+    const maxAttempts = 3;
+    const attemptTimeout = 45000; // 45s per attempt (total: 135s max)
     
-    const assessment = await Promise.race([assessmentPromise, timeoutPromise]) as any;
+    while (!assessment && attempts < maxAttempts) {
+      attempts++;
+      console.log(`[ReportService] Assessment fetch attempt ${attempts}/${maxAttempts}`);
+      
+      try {
+        const assessmentPromise = storage.getAssessment(assessmentId);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Assessment fetch attempt ${attempts} timed out after 45s`)), attemptTimeout)
+        );
+        
+        assessment = await Promise.race([assessmentPromise, timeoutPromise]);
+        
+        if (assessment) {
+          console.log(`[ReportService] Assessment fetched successfully on attempt ${attempts}:`, { id: assessment?.id, title: assessment?.title });
+          break;
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn(`[ReportService] Assessment fetch attempt ${attempts} failed: ${errorMessage}`);
+        
+        // If this was the last attempt, throw the error
+        if (attempts === maxAttempts) {
+          console.error(`[ReportService] All ${maxAttempts} assessment fetch attempts failed for assessment ID: ${assessmentId}`);
+          throw new Error(`Failed to fetch assessment after ${maxAttempts} attempts. Last error: ${errorMessage}`);
+        }
+        
+        // Wait 2 seconds before retry to allow connection recovery
+        console.log(`[ReportService] Waiting 2s before retry attempt ${attempts + 1}...`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
     console.log(`[ReportService] Assessment fetched:`, { id: assessment?.id, title: assessment?.title });
   if (!assessment) {
     console.error(`[ReportService] Assessment not found for ID: ${assessmentId}`);

@@ -102,15 +102,43 @@ export class PgStorage implements IStorage {
   private isInitialized: boolean = false;
   private initPromise: Promise<void>;
 
+  // Connection Usage Monitoring
+  private static instanceCounter = 0;
+  private instanceId: string;
+  private connectionMetrics = {
+    created: new Date(),
+    httpConnectionAttempts: 0,
+    tcpConnectionAttempts: 0,
+    keepAliveSuccesses: 0,
+    keepAliveFailures: 0,
+    healthCheckFailures: 0,
+    reconnectionAttempts: 0,
+    activeQueries: 0,
+    totalQueries: 0,
+    lastActivity: new Date(),
+    connectionState: 'initializing' as 'initializing' | 'connected' | 'failed' | 'reconnecting' | 'disconnected'
+  };
+  private static globalMetrics = {
+    totalInstances: 0,
+    activeInstances: new Set<string>(),
+    instanceMetrics: new Map<string, any>()
+  };
+
   // Keep-alive mechanism to prevent database suspension
   private keepAliveInterval: NodeJS.Timeout | null = null;
   
   private async performKeepAlive(): Promise<void> {
     try {
+      this.connectionMetrics.activeQueries++;
       await this.db.execute(sql`SELECT 1 as keep_alive, NOW() as timestamp`);
-      console.log('[Database Keep-Alive] Ping successful');
+      this.connectionMetrics.keepAliveSuccesses++;
+      this.connectionMetrics.lastActivity = new Date();
+      console.log(`[Database Keep-Alive] [${this.instanceId}] Ping successful (${this.connectionMetrics.keepAliveSuccesses} total)`);
     } catch (error) {
-      console.warn('[Database Keep-Alive] Ping failed:', error);
+      this.connectionMetrics.keepAliveFailures++;
+      console.warn(`[Database Keep-Alive] [${this.instanceId}] Ping failed (${this.connectionMetrics.keepAliveFailures} failures):`, error);
+    } finally {
+      this.connectionMetrics.activeQueries--;
     }
   }
   
@@ -144,7 +172,11 @@ export class PgStorage implements IStorage {
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        return await operation();
+        this.connectionMetrics.activeQueries++;
+        this.connectionMetrics.totalQueries++;
+        const result = await operation();
+        this.connectionMetrics.lastActivity = new Date();
+        return result;
       } catch (error) {
         lastError = error as Error;
         
@@ -169,14 +201,63 @@ export class PgStorage implements IStorage {
         
         // If it's not a connection error or we've exhausted retries, throw immediately
         throw error;
-      }
+      
+    } finally {
+      this.connectionMetrics.activeQueries--;
     }
-    
+  } 
     throw lastError!;
   }
 
   constructor() {
+    // Initialize instance tracking
+    PgStorage.instanceCounter++;
+    this.instanceId = `pg-${PgStorage.instanceCounter}-${Date.now()}-${process.env.VERCEL_ENV || 'local'}`;
+    PgStorage.globalMetrics.totalInstances++;
+    PgStorage.globalMetrics.activeInstances.add(this.instanceId);
+    PgStorage.globalMetrics.instanceMetrics.set(this.instanceId, this.connectionMetrics);
+    
+    console.log(`[ConnectionMonitor] PgStorage instance created: ${this.instanceId} (Total active: ${PgStorage.globalMetrics.activeInstances.size})`);
+    this.logConnectionSummary();
+    
     this.initPromise = this.initializeAsync();
+  } 
+
+  // Connection monitoring helper methods
+  private logConnectionSummary(): void {
+    const activeCount = PgStorage.globalMetrics.activeInstances.size;
+    const totalCount = PgStorage.globalMetrics.totalInstances;
+    console.log(`[ConnectionMonitor] Global Summary: ${activeCount} active instances (${totalCount} total created)`);
+  }
+
+  public getConnectionMetrics() {
+    return {
+      instanceId: this.instanceId,
+      ...this.connectionMetrics,
+      uptime: Date.now() - this.connectionMetrics.created.getTime(),
+      lastActivityAge: Date.now() - this.connectionMetrics.lastActivity.getTime()
+    };
+  }
+
+  public static getGlobalConnectionMetrics() {
+    const instanceMetrics = Array.from(PgStorage.globalMetrics.instanceMetrics.entries()).map(([id, metrics]) => ({
+      instanceId: id,
+      ...metrics,
+      uptime: Date.now() - metrics.created.getTime(),
+      lastActivityAge: Date.now() - metrics.lastActivity.getTime()
+    }));
+
+    return {
+      summary: {
+        totalInstancesCreated: PgStorage.globalMetrics.totalInstances,
+        activeInstances: PgStorage.globalMetrics.activeInstances.size,
+        totalActiveQueries: instanceMetrics.reduce((sum, m) => sum + m.activeQueries, 0),
+        totalQueries: instanceMetrics.reduce((sum, m) => sum + m.totalQueries, 0),
+        totalKeepAliveFailures: instanceMetrics.reduce((sum, m) => sum + m.keepAliveFailures, 0),
+        totalHealthCheckFailures: instanceMetrics.reduce((sum, m) => sum + m.healthCheckFailures, 0)
+      },
+      instances: instanceMetrics
+    };
   }
 
   private async initializeAsync(): Promise<void> {
@@ -236,8 +317,11 @@ export class PgStorage implements IStorage {
         await this.initializeDirectTcpClient(connectionString);
         
         this.isInitialized = true;
+        this.connectionMetrics.connectionState = 'connected';
+        this.connectionMetrics.httpConnectionAttempts++;
+        this.connectionMetrics.lastActivity = new Date();
         this.startKeepAlive(); // Start keep-alive for production
-        console.log('Neon HTTP database connection established with enhanced configuration and direct TCP fallback');
+        console.log(`[ConnectionMonitor] [${this.instanceId}] Neon HTTP database connection established with enhanced configuration and direct TCP fallback`);
       }  else if (process.env.VERCEL_ENV === 'preview') {
         // Use Neon HTTP connection for preview environment (Each branch has its own preview URL)
         console.log('Initializing Neon HTTP database connection for Vercel preview');
@@ -291,8 +375,11 @@ export class PgStorage implements IStorage {
         await this.initializeDirectTcpClient(connectionString);
         
         this.isInitialized = true;
+        this.connectionMetrics.connectionState = 'connected';
+        this.connectionMetrics.httpConnectionAttempts++;
+        this.connectionMetrics.lastActivity = new Date();
         this.startKeepAlive(); // Start keep-alive for preview
-        console.log('Neon HTTP database connection established with enhanced configuration and direct TCP fallback');
+        console.log(`[ConnectionMonitor] [${this.instanceId}] Neon HTTP database connection established with enhanced configuration and direct TCP fallback`);
       } else {
         // Use local DATABASE_URL for local development
         console.log('Initializing standard PostgreSQL connection for local development');
@@ -340,9 +427,25 @@ export class PgStorage implements IStorage {
         
         await Promise.race([healthCheckPromise, timeoutPromise]);
       } catch (healthError) {
-        console.warn('Database health check failed, reinitializing connection:', healthError);
+        this.connectionMetrics.healthCheckFailures++;
+        this.connectionMetrics.reconnectionAttempts++;
+        this.connectionMetrics.connectionState = 'reconnecting';
+        console.warn(`[ConnectionMonitor] [${this.instanceId}] Database health check failed (failure #${this.connectionMetrics.healthCheckFailures}), reinitializing connection:`, healthError);
+        
         // Stop any existing keep-alive before reinitializing
         this.stopKeepAlive();
+        
+        // Close DirectTCP client if it exists to prevent connection leaks
+        if (this.directTcpClient) {
+          try {
+            await this.directTcpClient.end();
+            console.log(`[ConnectionMonitor] [${this.instanceId}] DirectTCP client closed during reconnection`);
+          } catch (closeError) {
+            console.warn(`[ConnectionMonitor] [${this.instanceId}] Error closing DirectTCP client:`, closeError);
+          }
+          this.directTcpClient = undefined;
+        }
+        
         // Re-initialize connection if health check fails
         this.isInitialized = false;
         this.initPromise = this.initializeAsync();
@@ -352,14 +455,33 @@ export class PgStorage implements IStorage {
   }
 
   async disconnect(): Promise<void> {
+    console.log(`[ConnectionMonitor] [${this.instanceId}] Disconnecting PgStorage instance`);
+    
     // Stop keep-alive timer
     this.stopKeepAlive();
+    
+    // Close DirectTCP client if it exists
+    if (this.directTcpClient) {
+      try {
+        await this.directTcpClient.end();
+        console.log(`[ConnectionMonitor] [${this.instanceId}] DirectTCP client closed`);
+      } catch (error) {
+        console.warn(`[ConnectionMonitor] [${this.instanceId}] Error closing DirectTCP client:`, error);
+      }
+      this.directTcpClient = undefined;
+    }
     
     // Only need to disconnect the pool for local pg connections
     if (this.pool) {
       await this.pool.end();
-      console.log('Standard PostgreSQL database connection closed');
+      console.log(`[ConnectionMonitor] [${this.instanceId}] Standard PostgreSQL database connection closed`);
     }
+    
+    // Update tracking
+    this.connectionMetrics.connectionState = 'disconnected';
+    PgStorage.globalMetrics.activeInstances.delete(this.instanceId);
+    console.log(`[ConnectionMonitor] [${this.instanceId}] Instance removed (Total active: ${PgStorage.globalMetrics.activeInstances.size})`);
+    
     this.isInitialized = false;
   }
 
@@ -386,7 +508,8 @@ export class PgStorage implements IStorage {
       const warmupStart = Date.now();
       await this.connectDirectTcpWithRetry();
       const warmupDuration = Date.now() - warmupStart;
-      console.log(`[DirectTCP] Direct TCP client initialized successfully - warm-up connect took ${warmupDuration}ms`);
+      this.connectionMetrics.tcpConnectionAttempts++;
+      console.log(`[ConnectionMonitor] [${this.instanceId}] DirectTCP client initialized successfully - warm-up connect took ${warmupDuration}ms`);
       
     } catch (error) {
       console.error('[DirectTCP] CRITICAL: Failed to initialize direct TCP client in Vercel environment:', {

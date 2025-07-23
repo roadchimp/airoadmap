@@ -66,21 +66,56 @@ const parseConsolidatedText = (text: string | undefined, key: string): string =>
 };
 
 // Reusable UI components for displaying info
-const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div>
-    <h4 className="font-medium text-gray-800 mb-1">{label}</h4>
-    <p className="text-gray-600 break-words">{String(value || 'N/A')}</p>
-  </div>
-);
+const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => {
+  // Safely convert value to string, handling objects
+  const safeStringValue = React.useMemo(() => {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (Array.isArray(value)) {
+      return value.map(item => {
+        if (typeof item === 'object' && item !== null && 'name' in item && typeof item.name === 'string') {
+          return item.name;
+        }
+        return String(item);
+      }).join(', ');
+    }
+    if (typeof value === 'object' && value !== null && 'name' in value && typeof (value as any).name === 'string') {
+      return (value as any).name;
+    }
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  }, [value]);
 
-const InfoList = ({ label, items }: { label: string; items: string[] }) => (
-  <div>
-    <h4 className="font-medium text-gray-800 mb-2">{label}</h4>
-    <ul className="list-disc list-inside text-gray-600 space-y-1">
-      {items.length > 0 ? items.map((item, index) => <li key={index}>{item}</li>) : <li>N/A</li>}
-    </ul>
-  </div>
-);
+  return (
+    <div>
+      <h4 className="font-medium text-gray-800 mb-1">{label}</h4>
+      <p className="text-gray-600 break-words">{safeStringValue}</p>
+    </div>
+  );
+};
+
+const InfoList = ({ label, items }: { label: string; items: any[] }) => {
+  const safeItems = React.useMemo(() => {
+    if (!items || !Array.isArray(items)) return ['N/A'];
+    return items.map(item => {
+      if (typeof item === 'string') return item;
+      if (typeof item === 'object' && item !== null && 'name' in item && typeof item.name === 'string') return item.name;
+      return String(item);
+    }).filter(Boolean);
+  }, [items]);
+
+  return (
+    <div>
+      <h4 className="font-medium text-gray-800 mb-2">{label}</h4>
+      <ul className="list-disc list-inside text-gray-600 space-y-1">
+        {safeItems.length > 0 ? safeItems.map((item, index) => (
+          <li key={`${label}-${index}-${item}`}>{item}</li>
+        )) : <li>N/A</li>}
+      </ul>
+    </div>
+  );
+};
 
 // Local helper functions as they are not exported from scoring-ui
 const getPriorityColor = (valueScore: number) => {
@@ -188,21 +223,21 @@ export default function AssessmentViewClient({
     items: T[] | T | undefined,
     renderItem: (item: T, index: number) => React.ReactNode,
     getKey: (item: T, index: number) => string | number,
-    fallbackKey?: string
+    fallbackKey?: string,
+    isListContext: boolean = true
   ): React.ReactNode => {
-    if (!items) return <li>N/A</li>;
+    if (!items) return isListContext ? <li>N/A</li> : null;
     
     // Ensure we're working with an array
     const itemsArray = Array.isArray(items) ? items : [items];
     
-    // Filter out any non-string items for stakeholders specifically
+    // Filter out any invalid items
     const validItems = itemsArray.filter(item => 
-      typeof item === 'string' || 
-      (typeof item === 'object' && item !== null && !React.isValidElement(item))
+      item !== null && item !== undefined
     );
     
     if (validItems.length === 0) {
-      return <li>N/A</li>;
+      return isListContext ? <li>N/A</li> : null;
     }
     
     return validItems.map((item, index) => {
@@ -260,8 +295,10 @@ export default function AssessmentViewClient({
             <ul className="list-disc list-inside text-gray-600 space-y-1">
               {renderArray(
                 stepData.basics?.stakeholders,
-                (stakeholder: string) => <li>{stakeholder}</li>,
-                (stakeholder: string, index: number) => `stakeholder-${index}-${stakeholder}`,
+                (stakeholder: any) => (
+                  <li>{typeof stakeholder === 'string' ? stakeholder : (stakeholder && typeof stakeholder === 'object' && 'name' in stakeholder ? stakeholder.name : JSON.stringify(stakeholder))}</li>
+                ),
+                (stakeholder: any, index: number) => `stakeholder-${index}-${typeof stakeholder === 'string' ? stakeholder : (stakeholder && typeof stakeholder === 'object' && 'name' in stakeholder ? stakeholder.name : index)}`,
                 'single-stakeholder'
               )}
             </ul>
@@ -287,7 +324,8 @@ export default function AssessmentViewClient({
                   </span>
                 ),
                 (dept: Department, index: number) => dept.id ? `dept-${dept.id}` : `dept-fallback-${index}`,
-                'single-department'
+                'single-department',
+                false
               )}
             </div>
           </div>
@@ -303,7 +341,8 @@ export default function AssessmentViewClient({
                   </div>
                 ),
                 (role: JobRole, index: number) => role.id ? `role-${role.id}` : `role-fallback-${index}`,
-                'single-role'
+                'single-role',
+                false
               )}
             </div>
           </div>
@@ -461,7 +500,8 @@ export default function AssessmentViewClient({
                   </span>
                 ),
                 (goal: string, index: number) => `goal-${index}-${goal}`,
-                'single-goal'
+                'single-goal',
+                false
               )}
             </div>
           </div>

@@ -36,31 +36,43 @@ export async function calculatePrioritization(
     }
   };
   
-  // Get roles data
-  const selectedRoles = stepData.roles?.selectedRoles || [];
-  const roleRankings = stepData.roles?.prioritizedRoles || [];
+  // Get roles data - selectedRoles and prioritizedRoles are arrays of IDs (numbers)
+  // Note: Despite the schema type, these are stored as number arrays after submission
+  const selectedRoleIds = (stepData.roles?.selectedRoles as unknown as number[]) || [];
+  const roleRankings = (stepData.roles?.prioritizedRoles as unknown as number[]) || [];
   const painPoints = stepData.painPoints?.roleSpecificPainPoints || {};
+  
+  // Fetch all role data from the database to build the role map
+  const allRoles = await storage.listJobRoles();
   
   // Create a map of role IDs to role objects for easy lookup
   const roleMap = new Map<number, { id: number; title: string; department: string }>();
-  selectedRoles.forEach(role => {
-    if (role.id) {
-      roleMap.set(role.id, {
-        id: role.id,
-        title: role.title,
-        department: `Department ${role.departmentId}`, 
-      });
+  
+  // Build role map using the fetched role data
+  selectedRoleIds.forEach(roleId => {
+    if (typeof roleId === 'number') {
+      const roleData = allRoles.find(r => r.id === roleId);
+      if (roleData) {
+        roleMap.set(roleId, {
+          id: roleData.id,
+          title: roleData.title,
+          department: roleData.departmentName || `Department ${roleData.departmentId}`,
+        });
+      }
     }
   });
 
-  // If roleRankings is empty, populate it with all selected roles
-  const finalRoleRankings = roleRankings.length > 0 ? roleRankings : selectedRoles.map(r => r.id).filter(id => id !== undefined);
+  // If roleRankings is empty, populate it with all selected role IDs
+  const finalRoleRankings = roleRankings.length > 0 ? roleRankings : selectedRoleIds.filter(id => typeof id === 'number');
   
-  // Extract role IDs from selected roles for capability mapping
-  const assessmentRoleIds: number[] = selectedRoles.map(role => role.id).filter((id): id is number => id !== undefined);
+  // selectedRoleIds is already an array of numbers
+  const assessmentRoleIds: number[] = selectedRoleIds.filter((id): id is number => typeof id === 'number');
   
   console.log(`Assessment has ${assessmentRoleIds.length} selected roles for capability mapping:`, 
-    selectedRoles.map(r => `${r.title} (ID: ${r.id})`));
+    assessmentRoleIds.map(roleId => {
+      const roleData = roleMap.get(roleId);
+      return `${roleData?.title || 'Unknown'} (ID: ${roleId})`;
+    }));
   
   // Calculate data quality score based on available data sources
   // Default to medium (3) if not specified

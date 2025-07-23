@@ -91,9 +91,17 @@ export async function POST(
           typeof assessment.stepData.roles === 'object' &&
           'selectedRoles' in assessment.stepData.roles &&
           Array.isArray(assessment.stepData.roles.selectedRoles)) {
-        assessmentRoles = assessment.stepData.roles.selectedRoles.map((role: any) => 
-          typeof role === 'string' ? role : role.title || role.name || ''
-        ).filter(Boolean);
+        // selectedRoles now contains role IDs, need to look up role titles
+        const allRoles = await storage.listJobRoles();
+        assessmentRoles = assessment.stepData.roles.selectedRoles
+          .map((roleId: any) => {
+            if (typeof roleId === 'number') {
+              const role = allRoles.find(r => r.id === roleId);
+              return role?.title || '';
+            }
+            return '';
+          })
+          .filter(Boolean);
       }
       
       // Extract pain points from assessment

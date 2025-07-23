@@ -1076,10 +1076,10 @@ export class PgStorage implements IStorage {
     // Ensure stepData is treated as WizardStepData type
     const stepData = assessment.stepData as WizardStepData | null;
 
-    // 2. Extract selected JobRole IDs from stepData (assuming they are stored in stepData.roles.selectedRoles as an array of objects with id)
-    // Safely access roles and map to IDs, defaulting to an empty array if roles is null, undefined, or not an array
+    // 2. Extract selected JobRole IDs from stepData (stored as an array of role IDs)
+    // Safely access roles and filter to ensure we have valid numbers
     const selectedJobRoleIds: number[] = Array.isArray(stepData?.roles?.selectedRoles) 
-      ? stepData.roles.selectedRoles.map((role: { id?: number }) => role.id).filter((id): id is number => id !== undefined) 
+      ? (stepData.roles.selectedRoles as unknown as number[]).filter((id): id is number => typeof id === 'number')
       : [];
 
     let selectedRoles: BaseJobRole[] = [];

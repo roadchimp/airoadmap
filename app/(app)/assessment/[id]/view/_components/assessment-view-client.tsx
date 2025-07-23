@@ -109,7 +109,50 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
     return `Role ${roleIdNum}`;
   };
 
-  // Helper function to safely render arrays with proper keys
+  // Helper component for safe info display
+  const InfoItem = ({ value }: { value: any }) => {
+    if (value === null || value === undefined) {
+      return <span>N/A</span>;
+    }
+    
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      // Handle objects safely - never pass objects as React children
+      if (value.name) {
+        return <span>{value.name}</span>;
+      }
+      if (value.title) {
+        return <span>{value.title}</span>;
+      }
+      return <span>{JSON.stringify(value)}</span>;
+    }
+    
+    return <span>{String(value)}</span>;
+  };
+
+  // Helper component for safe list display
+  const InfoList = ({ items }: { items: any[] | any | undefined }) => {
+    if (!items) return <span>None</span>;
+    
+    if (!Array.isArray(items)) {
+      return <InfoItem value={items} />;
+    }
+    
+    if (items.length === 0) {
+      return <span>None</span>;
+    }
+    
+    return (
+      <ul className="list-disc list-inside text-gray-600 space-y-1">
+        {items.map((item, index) => (
+          <li key={index}>
+            <InfoItem value={item} />
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  // Helper function to safely render arrays with proper keys and type checking
   const renderArray = <T,>(
     items: T[] | T | undefined,
     renderItem: (item: T, index: number) => React.ReactNode,
@@ -117,6 +160,17 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
     fallbackKey?: string
   ): React.ReactNode => {
     if (!items) return null;
+    
+    // Type check to ensure we don't pass objects as React children
+    if (typeof items === 'object' && !Array.isArray(items)) {
+      // Handle single object case
+      const key = fallbackKey || 'single-item';
+      return (
+        <React.Fragment key={key}>
+          {renderItem(items, 0)}
+        </React.Fragment>
+      );
+    }
     
     if (Array.isArray(items)) {
       return items.map((item, index) => {
@@ -137,7 +191,6 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
           </React.Fragment>
         );
       });
-
     } else {
       const key = fallbackKey || 'single-item';
       return (
@@ -180,14 +233,7 @@ export default function AssessmentViewClient({ assessment, reportId }: Assessmen
           </div>
           <div>
             <h4 className="font-medium text-gray-800 mb-1">Stakeholders</h4>
-            <ul className="list-disc list-inside text-gray-600 space-y-1">
-              {renderArray(
-                stepData.basics?.stakeholders,
-                (stakeholder: string) => <li>{stakeholder}</li>,
-                (stakeholder: string, index: number) => `stakeholder-${index}-${stakeholder}`,
-                'single-stakeholder'
-              )}
-            </ul>
+            <InfoList items={stepData.basics?.stakeholders} />
           </div>
         </div>
       ),

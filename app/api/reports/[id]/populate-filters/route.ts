@@ -85,15 +85,23 @@ export async function POST(
     let assessmentGoals: string[] = [];
     
     if (assessment && assessment.stepData && typeof assessment.stepData === 'object') {
-      // Extract roles from assessment
+      // Extract roles from assessment - handle runtime type as number[]
       if ('roles' in assessment.stepData && 
           assessment.stepData.roles && 
           typeof assessment.stepData.roles === 'object' &&
           'selectedRoles' in assessment.stepData.roles &&
           Array.isArray(assessment.stepData.roles.selectedRoles)) {
-        assessmentRoles = assessment.stepData.roles.selectedRoles.map((role: any) => 
-          typeof role === 'string' ? role : role.title || role.name || ''
-        ).filter(Boolean);
+        
+        const selectedRoleIds = assessment.stepData.roles.selectedRoles as unknown as number[];
+        const allRoles = await storage.listJobRoles();
+        
+        assessmentRoles = selectedRoleIds
+          .filter((id): id is number => typeof id === 'number')
+          .map(roleId => {
+            const roleData = allRoles.find(r => r.id === roleId);
+            return roleData ? roleData.title : '';
+          })
+          .filter(Boolean);
       }
       
       // Extract pain points from assessment

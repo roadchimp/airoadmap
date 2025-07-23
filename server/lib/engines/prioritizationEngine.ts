@@ -31,31 +31,40 @@ export async function calculatePrioritization(assessmentId: number, stepData: Wi
     }
   };
   
-  // Get roles data
-  const selectedRoles = stepData.roles?.selectedRoles || [];
+  // Get roles data - handle runtime IDs
+  const selectedRoleIds = (stepData.roles?.selectedRoles as unknown as number[]) || [];
   const roleRankings = stepData.roles?.prioritizedRoles || [];
   const painPoints = stepData.painPoints?.roleSpecificPainPoints || {};
   
+  // Fetch all roles from database
+  const allRoles = await storage.listJobRoles();
+  
   // Create a map of role IDs to role objects for easy lookup
   const roleMap = new Map<number, { id: number; title: string; department: string }>();
-  selectedRoles.forEach(role => {
-    if (role.id) {
-      roleMap.set(role.id, {
-        id: role.id,
-        title: role.title,
-        department: `Department ${role.departmentId}`, 
-      });
+  selectedRoleIds.forEach(roleId => {
+    if (typeof roleId === 'number') {
+      const roleData = allRoles.find(r => r.id === roleId);
+      if (roleData) {
+        roleMap.set(roleId, {
+          id: roleData.id,
+          title: roleData.title,
+          department: roleData.departmentName || `Department ${roleData.departmentId}`,
+        });
+      }
     }
   });
 
   // If roleRankings is empty, populate it with all selected roles
-  const finalRoleRankings = roleRankings.length > 0 ? roleRankings : selectedRoles.map(r => r.id).filter(id => id !== undefined);
+  const finalRoleRankings = roleRankings.length > 0 ? roleRankings : selectedRoleIds;
   
   // Extract role IDs from selected roles for capability mapping
-  const assessmentRoleIds: number[] = selectedRoles.map(role => role.id).filter((id): id is number => id !== undefined);
+  const assessmentRoleIds: number[] = selectedRoleIds.filter((id): id is number => typeof id === 'number');
   
   console.log(`Assessment has ${assessmentRoleIds.length} selected roles for capability mapping:`, 
-    selectedRoles.map(r => `${r.title} (ID: ${r.id})`));
+    assessmentRoleIds.map(id => {
+      const roleData = roleMap.get(id);
+      return roleData ? `${roleData.title} (ID: ${id})` : `Unknown Role (ID: ${id})`;
+    }));
   
   // Calculate data quality score based on available data sources
   // Default to medium (3) if not specified

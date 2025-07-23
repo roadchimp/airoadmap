@@ -149,8 +149,8 @@ export function generatePreviewAssessment(stepData: Partial<WizardStepData>, rol
 } {
   const prioritizedItems: PrioritizedItem[] = [];
   
-  // Get selected role objects
-  const selectedRoles = stepData.roles?.selectedRoles || [];
+  // Get selected role IDs - handle runtime type
+  const selectedRoleIds = (stepData.roles?.selectedRoles as unknown as number[]) || [];
   
   // Get pain points data
   const painPoints = stepData.painPoints?.roleSpecificPainPoints || {};
@@ -158,13 +158,13 @@ export function generatePreviewAssessment(stepData: Partial<WizardStepData>, rol
   // Get data quality rating
   const dataQuality = stepData.techStack?.dataQuality || 3;
   
-  // Process each selected role object
-  selectedRoles.forEach(selectedRole => {
-    // Check if the selected role object has an id
-    if (selectedRole.id === undefined) return;
+  // Process each selected role ID
+  selectedRoleIds.forEach(roleId => {
+    // Check if the role ID is valid
+    if (typeof roleId !== 'number') return;
     
-    // Find the full JobRole using the id from the selectedRole object
-    const role = roles.find(r => r.id === selectedRole.id);
+    // Find the full JobRole using the role ID
+    const role = roles.find(r => r.id === roleId);
     if (!role) return;
     
     // Use the role id (number) to access pain points

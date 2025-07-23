@@ -51,10 +51,61 @@ function convertToSessionTypes(data: DepartmentRoleSummary[]): { hierarchical: D
 
 export async function GET() {
     try {
+        // Log environment and database connection details
+        console.log('=== DATABASE CONNECTION DEBUG ===');
+        console.log('Environment Variables:');
+        console.log('- VERCEL_ENV:', process.env.VERCEL_ENV);
+        console.log('- NODE_ENV:', process.env.NODE_ENV);
+        console.log('- DATABASE_URL exists:', !!process.env.DATABASE_URL);
+        console.log('- DATABASE_POSTGRES_URL exists:', !!process.env.DATABASE_POSTGRES_URL);
+        console.log('- DATABASE_PREVIEW_URL exists:', !!process.env.DATABASE_PREVIEW_URL);
+        
+        // Log partial connection strings for debugging (first 30 chars + last 10 chars)
+        const logPartialUrl = (url: string | undefined, name: string) => {
+            if (url) {
+                const masked = url.length > 40 
+                    ? `${url.substring(0, 30)}...${url.substring(url.length - 10)}`
+                    : url.substring(0, 30) + '...';
+                console.log(`- ${name}:`, masked);
+            }
+        };
+        
+        logPartialUrl(process.env.DATABASE_URL, 'DATABASE_URL');
+        logPartialUrl(process.env.DATABASE_POSTGRES_URL, 'DATABASE_POSTGRES_URL');
+        logPartialUrl(process.env.DATABASE_PREVIEW_URL, 'DATABASE_PREVIEW_URL');
+        
         const storage = getStorage();
         const summaryData = await storage.getDepartmentRoleSummary();
         
+        // Log raw data from database for debugging
+        console.log('Raw summary data count:', summaryData.length);
+        const financeData = summaryData.find(dept => dept.department_name.includes('Finance'));
+        if (financeData) {
+            console.log('Finance department raw data:', {
+                id: financeData.department_id,
+                name: financeData.department_name,
+                rolesCount: financeData.roles?.length || 0,
+                roles: financeData.roles?.map(r => ({ id: r.id, title: r.title })) || []
+            });
+        } else {
+            console.log('No Finance department found in raw data');
+            console.log('Available departments:', summaryData.map(d => ({ id: d.department_id, name: d.department_name })));
+        }
+        
         const { hierarchical, roles } = convertToSessionTypes(summaryData);
+
+        // Log converted data for debugging
+        const financeConverted = hierarchical.find(dept => dept.name.includes('Finance'));
+        if (financeConverted) {
+            console.log('Finance department converted data:', {
+                id: financeConverted.id,
+                name: financeConverted.name,
+                rolesCount: financeConverted.roles?.length || 0,
+                roles: financeConverted.roles?.map(r => ({ id: r.id, title: r.title })) || []
+            });
+        }
+        
+        console.log('=== END DATABASE DEBUG ===');
 
         return NextResponse.json({
             hierarchical,
@@ -64,6 +115,13 @@ export async function GET() {
                 totalRoles: roles.length,
                 lastUpdated: new Date().toISOString(),
                 cacheVersion: '1.0.0',
+                debugInfo: {
+                    vercelEnv: process.env.VERCEL_ENV,
+                    nodeEnv: process.env.NODE_ENV,
+                    rawDataCount: summaryData.length,
+                    financeFound: !!financeData,
+                    financeRolesCount: financeData?.roles?.length || 0
+                }
             }
         });
     } catch (error) {

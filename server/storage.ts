@@ -270,6 +270,7 @@ export interface IStorage {
   // New methods for capability-job role mapping
   mapCapabilityToJobRole(capabilityId: number, jobRoleId: number): Promise<void>;
   mapCapabilityToJobRoleWithImpact(capabilityId: number, jobRoleId: number, impactScore: number): Promise<void>;
+  batchMapCapabilityToJobRolesWithImpact(capabilityId: number, mappings: Array<{jobRoleId: number, impactScore: number}>): Promise<void>;
   unmapCapabilityFromJobRole(capabilityId: number, jobRoleId: number): Promise<void>;
   getJobRolesForCapability(capabilityId: number): Promise<BaseJobRole[]>;
   

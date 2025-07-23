@@ -2,6 +2,7 @@ import { WizardStepData, HeatmapData, PrioritizedItem, EffortLevel, ValueLevel, 
 import { generateEnhancedExecutiveSummary, generateAICapabilityRecommendations, generatePerformanceImpact } from "../../../server/lib/services/aiService";
 import { storage } from '@/server/storage';
 import { calculateAiAdoptionScore, CalculatedAiAdoptionScore } from "./aiAdoptionScoreEngine";
+import pLimit from 'p-limit';
 
 /**
  * Calculates the prioritization results based on wizard step data
@@ -267,8 +268,10 @@ export async function calculatePrioritization(
   
   // Wait for all promises to resolve
   console.log(`[PrioritizationEngine] Starting ${promises.length} parallel AI API calls...`);
+  const aiStartTime = Date.now();
   const results = await Promise.all(promises);
-  console.log(`[PrioritizationEngine] Completed all ${promises.length} AI API calls`);
+  const aiDuration = Date.now() - aiStartTime;
+  console.log(`[PrioritizationEngine] Completed all ${promises.length} AI API calls in ${aiDuration}ms`);
   
   // Extract results
   const executiveSummary = results[0] as string;
@@ -293,92 +296,124 @@ export async function calculatePrioritization(
     numOtherPromisesBeforeAICapabilities + aiSuggestionsPromises.length
   ) as any[];
   
-  // Save AI Capabilities to the database
-  const allSavedCapabilities: AISuggestion[] = [];
+  // CONNECTION POOL OPTIMIZATION: Throttle database writes to prevent pool saturation
+  // Limit concurrent database operations to prevent Neon connection pool exhaustion
+  const dbWriteLimit = pLimit(4); // Max 4 concurrent DB writes instead of 60-70
+  
+  console.log(`[PrioritizationEngine] Processing AI capability recommendations with connection throttling`);
+  
+  // Helper function to save a single capability with all its mappings
+  async function saveCapabilityWithMappings(
+    rec: any, 
+    assessmentId: number, 
+    assessmentRoleIds: number[], 
+    roleIndex: number
+  ) {
+    console.log(`[DEBUG] Processing capability: ${rec.capabilityName}`);
+    
+    // Step 1: Find or create the global AI capability
+    const globalCapability = await storage.findOrCreateGlobalAICapability(
+      rec.capabilityName || `Unknown Capability ${roleIndex}`,
+      rec.capabilityCategory || "Uncategorized",
+      rec.capabilityDescription,
+      {
+        default_business_value: rec.default_business_value,
+        default_implementation_effort: rec.default_implementation_effort,
+        default_ease_score: rec.default_ease_score,
+        default_value_score: rec.default_value_score,
+        default_feasibility_score: rec.default_feasibility_score,
+        default_impact_score: rec.default_impact_score,
+        tags: rec.tags || []
+      }
+    );
 
+    if (!globalCapability?.id) {
+      throw new Error(`Failed to create global capability for: ${rec.capabilityName}`);
+    }
+
+    // Step 2: Batch map capability to all assessment roles (OPTIMIZED)
+    const impactScore = typeof rec.impactScore === 'number' ? rec.impactScore : 
+                       (typeof rec.impactScore === 'string' ? parseFloat(rec.impactScore) || 50 : 50);
+    
+    // Use single batch operation instead of multiple individual calls
+    try {
+      const mappings = assessmentRoleIds.map(roleId => ({ jobRoleId: roleId, impactScore }));
+      await storage.batchMapCapabilityToJobRolesWithImpact(globalCapability.id, mappings);
+      console.log(`Batch mapped capability \"${globalCapability.name}\" to ${assessmentRoleIds.length} roles`);
+    } catch (error) {
+      console.warn(`Failed to batch map capability ${globalCapability.id} to roles:`, error);
+    }
+
+    // Step 3: Create assessment-specific capability link
+    const assessmentCapability: InsertAssessmentAICapability = {
+      assessmentId: assessmentId,
+      aiCapabilityId: globalCapability.id,
+      valueScore: rec.valueScore,
+      feasibilityScore: rec.feasibilityScore,
+      impactScore: rec.impactScore,
+      easeScore: rec.easeScore,
+      priority: rec.priority || 'Medium',
+      rank: rec.rank,
+      implementationEffort: rec.implementationEffort || "Medium",
+      businessValue: rec.businessValue || "Medium",
+      assessmentNotes: rec.assessmentNotes
+    };
+    
+    await storage.createAssessmentAICapability(assessmentCapability);
+    
+    return {
+      name: globalCapability.name,
+      description: globalCapability.description || ""
+    };
+  }
+
+  // Phase 2: Process all capabilities with connection throttling
+  const startDbTime = Date.now();
+  const allCapabilityTasks: Promise<{ roleIndex: number; capability: { name: string; description: string } }>[] = [];
+  
   for (let i = 0; i < topRoles.length; i++) {
     const roleRecommendations = rawAiCapabilityRecommendations[i];
-    const roleAISuggestions: { name: string; description: string; }[] = [];
-
+    
     if (Array.isArray(roleRecommendations)) {
       for (const rec of roleRecommendations) {
-        try {
-          console.log(`[DEBUG] About to find/create capability: ${rec.capabilityName}`);
-          // Step 1: Find or create the global AI capability
-          const globalCapability = await storage.findOrCreateGlobalAICapability(
-            rec.capabilityName || `Unknown Capability ${i}`, // Required with fallback
-            rec.capabilityCategory || "Uncategorized", // Required with fallback
-            rec.capabilityDescription, // Optional
-            {
-              // Optional defaults for the global capability
-              default_business_value: rec.default_business_value,
-              default_implementation_effort: rec.default_implementation_effort,
-              default_ease_score: rec.default_ease_score,
-              default_value_score: rec.default_value_score,
-              default_feasibility_score: rec.default_feasibility_score,
-              default_impact_score: rec.default_impact_score,
-              tags: rec.tags || []
-            }
-          );
-          console.log(`[DEBUG] Global capability result:`, globalCapability);
-
-          if (!globalCapability || !globalCapability.id) {
-            console.error(`[ERROR] Failed to create global capability for: ${rec.capabilityName}`);
-            continue; // Skip this capability
+        // Throttle each capability save operation
+        const task = dbWriteLimit(async () => {
+          try {
+            const capability = await saveCapabilityWithMappings(rec, assessmentId, assessmentRoleIds, i);
+            return { roleIndex: i, capability };
+          } catch (error) {
+            console.error(`Error saving capability ${rec.capabilityName}:`, error);
+            return {
+              roleIndex: i,
+              capability: {
+                name: String(rec.capabilityName || "Unknown Capability"),
+                description: String(rec.capabilityDescription || "") + " (Error saving details)"
+              }
+            };
           }
-          
-          // Step 1.5: Map this capability to all selected roles from the assessment
-          // This creates the missing relationship data that enables role-based filtering
-          for (const roleId of assessmentRoleIds) {
-            try {
-              // Get the impact score from the recommendation, default to a reasonable value
-              const impactScore = typeof rec.impactScore === 'number' ? rec.impactScore : 
-                                (typeof rec.impactScore === 'string' ? parseFloat(rec.impactScore) || 50 : 50); // Default to medium impact (50/100)
-              
-              // Use the enhanced mapping method that stores both the relationship and impact score
-              await storage.mapCapabilityToJobRoleWithImpact(globalCapability.id, roleId, impactScore);
-              console.log(`Mapped capability "${globalCapability.name}" (ID: ${globalCapability.id}) to role ID ${roleId} with impact score ${impactScore}`);
-            } catch (mappingError) {
-              console.warn(`Failed to map capability ${globalCapability.id} to role ${roleId}:`, mappingError);
-              // Continue with other mappings even if one fails
-            }
-          }
-          
-          // Step 2: Create the assessment-specific capability link
-          const assessmentCapability: InsertAssessmentAICapability = {
-            assessmentId: assessmentId,
-            aiCapabilityId: globalCapability.id,
-            valueScore: rec.valueScore,
-            feasibilityScore: rec.feasibilityScore,
-            impactScore: rec.impactScore,
-            easeScore: rec.easeScore,
-            priority: rec.priority || 'Medium',
-            rank: rec.rank,
-            implementationEffort: rec.implementationEffort || "Medium",
-            businessValue: rec.businessValue || "Medium",
-            assessmentNotes: rec.assessmentNotes
-          };
-          
-          await storage.createAssessmentAICapability(assessmentCapability);
-          
-          // Add to the list of suggestions for the report
-          roleAISuggestions.push({ 
-            name: globalCapability.name, 
-            description: globalCapability.description || "" 
-          });
-        } catch (error) {
-          console.error(`Error saving AI capability recommendation: ${String(rec.capabilityName || "Unknown")}`, error);
-          roleAISuggestions.push({ 
-            name: String(rec.capabilityName || "Unknown Capability"), 
-            description: String(rec.capabilityDescription || "") + " (Error saving details)" 
-          });
-        }
+        });
+        
+        allCapabilityTasks.push(task);
       }
     }
-     allSavedCapabilities.push({
+  }
+  
+  // Wait for all throttled operations to complete
+  const capabilityResults = await Promise.all(allCapabilityTasks);
+  const dbWriteTime = Date.now() - startDbTime;
+  console.log(`[PrioritizationEngine] Database write phase completed in ${dbWriteTime}ms with connection throttling`);
+  
+  // Group results by role
+  const allSavedCapabilities: AISuggestion[] = [];
+  for (let i = 0; i < topRoles.length; i++) {
+    const roleCapabilities = capabilityResults
+      .filter(result => result.roleIndex === i)
+      .map(result => result.capability);
+      
+    allSavedCapabilities.push({
       roleId: parseInt(topRoles[i].id),
       roleTitle: topRoles[i].name,
-      capabilities: roleAISuggestions
+      capabilities: roleCapabilities
     });
   }
   

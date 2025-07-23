@@ -1955,6 +1955,43 @@ export class PgStorage implements IStorage {
     });
   }
 
+  async batchMapCapabilityToJobRolesWithImpact(
+    capabilityId: number, 
+    mappings: Array<{jobRoleId: number, impactScore: number}>
+  ): Promise<void> {
+    return this.retryOperation(async () => {
+      await this.ensureInitialized();
+      
+      if (mappings.length === 0) return;
+      
+      // Batch insert capability-job role mappings
+      const roleValues = mappings.map(m => ({
+        capabilityId: capabilityId,
+        jobRoleId: m.jobRoleId
+      }));
+      
+      await this.db
+        .insert(capabilityJobRoles)
+        .values(roleValues)
+        .onConflictDoNothing({ target: [capabilityJobRoles.capabilityId, capabilityJobRoles.jobRoleId] });
+        
+      // Batch insert impact scores
+      const impactValues = mappings.map(m => ({
+        capabilityId: capabilityId,
+        jobRoleId: m.jobRoleId,
+        impactScore: m.impactScore.toString()
+      }));
+      
+      await this.db
+        .insert(capabilityRoleImpacts)
+        .values(impactValues)
+        .onConflictDoUpdate({
+          target: [capabilityRoleImpacts.capabilityId, capabilityRoleImpacts.jobRoleId],
+          set: { impactScore: sql`excluded.impact_score` }
+        });
+    });
+  }
+
   async unmapCapabilityFromJobRole(capabilityId: number, jobRoleId: number): Promise<void> {
     await this.ensureInitialized();
     const result = await this.db

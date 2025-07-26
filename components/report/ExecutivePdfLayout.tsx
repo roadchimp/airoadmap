@@ -181,10 +181,11 @@ export function ExecutivePdfLayout({ report, capabilities, tools }: ExecutivePdf
           </div>
         </div>
   
-        <h2 className="subsection-title">AI Adoption Score™ Analysis</h2>
-        <p className="section-subtitle">Detailed breakdown of organizational AI readiness factors</p>
-        
-        <div className="score-breakdown compact-page3">
+        <div className="ai-adoption-score-section">
+          <h2 className="subsection-title">AI Adoption Score™ Analysis</h2>
+          <p className="section-subtitle">Detailed breakdown of organizational AI readiness factors</p>
+          
+          <div className="score-breakdown compact-page3">
           <div className="score-components">
             {aiComponents && Object.keys(aiComponents).length > 0 ? (
               Object.entries(aiComponents).map(([key, componentObj]) => {
@@ -237,6 +238,7 @@ export function ExecutivePdfLayout({ report, capabilities, tools }: ExecutivePdf
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
   

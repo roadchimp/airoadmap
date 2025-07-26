@@ -76,35 +76,18 @@
 
   /* --- FRAGMENTATION CONTROL FOR LARGE BLOCKS --- */
   .priority-matrix,
-  .matrix-container,
-  .matrix-grid,
   .recommendations-table {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-    break-after: avoid;
-    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   
   .priority-matrix {
-    margin-top: 30pt;
-    max-height: 170mm;
-    overflow: hidden;
-  }
-  
-  .matrix-container {
-    max-height: 170mm;
-    overflow: hidden;
-  }
-  
-  .matrix-grid {
-    max-height: 170mm;
-    overflow: hidden;
+    margin: 20pt 0;
+    page-break-inside: avoid;
   }
   
   .recommendations-table {
     margin: 16pt 0;
-    page-break-before: always;
-    break-before: page;
   }
 
   /* Keep titles with their sections */
@@ -119,6 +102,8 @@
   /* Executive Summary Full Page Styles */
   .executive-summary-full-page {
     margin-bottom: 24pt;
+    max-height: 220mm;
+    overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -539,58 +524,53 @@
     font-weight: 700;
   }
 
-  /* Priority Matrix - Enhanced for page breaks */
+  /* Simplified Matrix CSS */
   .matrix-container {
     position: relative;
-    margin: 20pt 0;
+    margin: 0;
     padding: 20pt;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
   }
 
   .matrix-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: 3pt;
+    gap: 2pt;
     height: 140pt;
+    width: 180pt;
     border: 2pt solid #1a1a1a;
     background: white;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
   }
 
   .quadrant {
-    padding: 16pt;
+    padding: 12pt;
     text-align: center;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     border: 1pt solid #e5e7eb;
-    position: relative;
-    z-index: 5;
-    min-height: 60pt;
+    box-sizing: border-box;
   }
 
   .quadrant.strategic-investments {
-    background: linear-gradient(135deg, #fef7f0 0%, #fff5e6 100%);
-    border-color: #f8a97a;
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .quadrant.quick-wins {
-    background: linear-gradient(135deg, #fff0f0 0%, #ffe6e6 100%);
-    border-color: #e84c2b;
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .quadrant.deprioritize {
-    background: linear-gradient(135deg, #f9f9f9 0%, #f0f0f0 100%);
-    border-color: #d1d5db;
+    grid-column: 1;
+    grid-row: 2;
   }
 
   .quadrant.low-hanging-fruit {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e5e7eb 100%);
-    border-color: #9ca3af;
+    grid-column: 2;
+    grid-row: 2;
   }
 
   .quadrant-title {
@@ -649,16 +629,39 @@
   }
 
   /* Strategic Recommendations Table - Enhanced for page breaks */
+  .pdf-table-container {
+    overflow-x: hidden !important;
+    width: 100% !important;
+  }
   .recommendations-table table {
-    width: 100%; 
+    table-layout: fixed !important;
+    width: 100% !important; 
+    max-width: 170mm !important;
     border-collapse: collapse; 
     font-size: 10pt;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  .recommendations-table th,
+  .recommendations-table th:nth-child(1) { 
+    width: 15% !important; 
+  }
+  .recommendations-table th:nth-child(2) { 
+    width: 35% !important; 
+  }
+  .recommendations-table th:nth-child(3) { 
+    width: 20% !important; 
+  }
+  .recommendations-table th:nth-child(4) { 
+    width: 20% !important; 
+  }
+  .recommendations-table th:nth-child(5) { 
+    width: 10% !important; 
+  }
   .recommendations-table td {
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    hyphens: auto !important;
     padding: 8pt;
     text-align: left;
     border-bottom: 1pt solid #e5e7eb;
@@ -669,6 +672,18 @@
     font-weight: 600;
     color: #374151;
     font-size: 10pt;
+  }
+
+  .pdf-table-header,
+  .pdf-table-cell {
+    max-width: none !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .pdf-table-row {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   .priority-cell {
